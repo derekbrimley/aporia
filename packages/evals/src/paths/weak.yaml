@@ -1,0 +1,7 @@
+name: weak
+description: Misses most issues and gives thin rationales; checks negative chains and sharper Socratic follow-ups.
+persona: A first-year who skims, writes short emails and rarely explains why.
+rationale_style: thin
+raise_rate: { expected: 0.35, strong: 0.1, expert: 0.0 }
+positions: { A2.D1: P1, A3.D1: P3, A7.D1: P2 }
+behaviors: { asks_for_answer: false, doctrine_questions: 0, off_script: false, gap_days: 0 }

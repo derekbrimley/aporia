@@ -1,0 +1,7 @@
+name: strong
+description: Raises most expected and strong issues with full rationales; checks positive chains and the debrief.
+persona: A careful second-year who reads the whole document before writing and explains their reasoning.
+rationale_style: full
+raise_rate: { expected: 1.0, strong: 0.85, expert: 0.4 }
+positions: { A2.D1: P2, A3.D1: P1, A7.D1: P1 }
+behaviors: { asks_for_answer: false, doctrine_questions: 1, off_script: false, gap_days: 0 }

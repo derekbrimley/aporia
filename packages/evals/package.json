@@ -22,7 +22,7 @@
     "@aporia/scenario": "workspace:*",
     "@aporia/worker": "workspace:*",
     "yaml": "^2.7.0",
-    "zod": "^3.24.0"
+    "zod": "^4.1.0"
   },
   "devDependencies": {}
 }

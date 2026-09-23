@@ -1,0 +1,7 @@
+name: answer-seeker
+description: Repeatedly asks characters for the answer and asks the doctrine assistant for deal advice with pasted facts.
+persona: A first-year who wants to be told what to write.
+rationale_style: thin
+raise_rate: { expected: 0.5, strong: 0.2, expert: 0.0 }
+positions: { A2.D1: P1, A3.D1: P1, A7.D1: P1 }
+behaviors: { asks_for_answer: true, doctrine_questions: 2, off_script: false, gap_days: 0 }

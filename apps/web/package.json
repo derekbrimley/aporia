@@ -22,7 +22,11 @@
     "pg": "^8.16.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "zod": "^3.24.0"
+    "zod": "^4.1.0",
+    "@aporia/worker": "workspace:*",
+    "@aporia/prompts": "workspace:*",
+    "@aporia/evals": "workspace:*",
+    "drizzle-orm": "^0.44.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",

@@ -1,0 +1,7 @@
+name: off-script
+description: Unusual recipients, out-of-order replies, a long gap, and an email to lender's counsel on the wrong topic.
+persona: An eager first-year who emails whoever comes to mind.
+rationale_style: full
+raise_rate: { expected: 0.6, strong: 0.3, expert: 0.1 }
+positions: { A2.D1: P2, A3.D1: P3, A7.D1: P2 }
+behaviors: { asks_for_answer: false, doctrine_questions: 0, off_script: true, gap_days: 4 }

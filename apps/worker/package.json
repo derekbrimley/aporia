@@ -22,7 +22,8 @@
     "@anthropic-ai/sdk": "latest",
     "graphile-worker": "^0.16.6",
     "pg": "^8.16.0",
-    "zod": "^3.24.0"
+    "zod": "^4.1.0",
+    "@anthropic-ai/bedrock-sdk": "latest"
   },
   "devDependencies": {
     "@types/pg": "^8.11.0"

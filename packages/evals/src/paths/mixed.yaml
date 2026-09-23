@@ -1,0 +1,7 @@
+name: mixed
+description: Realistic blend; the default regression run.
+persona: A first-year with good instincts and uneven follow-through.
+rationale_style: full
+raise_rate: { expected: 0.7, strong: 0.4, expert: 0.15 }
+positions: { A2.D1: P3, A3.D1: P2, A7.D1: P3 }
+behaviors: { asks_for_answer: false, doctrine_questions: 1, off_script: false, gap_days: 0 }
