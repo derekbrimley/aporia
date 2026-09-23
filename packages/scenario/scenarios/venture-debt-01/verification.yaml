@@ -1,0 +1,14 @@
+- id: V01
+  assignment: A5
+  title: AI-drafted conditions precedent checklist
+  draft_document: ai-draft-cp-checklist
+  source_documents: [loan-and-security-agreement, closing-checklist]
+  known_flaws:
+    - id: V01.F1
+      location: Item list, closing conditions
+      description: Omits the landlord waiver condition in Section 3.1(g).
+      issue: A5.I1
+    - id: V01.F2
+      location: Item 6
+      description: Lists deposit account control agreements as a closing condition; Section 6.6 makes them a post-closing covenant due within 60 days.
+      issue: A5.I2

@@ -1,0 +1,387 @@
+# Assignments with ID'd issues (A#.I#) and decision points (A#.D#).
+# Tiers: expected (a competent first-year raises it), strong, expert.
+# `keywords` are used only by the mock assessor and the bot associate in tests.
+
+- id: A1
+  milestone: M1
+  title: Orientation self-check
+  deliverable: Reply to Marcus's self-check questions in your own words. Nothing is scored.
+  assigned_by: senior_associate
+  feedback_from: senior_associate
+  thread_key: orientation
+  expected_recipients: [senior_associate]
+  competencies: [venture_lending_concepts]
+  completion: { kind: any_reply, thread_key: orientation }
+  approx_minutes: 15
+  socratic_angles:
+    - What the associate thinks a venture lender is really underwriting.
+    - Why IP might matter more to this borrower than its equipment.
+
+- id: A2
+  milestone: M2
+  title: Term sheet comments
+  deliverable: Comments on the Halden Bank term sheet, sent to Priya with Marcus and Elena copied.
+  assigned_by: client_contact
+  feedback_from: senior_associate
+  thread_key: term-sheet
+  expected_recipients: [client_contact, senior_associate]
+  competencies: [venture_lending_concepts, loan_structure_payments, ucc_article_9, covenants]
+  completion: { kind: deliverable }
+  approx_minutes: 60
+  issues:
+    - id: A2.I1
+      tier: expected
+      title: Tranche 2 revenue milestone is undefined
+      description: The term sheet gates Tranche 2 on "revenue of [●]" without saying how revenue is measured, when it is tested, or whether there is a cure.
+      raised_looks_like: Asks how revenue will be defined (GAAP vs contracted, trailing vs annualized), when it is tested, and what happens if the company narrowly misses.
+      partial_looks_like: Notes the blank without asking how revenue is measured.
+      competencies: [loan_structure_payments, venture_lending_concepts]
+      keywords: [revenue, tranche 2, defined, measured, annualized, GAAP, tested]
+    - id: A2.I2
+      tier: expected
+      title: Collateral scope and the IP carve-out
+      description: >-
+        "Substantially all assets other than intellectual property" needs confirmation that it matches the company's expectation and a question about what the Bank will ask for in place of an IP lien.
+      raised_looks_like: Confirms the IP exclusion with the client and flags that banks typically ask for a negative pledge on IP or a lien on IP proceeds.
+      partial_looks_like: Confirms the IP exclusion without anticipating what replaces it.
+      competencies: [ucc_article_9, venture_lending_concepts]
+      keywords: [intellectual property, IP, collateral, negative pledge, proceeds, carve-out, exclusion]
+    - id: A2.I3
+      tier: expected
+      title: Financial covenants left open
+      description: >-
+        "Customary financial covenants to be agreed" is where a minimum cash covenant will land; given the company's burn this can be the most dangerous term in the deal.
+      raised_looks_like: Asks what covenants the Bank has in mind and warns that a minimum cash covenant must be sized against the company's burn and Series C timing.
+      partial_looks_like: Notes the covenants are open without connecting them to liquidity.
+      competencies: [covenants]
+      keywords: [covenant, minimum cash, liquidity, burn, financial covenants]
+    - id: A2.I4
+      tier: strong
+      title: Landlord waivers are a long-lead item
+      description: A lien on substantially all assets at leased sites means the Bank will want landlord waivers; landlords are slow, and the Series C timeline is tight.
+      raised_looks_like: Flags landlord waivers or collateral access agreements for the Aurora and Reno sites as something to start on now.
+      partial_looks_like: Mentions the leases without connecting them to closing timing.
+      competencies: [ucc_article_9, conditions_precedent_closing]
+      keywords: [landlord, waiver, lease, leased, collateral access]
+    - id: A2.I5
+      tier: strong
+      title: Existing liens and creditors must be permitted or subordinated
+      description: The Meridian mechanics lien, the Vantage equipment financing and the insider convertible notes all conflict with a first-priority lien unless permitted, subordinated or released.
+      raised_looks_like: Lists the existing liens and creditors and asks how each will be handled (permitted lien, subordination, intercreditor or payoff).
+      partial_looks_like: Mentions one of the three without the others.
+      competencies: [ucc_article_9]
+      keywords: [mechanics lien, Meridian, Vantage, equipment, subordinat, intercreditor, permitted lien, convertible notes, existing liens]
+    - id: A2.I6
+      tier: expert
+      title: Fee and prepayment economics
+      description: The closing fee, final payment fee and prepayment premium together set the true cost of the loan and matter if the company refinances after the Series C.
+      raised_looks_like: Totals the fees and asks whether the prepayment premium steps down or falls away on a refinancing.
+      competencies: [loan_structure_payments]
+      keywords: [final payment, prepayment premium, closing fee, all-in cost, refinanc]
+    - id: A2.I7
+      tier: expert
+      title: Warrant coverage terms are open
+      description: Warrant coverage of 1.50% is stated without the exercise price, term or whether it is measured on the committed or drawn amount.
+      raised_looks_like: Asks whether coverage applies to the full facility or drawn amounts and how the exercise price is set.
+      competencies: [venture_lending_concepts]
+      keywords: [warrant, coverage, exercise price, drawn]
+  decision_points:
+    - id: A2.D1
+      title: Recommend signing now or negotiating first
+      trigger: The associate's comments take a view on whether the company should countersign the term sheet.
+      question: Should Northlake countersign the term sheet now, or negotiate the open points first?
+      rationale_prompt: Why are you making this call, and what does it mean for Northlake's timeline?
+      positions:
+        - id: P1
+          label: Sign now
+          description: Recommend countersigning to lock in exclusivity and protect the Series C timeline; negotiate in the documents.
+          tradeoffs: Speed, but the term sheet's "customary" language becomes the baseline for every later argument.
+        - id: P2
+          label: Negotiate first
+          description: Recommend fixing the revenue definition, covenants and IP treatment before signing.
+          tradeoffs: Better baseline; costs a week or two against a Series C the company cannot move.
+        - id: P3
+          label: Ask the client's priorities first
+          description: Ask Priya what the company needs most (speed, covenant headroom, IP) before recommending.
+          tradeoffs: Slower first response, better-aimed advice.
+  socratic_angles:
+    - What the company would actually lose if the Bank took a lien on its IP.
+    - What banks ask for instead of an IP lien, and where in the loan documents it will appear.
+    - What besides IP might fall outside "substantially all assets" for a company that leases its sites.
+    - How a minimum cash covenant interacts with nine months of runway.
+  common_misses:
+    - Treating the term sheet blanks as clerical rather than commercial.
+    - Not asking about existing liens because the term sheet does not mention them.
+
+- id: A3
+  milestone: M3
+  title: Big-picture read of the loan and security agreement
+  deliverable: A short report to Marcus, in about 45 minutes, covering deal structure, what the Bank is taking as collateral, and what is particular to Northlake.
+  assigned_by: senior_associate
+  feedback_from: senior_associate
+  thread_key: big-picture
+  expected_recipients: [senior_associate]
+  competencies: [loan_structure_payments, ucc_article_9, venture_lending_concepts]
+  completion: { kind: deliverable }
+  approx_minutes: 45
+  issues:
+    - id: A3.I1
+      tier: expected
+      title: "Structure: two tranches and what gates each"
+      description: Two $50,000,000 tranches; Tranche 1 gated on the $150,000,000 Series C, Tranche 2 on the revenue test and no default, each with an availability window.
+      raised_looks_like: States both tranches, both gates and the availability windows in Section 2.
+      partial_looks_like: States the tranches without the gates or windows.
+      competencies: [loan_structure_payments]
+      keywords: [tranche, Series C, availability, gate, condition to]
+    - id: A3.I2
+      tier: expected
+      title: Collateral scope and the IP carve-out with proceeds included
+      description: Section 4 and Exhibit A grant a lien on substantially all assets, exclude IP, but include accounts and proceeds of IP.
+      raised_looks_like: Reads Exhibit A closely enough to note that IP is out but IP proceeds are in.
+      partial_looks_like: Notes the IP exclusion without the proceeds carve-back.
+      competencies: [ucc_article_9]
+      keywords: [Exhibit A, proceeds, intellectual property, IP, collateral]
+    - id: A3.I3
+      tier: expected
+      title: "Client-specific points: leased sites and existing liens"
+      description: Northlake owns no real estate; the Bank's lien reaches fixtures and equipment at leased sites, and existing liens (Meridian, Vantage) must fit within Permitted Liens or be dealt with.
+      raised_looks_like: Names the leased sites and the existing liens as the items that make this deal different from a standard form.
+      competencies: [ucc_article_9, venture_lending_concepts]
+      keywords: [lease, landlord, Meridian, Vantage, permitted lien, fixtures]
+    - id: A3.I4
+      tier: strong
+      title: Negative pledge on IP
+      description: Section 7.5 adds a negative pledge on IP that was not in the term sheet.
+      raised_looks_like: Flags Section 7.5 as restricting the company's ability to pledge IP elsewhere.
+      delta: D01
+      competencies: [covenants, ucc_article_9]
+      keywords: [negative pledge, 7.5, encumber, pledge IP]
+    - id: A3.I5
+      tier: strong
+      title: Deposit account control and where cash must sit
+      description: Section 6.6 requires control agreements within 60 days and operating accounts at the Bank within 120 days; this affects the company's banking relationships and the minimum cash test.
+      raised_looks_like: Notes the control agreement deadline and the requirement to move operating accounts to the Bank.
+      delta: D02
+      competencies: [ucc_article_9, covenants]
+      keywords: [control agreement, deposit account, 6.6, operating account, 60 days]
+    - id: A3.I6
+      tier: expert
+      title: Minimum cash covenant sized against burn
+      description: Section 6.9 sets minimum cash at $15,000,000 tested monthly; against $4,200,000 monthly burn this leaves little room if the Series C slips.
+      raised_looks_like: Connects the $15,000,000 covenant to the company's runway and Series C timing.
+      delta: D03
+      competencies: [covenants]
+      keywords: [minimum cash, 15,000,000, 6.9, burn, runway]
+  decision_points:
+    - id: A3.D1
+      title: What to raise with the client first
+      trigger: The report recommends what the team should raise with Priya first.
+      question: Which point should the team raise with Northlake first?
+      rationale_prompt: Why this point first, and what would you tell Priya it means for the business?
+      positions:
+        - id: P1
+          label: Collateral and IP treatment
+          description: Lead with the IP negative pledge and proceeds carve-back.
+        - id: P2
+          label: Liquidity covenant
+          description: Lead with the minimum cash covenant and its interaction with burn.
+        - id: P3
+          label: Closing timeline items
+          description: Lead with landlord waivers, control agreements and lien clean-up as long-lead items.
+  socratic_angles:
+    - Why a lender structures availability in tranches rather than making $100,000,000 available at once.
+    - What "proceeds of Intellectual Property" captures for a company whose revenue comes from colocation contracts.
+    - Which of the client-specific items has the longest lead time.
+  common_misses:
+    - Reading the definitions before the operative sections and running out of time.
+    - Missing the proceeds carve-back in Exhibit A.
+
+# ---------------------------------------------------------------------------
+# M4–M8 below are thin skeletons so the full arc can run end to end. They need
+# attorney-authored issues, deltas, verification packets and negotiation
+# positions before they mean anything.
+# ---------------------------------------------------------------------------
+
+- id: A4
+  milestone: M4
+  title: Term sheet vs. documents comparison report
+  deliverable: A report to Marcus and Priya listing where the documents depart from the term sheet and which departures matter.
+  assigned_by: senior_associate
+  feedback_from: senior_associate
+  thread_key: comparison
+  expected_recipients: [senior_associate, client_contact]
+  competencies: [covenants, ucc_article_9, loan_structure_payments]
+  completion: { kind: deliverable }
+  approx_minutes: 90
+  issues:
+    - id: A4.I1
+      tier: expected
+      title: IP negative pledge added
+      description: The loan agreement adds a negative pledge on IP that the term sheet did not contain.
+      raised_looks_like: Flags Section 7.5 and explains it restricts pledging IP elsewhere.
+      delta: D01
+      competencies: [covenants]
+      keywords: [negative pledge, 7.5]
+    - id: A4.I2
+      tier: expected
+      title: Control agreement deadline shortened
+      description: 90 days in the term sheet became 60 days plus a requirement to move operating accounts.
+      raised_looks_like: Flags Section 6.6 and the 60-day deadline against the term sheet's 90 days.
+      delta: D02
+      competencies: [ucc_article_9]
+      keywords: [60 days, 90 days, control agreement]
+    - id: A4.I3
+      tier: expected
+      title: Minimum cash covenant introduced
+      description: >-
+        "Customary covenants to be agreed" became a $15,000,000 minimum cash covenant tested monthly.
+      raised_looks_like: Flags Section 6.9 and asks whether $15,000,000 works against the company's cash plan.
+      delta: D03
+      competencies: [covenants]
+      keywords: [minimum cash, 6.9, 15,000,000]
+    - id: A4.I4
+      tier: strong
+      title: Landlord waivers as a condition precedent
+      description: Section 3.1 makes landlord waivers for both sites a closing condition; the term sheet was silent.
+      raised_looks_like: Flags landlord waivers as a long-lead closing condition and proposes starting now.
+      delta: D04
+      competencies: [conditions_precedent_closing]
+      keywords: [landlord, waiver, condition precedent, 3.1]
+  socratic_angles:
+    - Which departures the Bank will treat as standard and which it might trade.
+  common_misses:
+    - Listing every difference with equal weight.
+
+- id: A5
+  milestone: M5
+  title: Verify the AI-drafted conditions precedent list
+  deliverable: A reply to Marcus confirming which items in the AI-drafted conditions precedent list are wrong or missing against Section 3 of the loan agreement.
+  assigned_by: senior_associate
+  feedback_from: senior_associate
+  thread_key: verification
+  expected_recipients: [senior_associate]
+  competencies: [conditions_precedent_closing]
+  completion: { kind: deliverable }
+  approx_minutes: 45
+  issues:
+    - id: A5.I1
+      tier: expected
+      title: Draft omits the landlord waiver condition
+      description: The AI draft leaves out the landlord waiver condition in Section 3.1(g).
+      raised_looks_like: Notes that landlord waivers are missing from the list.
+      competencies: [conditions_precedent_closing]
+      keywords: [landlord, missing, omit]
+    - id: A5.I2
+      tier: expected
+      title: Draft misstates the control agreement deadline as a closing condition
+      description: The AI draft lists control agreements as a closing deliverable; Section 6.6 makes them a post-closing covenant with a 60-day deadline.
+      raised_looks_like: Moves control agreements to post-closing and cites Section 6.6.
+      competencies: [conditions_precedent_closing, ucc_article_9]
+      keywords: [control agreement, post-closing, 6.6]
+  socratic_angles:
+    - How the associate decided what to check first in a list that looked complete.
+
+- id: A6
+  milestone: M6
+  title: Disclosure schedule and client diligence
+  deliverable: A draft disclosure schedule sent to Marcus, with follow-up questions to Priya on liens, leases and litigation.
+  assigned_by: senior_associate
+  feedback_from: senior_associate
+  thread_key: schedules
+  expected_recipients: [senior_associate, client_contact]
+  competencies: [reps_warranties, ucc_article_9]
+  completion: { kind: deliverable }
+  approx_minutes: 90
+  issues:
+    - id: A6.I1
+      tier: expected
+      title: Schedule the Meridian lien and the Vantage financing as Permitted Liens
+      description: Both must appear on the Permitted Liens schedule or the borrower is in breach at closing.
+      raised_looks_like: Lists both on the schedule and asks Priya for the underlying documents.
+      competencies: [reps_warranties, ucc_article_9]
+      keywords: [Meridian, Vantage, permitted lien, schedule]
+    - id: A6.I2
+      tier: strong
+      title: Ask for the landlord waiver status
+      description: The disclosure schedule lists leased sites; the associate should confirm where the waiver requests stand.
+      raised_looks_like: Asks Priya whether waiver requests have gone to Ridgeline and Truckee Meadows.
+      competencies: [conditions_precedent_closing]
+      keywords: [landlord, waiver, Ridgeline, Truckee]
+  socratic_angles:
+    - What the associate would do if Priya cannot find the Vantage security agreement.
+
+- id: A7
+  milestone: M7
+  title: Negotiate open points with lender's counsel
+  deliverable: An email to Jordan stating Northlake's positions on the open points, with Marcus copied.
+  assigned_by: senior_associate
+  feedback_from: senior_associate
+  thread_key: negotiation
+  expected_recipients: [lenders_counsel, senior_associate]
+  competencies: [covenants, ucc_article_9, loan_structure_payments]
+  completion: { kind: deliverable }
+  approx_minutes: 60
+  issues:
+    - id: A7.I1
+      tier: expected
+      title: Ask for the control agreement deadline to revert to 90 days
+      description: The term sheet said 90 days; the documents say 60.
+      raised_looks_like: Asks Jordan to revert to 90 days, citing the term sheet.
+      delta: D02
+      competencies: [ucc_article_9]
+      keywords: [90 days, control agreement]
+    - id: A7.I2
+      tier: strong
+      title: Seek a cure or step-down on the minimum cash covenant
+      description: A $15,000,000 floor with no cure is tight against burn; ask for an equity cure or a lower floor pre-Series C.
+      raised_looks_like: Proposes an equity cure right or a lower floor until the Series C closes.
+      delta: D03
+      competencies: [covenants]
+      keywords: [equity cure, minimum cash, step-down, floor]
+  decision_points:
+    - id: A7.D1
+      title: Which point to concede
+      trigger: The associate proposes a trade to Jordan.
+      question: Which open point should Northlake concede to win the others?
+      rationale_prompt: Why this trade, and how does it serve what Priya told you the company needs?
+      positions:
+        - id: P1
+          label: Concede the control agreement timing
+          description: Accept 60 days in exchange for covenant relief.
+        - id: P2
+          label: Concede the negative pledge
+          description: Accept the IP negative pledge in exchange for covenant relief.
+        - id: P3
+          label: Concede nothing yet
+          description: Hold all points and ask Jordan for the Bank's priorities.
+  socratic_angles:
+    - What the Bank is protecting with each position, and which protections it can get another way.
+
+- id: A8
+  milestone: M8
+  title: Work the closing checklist to closing
+  deliverable: Status emails to Jordan and Marcus working each closing condition to satisfied or waived, until the loan agreement is signed.
+  assigned_by: lenders_counsel
+  feedback_from: senior_associate
+  thread_key: closing
+  expected_recipients: [lenders_counsel, senior_associate]
+  competencies: [conditions_precedent_closing]
+  completion: { kind: deliverable }
+  approx_minutes: 90
+  issues:
+    - id: A8.I1
+      tier: expected
+      title: Track each condition in Section 3.1 to a document or a waiver
+      description: Every closing condition must be matched to a delivered document, a waiver, or a post-closing undertaking.
+      raised_looks_like: Sends a status list that accounts for every Section 3.1 condition.
+      competencies: [conditions_precedent_closing]
+      keywords: [3.1, condition, delivered, waived, status]
+    - id: A8.I2
+      tier: strong
+      title: Distinguish closing from Tranche 1 availability
+      description: Closing is signing plus Section 3.1 conditions; Tranche 1 funding also requires the Series C closing under Section 3.2.
+      raised_looks_like: Explains to Priya that closing and funding are separate events.
+      competencies: [conditions_precedent_closing, loan_structure_payments]
+      keywords: [3.2, funding, availability, Series C, separate]
+  socratic_angles:
+    - Which conditions the Bank would realistically waive or defer.

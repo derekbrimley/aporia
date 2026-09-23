@@ -1,0 +1,248 @@
+# Canonical deal facts. Every document and every character must match this file.
+# Characters see only the keys listed in their knowledge slice.
+
+parties.borrower:
+  type: party
+  value: Northlake Compute, Inc.
+  aliases: [Northlake, Northlake Compute, the Company, Borrower]
+  note: Delaware corporation; venture-backed data center operator headquartered in Denver, Colorado.
+parties.borrower.business:
+  type: text
+  value: Builds and operates two colocation data center sites (Aurora, CO and Reno, NV) leased to enterprise and AI-infrastructure tenants under multi-year contracts.
+parties.lender:
+  type: party
+  value: Halden Bank
+  aliases: [Halden, the Bank, Lender]
+parties.lenders_counsel.firm:
+  type: party
+  value: Corwin & Pratt LLP
+parties.lenders_counsel.attorney:
+  type: party
+  value: Jordan Hale
+parties.borrowers_counsel.firm:
+  type: party
+  value: Whitfield Marsh LLP
+  aliases: [Whitfield Marsh]
+parties.borrowers_counsel.partner:
+  type: party
+  value: Elena Whitfield
+parties.borrowers_counsel.senior_associate:
+  type: party
+  value: Marcus Bell
+parties.client_contact:
+  type: party
+  value: Priya Raman
+  note: VP Finance at Northlake. Not a lawyer; in-house counsel role is vacant.
+parties.client_contact.title:
+  type: text
+  value: VP Finance
+
+facility.total:
+  type: money
+  value: 100000000
+  display: $100,000,000
+facility.tranche1.amount:
+  type: money
+  value: 50000000
+  display: $50,000,000
+facility.tranche1.condition:
+  type: text
+  value: Available on the closing of the Borrower's Series C preferred stock financing of at least $150,000,000 in gross cash proceeds.
+facility.series_financing.amount:
+  type: money
+  value: 150000000
+  display: $150,000,000
+facility.tranche2.amount:
+  type: money
+  value: 50000000
+  display: $50,000,000
+facility.tranche2.condition:
+  type: placeholder
+  value: Available upon the Borrower achieving Annualized Recurring Revenue of at least $40,000,000, tested as of the last day of any fiscal quarter, with no Event of Default continuing.
+  note: PLACEHOLDER. Attorney to set GAAP vs contracted, trailing vs annualized, test date and cure rights before documents are finalized.
+facility.tranche2.revenue_target:
+  type: money
+  value: 40000000
+  display: $40,000,000
+  note: Placeholder revenue target; see facility.tranche2.condition.
+facility.tranche2.revenue_definition:
+  type: defined_term
+  value: Annualized Recurring Revenue
+  definition: Contracted monthly recurring revenue under executed colocation agreements with a remaining term of at least twelve months, for the most recent fiscal month, multiplied by twelve, determined in accordance with GAAP.
+  note: Placeholder definition; attorney to confirm.
+facility.interest_rate:
+  type: text
+  value: Term SOFR plus 6.50% per annum, with a Term SOFR floor of 4.00%.
+facility.interest_margin:
+  type: percent
+  value: 6.5
+  display: 6.50%
+facility.sofr_floor:
+  type: percent
+  value: 4.0
+  display: 4.00%
+facility.default_rate_increment:
+  type: percent
+  value: 3.0
+  display: 3.00%
+facility.interest_only_months:
+  type: number
+  value: 24
+  unit: months
+facility.amortization_months:
+  type: number
+  value: 36
+  unit: months
+facility.maturity_months:
+  type: number
+  value: 60
+  unit: months
+facility.closing_fee:
+  type: percent
+  value: 1.0
+  display: 1.00%
+facility.final_payment_fee:
+  type: percent
+  value: 3.5
+  display: 3.50%
+facility.prepayment_premium:
+  type: text
+  value: 3.00% of the principal prepaid in year one, 2.00% in year two, 1.00% thereafter.
+facility.warrant_coverage:
+  type: percent
+  value: 1.5
+  display: 1.50%
+  note: Warrant coverage as a percentage of the total facility, exercisable for Series C preferred at the Series C price.
+facility.draw_mechanics:
+  type: text
+  value: Each tranche may be drawn in a single advance on at least ten business days' notice during its availability period; Tranche 1 availability period ends 30 days after the Series C closing, Tranche 2 availability period ends 18 months after the Closing Date.
+facility.tranche1.availability_window_days:
+  type: number
+  value: 30
+  unit: days
+facility.tranche2.availability_window_months:
+  type: number
+  value: 18
+  unit: months
+
+collateral.scope:
+  type: text
+  value: A first-priority security interest in substantially all assets of the Borrower, other than Intellectual Property.
+collateral.ip_treatment:
+  type: text
+  value: Intellectual Property is excluded from the Collateral; the loan agreement adds a negative pledge on Intellectual Property and includes all accounts and proceeds of Intellectual Property in the Collateral.
+collateral.deposit_account_control.term_sheet:
+  type: text
+  value: Deposit account control agreements over all deposit accounts within 90 days after closing.
+collateral.deposit_account_control.loan_agreement:
+  type: text
+  value: Deposit account control agreements over all deposit accounts within 60 days after the Closing Date, and all operating accounts to be held at the Bank within 120 days.
+collateral.deposit_account_control.days_term_sheet:
+  type: number
+  value: 90
+  unit: days
+collateral.deposit_account_control.days_loan_agreement:
+  type: number
+  value: 60
+  unit: days
+collateral.perfection:
+  type: text
+  value: UCC-1 financing statement filed with the Delaware Secretary of State; control agreements for deposit accounts; landlord waivers for each leased site; no IP filings because IP is excluded.
+
+covenants.minimum_cash:
+  type: money
+  value: 15000000
+  display: $15,000,000
+  note: Minimum unrestricted cash at the Bank, tested monthly. Appears in the loan agreement; the term sheet said "customary financial covenants to be agreed".
+covenants.minimum_cash.term_sheet:
+  type: text
+  value: Customary financial covenants to be agreed.
+covenants.reporting:
+  type: text
+  value: Monthly financial statements within 30 days of month end; annual audited statements within 180 days of year end; annual board-approved budget within 30 days of approval; compliance certificate with each delivery.
+
+client.financials.cash:
+  type: money
+  value: 38000000
+  display: $38,000,000
+  note: Unrestricted cash as of the last month end.
+client.financials.monthly_burn:
+  type: money
+  value: 4200000
+  display: $4,200,000
+  note: Net monthly cash burn; the company has roughly nine months of runway before the Series C.
+client.financials.contracted_arr:
+  type: money
+  value: 22000000
+  display: $22,000,000
+  note: Contracted annualized recurring revenue under executed colocation agreements.
+client.financials.runway_months:
+  type: number
+  value: 9
+  unit: months
+
+leases.primary_site.location:
+  type: text
+  value: Aurora, Colorado
+leases.primary_site.landlord:
+  type: party
+  value: Ridgeline Industrial Partners LLC
+  aliases: [Ridgeline]
+leases.primary_site.waiver_status:
+  type: text
+  value: No landlord waiver has been requested. The lease gives the landlord a lien on tenant fixtures and equipment for unpaid rent.
+leases.secondary_site.location:
+  type: text
+  value: Reno, Nevada
+leases.secondary_site.landlord:
+  type: party
+  value: Truckee Meadows Realty Co.
+leases.secondary_site.waiver_status:
+  type: text
+  value: Landlord has previously refused waivers for other tenants; expect at least six weeks.
+
+liens.contractor:
+  type: text
+  value: Meridian Electrical Contractors has recorded a mechanics lien of $1,800,000 against the Aurora site improvements for disputed change orders.
+liens.contractor.amount:
+  type: money
+  value: 1800000
+  display: $1,800,000
+liens.contractor.party:
+  type: party
+  value: Meridian Electrical Contractors
+  aliases: [Meridian]
+liens.equipment_financing:
+  type: text
+  value: Vantage Equipment Finance holds a purchase-money lien on cooling and power equipment at the Aurora site securing $6,500,000; the Bank requires an intercreditor or subordination agreement.
+liens.equipment_financing.amount:
+  type: money
+  value: 6500000
+  display: $6,500,000
+liens.equipment_financing.party:
+  type: party
+  value: Vantage Equipment Finance
+  aliases: [Vantage]
+liens.insider_notes:
+  type: text
+  value: Convertible promissory notes of $5,000,000 held by existing investors; the Bank requires these to be subordinated or converted at the Series C.
+liens.insider_notes.amount:
+  type: money
+  value: 5000000
+  display: $5,000,000
+
+dates.term_sheet:
+  type: date
+  value: 2026-09-08
+  display: September 8, 2026
+dates.target_series_close:
+  type: date
+  value: 2026-11-14
+  display: November 14, 2026
+dates.target_loan_close:
+  type: date
+  value: 2026-11-20
+  display: November 20, 2026
+dates.term_sheet_signed:
+  type: text
+  value: The term sheet is unsigned when the client sends it. It carries a 30-day exclusivity period once countersigned.

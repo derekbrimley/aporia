@@ -1,0 +1,60 @@
+# Governance: every document in the deal, its source, version and review status.
+- id: term-sheet
+  title: Summary of Terms
+  short_title: Term sheet
+  kind: term_sheet
+  source: src/term-sheet.md
+  from: client_contact
+  version: "0.1"
+  attorney_reviewed: false
+  realism_notes: Drafted from the deal facts. Attorney to review pricing, fee and warrant terms.
+- id: loan-and-security-agreement
+  title: Loan and Security Agreement
+  short_title: Loan and Security Agreement
+  kind: loan_agreement
+  source: src/loan-and-security-agreement.md
+  from: lenders_counsel
+  version: "0.1"
+  attorney_reviewed: false
+  realism_notes: Abridged draft carrying the sections the M1–M5 assignments depend on. A full-length agreement replaces it when drafted.
+- id: disclosure-schedule
+  title: Disclosure Schedule
+  short_title: Disclosure Schedule
+  kind: schedule
+  source: src/disclosure-schedule.md
+  from: lenders_counsel
+  version: "0.1"
+  attorney_reviewed: false
+- id: perfection-certificate
+  title: Perfection Certificate
+  short_title: Perfection Certificate
+  kind: certificate
+  source: src/perfection-certificate.md
+  from: lenders_counsel
+  version: "0.1"
+  attorney_reviewed: false
+- id: compliance-certificate
+  title: Form of Compliance Certificate
+  short_title: Compliance Certificate
+  kind: certificate
+  source: src/compliance-certificate.md
+  from: lenders_counsel
+  version: "0.1"
+  attorney_reviewed: false
+- id: closing-checklist
+  title: Closing Checklist
+  short_title: Closing Checklist
+  kind: checklist
+  source: src/closing-checklist.md
+  from: lenders_counsel
+  version: "0.1"
+  attorney_reviewed: false
+- id: ai-draft-cp-checklist
+  title: Conditions Precedent Checklist (draft)
+  short_title: CP checklist (draft)
+  kind: ai_draft
+  source: src/ai-draft-cp-checklist.md
+  from: senior_associate
+  version: "0.1"
+  attorney_reviewed: false
+  realism_notes: Deliberately flawed AI-produced draft for the M5 verification exercise. Flaws listed in verification.yaml.

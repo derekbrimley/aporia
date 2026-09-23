@@ -1,0 +1,49 @@
+# Term sheet vs. document differences. These are ordinary deal deltas, not traps.
+- id: D01
+  provision: IP negative pledge
+  document: loan-and-security-agreement
+  section_ref: Section 7.5
+  term_sheet_says: IP is excluded from the collateral.
+  document_says: IP is excluded from the collateral, but the loan agreement adds a negative pledge on IP and includes accounts and proceeds of IP in the collateral.
+  delta_type: new_provision
+  lender_flexibility: low
+  competencies: [ucc_article_9, venture_lending_concepts]
+  surfaces_in: M4
+  strong_associate_does: Flags that the negative pledge restricts the client's ability to pledge IP elsewhere, and includes it in the report to the client.
+  status: drafted
+- id: D02
+  provision: Deposit account control timing
+  document: loan-and-security-agreement
+  section_ref: Section 6.6
+  term_sheet_says: Control agreements within 90 days after closing.
+  document_says: Control agreements within 60 days after the Closing Date, and all operating accounts to be moved to the Bank within 120 days.
+  delta_type: aggressive
+  lender_flexibility: medium
+  competencies: [ucc_article_9, covenants]
+  surfaces_in: M4
+  strong_associate_does: Flags the shortened deadline and the new requirement to move operating accounts, and asks the client whether its banking relationships allow it.
+  status: drafted
+- id: D03
+  provision: Minimum cash covenant
+  document: loan-and-security-agreement
+  section_ref: Section 6.9
+  term_sheet_says: Customary financial covenants to be agreed.
+  document_says: Minimum unrestricted cash at the Bank of $15,000,000, tested monthly, with no cure right.
+  delta_type: new_provision
+  lender_flexibility: medium
+  competencies: [covenants]
+  surfaces_in: M4
+  strong_associate_does: Sizes the covenant against the company's burn and Series C timing and proposes a cure or a step-down.
+  status: drafted
+- id: D04
+  provision: Landlord waivers as closing conditions
+  document: loan-and-security-agreement
+  section_ref: Section 3.1(g)
+  term_sheet_says: Silent on landlord waivers.
+  document_says: Landlord waivers or collateral access agreements for each leased site are conditions precedent to closing.
+  delta_type: new_provision
+  lender_flexibility: medium
+  competencies: [conditions_precedent_closing, ucc_article_9]
+  surfaces_in: M4
+  strong_associate_does: Flags the waivers as long-lead items and proposes converting them to post-closing covenants if the landlords are slow.
+  status: drafted

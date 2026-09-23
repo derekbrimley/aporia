@@ -1,0 +1,56 @@
+# Seed -> payoff chains. Every seed points at an issue or decision-point ID.
+- id: C01
+  title: Landlord waivers not raised at the term sheet stage
+  seed: { issue: A2.I4, outcome: missed }
+  payoff_milestone: M6
+  raised_by: client_contact
+  beat: B-M6-landlord-surprise
+  how_it_appears: During diligence Priya is surprised to learn the Bank needs landlord waivers, has never spoken to Ridgeline about one, and asks whether this affects the closing date.
+  severity: moderate
+  recoverable: true
+  positive: false
+  debrief_candidate: true
+- id: C02
+  title: Landlord waivers still outstanding at closing
+  seed: { issue: A4.I4, outcome: missed }
+  payoff_milestone: M8
+  raised_by: senior_associate
+  beat: B-M8-landlord-waiver
+  how_it_appears: At the closing checklist, landlord waivers are still outstanding. The landlord is slow, the Bank will not close without them, and the client is watching the Series C timeline.
+  severity: major
+  recoverable: true
+  positive: false
+  debrief_candidate: true
+- id: C03
+  title: Revenue definition landed the way the associate asked
+  seed: { issue: A2.I1, outcome: raised }
+  payoff_milestone: M4
+  raised_by: senior_associate
+  beat: B-M4-revenue-definition-credit
+  how_it_appears: Marcus notes that the draft's Annualized Recurring Revenue definition tracks the question the associate raised on the term sheet, and asks whether it captures the right revenue.
+  severity: minor
+  recoverable: true
+  positive: true
+  debrief_candidate: true
+- id: C04
+  title: Signed term sheet becomes the Bank's baseline
+  seed: { decision_point: A2.D1, outcome: P1 }
+  payoff_milestone: M7
+  raised_by: lenders_counsel
+  beat: B-M7-term-sheet-baseline
+  how_it_appears: Jordan declines to move on the minimum cash covenant, pointing out that the countersigned term sheet left covenants to the Bank's customary terms.
+  severity: moderate
+  recoverable: true
+  positive: false
+  debrief_candidate: true
+- id: C05
+  title: Liquidity covenant flagged early gives the client room to plan
+  seed: { issue: A2.I3, outcome: raised }
+  payoff_milestone: M6
+  raised_by: client_contact
+  beat: B-M6-cash-plan-thanks
+  how_it_appears: Priya mentions that because the covenant came up early, the CFO has already modeled the $15,000,000 floor against the Series C timing.
+  severity: minor
+  recoverable: true
+  positive: true
+  debrief_candidate: true

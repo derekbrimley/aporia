@@ -1,0 +1,11 @@
+# Copy to notion-sources.yaml and fill in the Notion database IDs (32 hex chars).
+# Each key is optional; only configured tables are imported.
+characters: 3e2a601614ed812985d4cadab014c265
+milestones: 3e2a601614ed81458b74d7f73b4eeafb
+deltas: 3e2a601614ed81b5a620c1a0f33038f8
+assignments: "           # 5 Assignments (answer key)"
+issues: "                # 5a Issues (IDs like A4.I3)"
+decision_points: "       # 5b Decision points (IDs like A4.D1)"
+consequences: 3e2a601614ed81b9be06c63deeba6d55
+verification: "          # 7 AI-draft verification packets"
+register: "              # 8 Document register"

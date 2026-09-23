@@ -1,0 +1,25 @@
+# Lender's counsel quotes these positions; it never improvises a legal position.
+- id: N01
+  title: Deposit account control timing
+  delta: D02
+  lender_opening: The Bank requires control agreements within 60 days after the Closing Date and operating accounts at the Bank within 120 days. This is the Bank's standard.
+  lender_fallback: The Bank can extend the control agreement deadline to 90 days if the Borrower confirms in the Perfection Certificate that no account is held at an institution that refuses control agreements.
+  lender_walk_away: The Bank will not remove the requirement to hold operating accounts at the Bank.
+  flexibility: medium
+  resolution: fallback
+- id: N02
+  title: Minimum cash covenant
+  delta: D03
+  lender_opening: The Bank's credit approval is conditioned on minimum unrestricted cash of $15,000,000 tested monthly.
+  lender_fallback: The Bank can agree to a floor of $10,000,000 until the Series C closes, stepping up to $15,000,000 thereafter, and an equity cure exercisable twice over the life of the facility.
+  lender_walk_away: The Bank will not agree to a floor below $10,000,000 at any time.
+  flexibility: medium
+  resolution: fallback
+- id: N03
+  title: IP negative pledge
+  delta: D01
+  lender_opening: The negative pledge on Intellectual Property is standard for the Bank where IP is excluded from the Collateral.
+  lender_fallback: The Bank can carve out non-exclusive licenses granted in the ordinary course of business.
+  lender_walk_away: The Bank will not remove the negative pledge.
+  flexibility: low
+  resolution: fallback

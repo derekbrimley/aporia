@@ -1,0 +1,326 @@
+# Every world-initiated email. `fixed` text is attorney-reviewed in a real
+# package; `generated` text comes from the character writer working from a brief.
+
+# ---------------------------------------------------------------- M1 Orientation
+- id: B-M1-welcome
+  title: Welcome from the senior associate
+  trigger: { session_started: true }
+  sender: senior_associate
+  to: [associate]
+  thread_key: orientation
+  subject: "Start here: getting oriented"
+  mode: fixed
+  opens_assignment: A1
+  delay_seconds: 0
+  body: |
+    Welcome aboard. I'm Marcus, the senior associate on this deal, and I'll be working with you through closing.
+
+    We represent the borrower, Northlake Compute, a venture-backed data center company. Priya Raman on its finance team is our day-to-day contact. Halden Bank is lending the company $100,000,000 in two $50,000,000 tranches. Tranche 1 becomes available when the company closes its $150,000,000 Series C, and Tranche 2 when it hits a revenue target. The Bank takes a lien on substantially all assets except intellectual property, which is critical to the company and stays out.
+
+    A few notes on how we work here. Attachments open in the panel next to your inbox, so you can read a document while you write about it. Select text and choose Quote in reply to bring a passage into your email with its section reference. When a call matters, I'll ask why you're making it, and you'll write your reasoning before the email goes out. It isn't part of the email. If you have a general legal question, email practice support. They can't see our deal, so ask about the concept and leave our facts out.
+
+    Nothing here moves until you do, so take the time you need. When you're ready, reply and I'll send a few questions so you can check where you stand. Nobody is grading them.
+
+    Marcus
+
+- id: B-M1-self-check
+  title: Self-check questions
+  trigger: { replies_on_thread: { thread_key: orientation, count: 1 } }
+  sender: senior_associate
+  to: [associate]
+  thread_key: orientation
+  mode: fixed
+  body: |
+    Good. Three questions, in your own words, no research needed. Reply when you've thought about them.
+
+    1. What do you think a venture lender is actually underwriting when it lends $100,000,000 to a company that is still burning cash?
+
+    2. Why might Northlake care more about keeping its intellectual property out of the collateral than about the equipment sitting in its data centers?
+
+    3. Tranche 1 opens when the Series C closes. Whose interests does that structure protect, and how?
+
+    There are no right answers here, just a starting point for us.
+
+    Marcus
+
+- id: B-M1-handoff
+  title: Handoff to the term sheet
+  trigger: { assignment_complete: A1 }
+  sender: senior_associate
+  to: [associate]
+  thread_key: orientation
+  mode: generated
+  brief: >
+    Thank the associate briefly for their self-check answers without evaluating
+    them. Pick up one thing they said and ask a single follow-up question about
+    it. Then tell them Priya is about to send over the Halden term sheet and
+    that they should read it and send her their thoughts, copying you and Elena,
+    before the team responds. Keep it under 120 words.
+
+# ---------------------------------------------------------------- M2 Term sheet
+- id: B-M2-term-sheet
+  title: Client sends the term sheet
+  trigger: { milestone_entered: M2 }
+  sender: client_contact
+  to: [senior_associate, associate]
+  cc: [partner]
+  thread_key: term-sheet
+  subject: "Halden Bank term sheet — thoughts?"
+  mode: fixed
+  opens_assignment: A2
+  attachments: [term-sheet]
+  after: [B-M1-handoff]
+  body: |
+    Team, we received the attached term sheet from Halden Bank. Before we respond, what do you think? I've read it, but I'm not sure what I should be looking for.
+
+    We haven't signed anything yet. The Bank would like an answer within two weeks, and our Series C is targeting a mid-November close, so timing matters to us.
+
+    Priya
+
+- id: B-M2-delegate
+  title: Senior associate delegates the term sheet review
+  trigger: { beat_delivered: B-M2-term-sheet }
+  sender: senior_associate
+  to: [associate]
+  thread_key: term-sheet
+  mode: generated
+  after: [B-M2-term-sheet]
+  brief: >
+    Reply on Priya's thread but only to the associate. Ask them to take the
+    first pass at the term sheet and send Priya their thoughts, copying you
+    and Elena. Remind them that Priya is not a lawyer and wants to know what
+    each point means for the business. Do not list the issues yourself. Under
+    90 words.
+
+# ---------------------------------------------------------------- M3 Documents
+- id: B-M3-doc-set
+  title: Lender's counsel sends the document set
+  trigger: { milestone_entered: M3 }
+  sender: lenders_counsel
+  to: [associate, senior_associate]
+  cc: [client_contact]
+  thread_key: doc-set
+  subject: "Halden / Northlake: draft loan documents"
+  mode: fixed
+  attachments: [loan-and-security-agreement, disclosure-schedule, perfection-certificate, compliance-certificate, closing-checklist]
+  body: |
+    Please find attached drafts of the loan documents for the Halden Bank facility: the Loan and Security Agreement, the Disclosure Schedule, the Perfection Certificate, the form of Compliance Certificate and a first draft of the Closing Checklist.
+
+    The Bank is targeting a closing on or about November 20. We look forward to your comments.
+
+    Jordan
+
+- id: B-M3-big-picture-ask
+  title: Senior associate asks for the big-picture read
+  trigger: { milestone_entered: M3 }
+  sender: senior_associate
+  to: [associate]
+  thread_key: big-picture
+  subject: "Loan and Security Agreement: big picture in 45 minutes"
+  mode: fixed
+  opens_assignment: A3
+  after: [B-M3-doc-set]
+  body: |
+    Jordan's drafts just landed. Before either of us reads them line by line, I'd like you to spend about 45 minutes with the Loan and Security Agreement and send me a short note answering three things:
+
+    1. How is the deal structured? Tranches, what gates each one, and how the money comes back.
+    2. What is the Bank taking as collateral, and what is it leaving out?
+    3. What in here is particular to Northlake, as opposed to the Bank's standard form?
+
+    Read it the way you would in a real deal: structure first, then risk. Start with the preamble and Section 2, then Section 4 and Exhibit A, and go to the definitions only when you need them.
+
+    Marcus
+
+- id: B-M3-board-question
+  title: Client interrupts with a board question
+  trigger: { emails_sent_in_assignment: { assignment: A3, count: 1 } }
+  sender: client_contact
+  to: [associate]
+  cc: [senior_associate]
+  thread_key: board-question
+  subject: "Quick one before the board call"
+  mode: generated
+  is_interruption: true
+  must_include_facts: [facility.tranche1.amount, facility.series_financing.amount]
+  brief: >
+    Priya has a board call in an hour and a director asked whether the
+    company can draw any of the $50,000,000 Tranche 1 before the
+    $150,000,000 Series C closes. She asks the associate for a quick plain-English
+    answer she can give the board, and apologizes for the timing. Under 80 words.
+
+- id: B-M3-reprioritize
+  title: Senior associate reprioritizes
+  trigger: { beat_delivered: B-M3-board-question }
+  sender: senior_associate
+  to: [associate]
+  cc: [client_contact]
+  thread_key: board-question
+  mode: generated
+  after: [B-M3-board-question]
+  brief: >
+    Marcus replies on Priya's thread telling the associate to answer Priya's
+    board question first and come back to the big-picture note afterwards. He
+    points them to Section 2 and Section 3.2 of the Loan and Security Agreement
+    but does not give the answer. Under 60 words.
+
+# ---------------------------------------------------------------- M4 Comparison
+- id: B-M4-kickoff
+  title: Partner kicks off the comparison
+  trigger: { milestone_entered: M4 }
+  sender: partner
+  to: [senior_associate, associate]
+  thread_key: comparison
+  subject: "Northlake: term sheet vs. documents"
+  mode: generated
+  opens_assignment: A4
+  brief: >
+    Elena asks Marcus to get the associate started on comparing Jordan's drafts
+    against the term sheet, flagging anything new or different, in a report
+    Priya can read. She wants it before the end of the week. Two to four
+    sentences, signed "E."
+
+- id: B-M4-revenue-definition-credit
+  title: Revenue definition tracked the associate's question
+  trigger: { all: [{ milestone_entered: M4 }, { consequence_active: C03 }] }
+  sender: senior_associate
+  to: [associate]
+  thread_key: comparison
+  mode: generated
+  after: [B-M4-kickoff]
+  must_include_facts: [facility.tranche2.revenue_definition]
+  brief: >
+    Marcus notes that the draft's definition of Annualized Recurring Revenue
+    lines up with the question the associate raised on the term sheet, and asks
+    whether the definition captures the revenue Northlake actually earns. No
+    praise beyond a plain acknowledgment. Under 70 words.
+
+# ---------------------------------------------------------------- M5 Verification
+- id: B-M5-ai-draft
+  title: AI-drafted conditions precedent list to verify
+  trigger: { milestone_entered: M5 }
+  sender: senior_associate
+  to: [associate]
+  thread_key: verification
+  subject: "CP checklist draft: please verify against Section 3"
+  mode: fixed
+  opens_assignment: A5
+  attachments: [ai-draft-cp-checklist]
+  body: |
+    Attached is a first-draft conditions precedent checklist that our drafting tool produced from the Loan and Security Agreement. Please verify every item against Section 3 of the agreement and tell me what is wrong, what is missing and what is in the wrong place. Don't fix the document; just tell me what you found and where.
+
+    Marcus
+
+# ---------------------------------------------------------------- M6 Schedules
+- id: B-M6-schedules-ask
+  title: Senior associate asks for the disclosure schedule
+  trigger: { milestone_entered: M6 }
+  sender: senior_associate
+  to: [associate]
+  cc: [client_contact]
+  thread_key: schedules
+  subject: "Disclosure Schedule and diligence follow-ups"
+  mode: generated
+  opens_assignment: A6
+  brief: >
+    Marcus asks the associate to prepare the Disclosure Schedule to the Loan and
+    Security Agreement, particularly the Permitted Liens and leased property
+    items, and to send Priya whatever questions they need answered to complete
+    it. He copies Priya so she expects the questions. Under 90 words.
+
+- id: B-M6-landlord-surprise
+  title: Client surprised by landlord waivers
+  trigger: { all: [{ milestone_entered: M6 }, { consequence_active: C01 }] }
+  sender: client_contact
+  to: [associate]
+  cc: [senior_associate]
+  thread_key: schedules
+  mode: generated
+  after: [B-M6-schedules-ask]
+  must_include_facts: [leases.primary_site.landlord, dates.target_loan_close]
+  brief: >
+    Priya has just noticed in the closing checklist that the Bank needs landlord
+    waivers. Nobody has spoken to Ridgeline Industrial Partners about one. She
+    asks whether this could push the November 20 closing and why it is coming up
+    only now. Anxious but polite. Under 90 words.
+
+- id: B-M6-cash-plan-thanks
+  title: Client already modeled the cash covenant
+  trigger: { all: [{ milestone_entered: M6 }, { consequence_active: C05 }] }
+  sender: client_contact
+  to: [associate]
+  cc: [senior_associate]
+  thread_key: schedules
+  mode: generated
+  after: [B-M6-schedules-ask]
+  must_include_facts: [covenants.minimum_cash]
+  brief: >
+    While answering diligence questions, Priya mentions that because the
+    covenant point came up early, the CFO has already modeled the $15,000,000
+    minimum cash floor against the Series C timing and it works with some room.
+    Under 60 words.
+
+# ---------------------------------------------------------------- M7 Negotiation
+- id: B-M7-open-points
+  title: Senior associate frames the open points
+  trigger: { milestone_entered: M7 }
+  sender: senior_associate
+  to: [associate]
+  thread_key: negotiation
+  subject: "Open points with Halden"
+  mode: generated
+  opens_assignment: A7
+  brief: >
+    Marcus asks the associate to write to Jordan with Northlake's positions on
+    the open points (deposit account control timing, the minimum cash covenant,
+    the IP negative pledge), copying him. Positions and reasons, not redrafts.
+    He does not say what the positions should be. Under 90 words.
+
+- id: B-M7-term-sheet-baseline
+  title: Lender's counsel leans on the signed term sheet
+  trigger: { all: [{ milestone_entered: M7 }, { consequence_active: C04 }] }
+  sender: lenders_counsel
+  to: [associate]
+  cc: [senior_associate]
+  thread_key: negotiation
+  mode: generated
+  after: [B-M7-open-points]
+  brief: >
+    Jordan writes ahead of the associate's positions to note that the Bank
+    regards the countersigned term sheet, which left financial covenants to the
+    Bank's customary terms, as settling the covenant package, and that the
+    Bank's credit approval is based on it. Courteous, firm, under 70 words.
+
+# ---------------------------------------------------------------- M8 Closing
+- id: B-M8-checklist
+  title: Lender's counsel circulates the closing checklist
+  trigger: { milestone_entered: M8 }
+  sender: lenders_counsel
+  to: [associate, senior_associate]
+  cc: [client_contact]
+  thread_key: closing
+  subject: "Halden / Northlake: closing checklist and outstanding items"
+  mode: generated
+  opens_assignment: A8
+  attachments: [closing-checklist]
+  brief: >
+    Jordan circulates the updated closing checklist, lists the items the Bank is
+    still waiting on from the borrower side (perfection certificate, insurance
+    endorsements, officer's certificate, evidence of Series C signing) and asks
+    for a status by the end of the week. Under 100 words.
+
+- id: B-M8-landlord-waiver
+  title: Landlord waivers still outstanding
+  trigger: { all: [{ milestone_entered: M8 }, { consequence_active: C02 }] }
+  sender: senior_associate
+  to: [associate]
+  cc: [client_contact]
+  thread_key: closing
+  mode: generated
+  after: [B-M8-checklist]
+  must_include_facts: [leases.primary_site.landlord, dates.target_loan_close]
+  brief: >
+    Marcus notes that landlord waivers for both sites are still outstanding on
+    the checklist, that Ridgeline has not responded, and that the Bank will not
+    close without them or a post-closing covenant. He asks the associate what
+    they propose, and what they will tell Priya about the November 20 date.
+    Under 90 words.

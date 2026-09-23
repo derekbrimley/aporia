@@ -1,0 +1,18 @@
+id: venture-debt-01
+version: 0.1.0
+title: "Simulation 01: Venture debt financing (borrower side)"
+practice_area: lending
+side: borrower
+# DRAFT. Authored by the engineering team from the PRD and build spec so the
+# engine and UI can be exercised end to end. Every fact, issue and document
+# below must be replaced or approved by the attorney cofounder before a pilot.
+status: draft
+attorney_signoff_date: null
+associate:
+  email_domain: whitfieldmarsh.com
+  role_label: Associate
+  firm: Whitfield Marsh LLP
+notes: >
+  Names and facts are synthetic. The Tranche 2 revenue definition is a
+  placeholder pending the attorney's decision (GAAP vs contracted, trailing vs
+  annualized, test date, cure rights).
