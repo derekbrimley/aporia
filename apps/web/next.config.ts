@@ -7,6 +7,12 @@ const config: NextConfig = {
   serverExternalPackages: ["pg", "graphile-worker", "@anthropic-ai/sdk", "@anthropic-ai/bedrock-sdk"],
   outputFileTracingRoot: path.join(process.cwd(), "../../"),
   experimental: { serverActions: { bodySizeLimit: "2mb" } },
+  // Workspace packages use Node16-style ".js" specifiers that resolve to ".ts" sources.
+  webpack: (config) => {
+    config.resolve.extensionAlias = { ".js": [".ts", ".tsx", ".js"], ".mjs": [".mts", ".mjs"] };
+    return config;
+  },
+  turbopack: { resolveExtensions: [".tsx", ".ts", ".jsx", ".js", ".mjs", ".json"] },
   headers: async () => [
     {
       source: "/(.*)",
