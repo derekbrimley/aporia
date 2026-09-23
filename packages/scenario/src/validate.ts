@@ -22,6 +22,7 @@ export function* conditionRefs(c: Condition): Generator<{ kind: string; id: stri
   if ("issue_status" in c) yield { kind: "issue", id: c.issue_status.issue };
   if ("decision_taken" in c) yield { kind: "decision_point", id: c.decision_taken.decision_point };
   if ("emails_sent_in_assignment" in c) yield { kind: "assignment", id: c.emails_sent_in_assignment.assignment };
+  if ("document_opened" in c) yield { kind: "document", id: c.document_opened };
 }
 
 export function crossValidate(pkg: ScenarioPackage, dir?: string): ValidationIssue[] {

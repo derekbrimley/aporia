@@ -11,7 +11,7 @@
   thread_key: orientation
   expected_recipients: [senior_associate]
   competencies: [venture_lending_concepts]
-  completion: { kind: any_reply, thread_key: orientation }
+  completion: { kind: replies, thread_key: orientation, count: 2 }
   approx_minutes: 15
   socratic_angles:
     - What the associate thinks a venture lender is really underwriting.

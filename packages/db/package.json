@@ -18,7 +18,8 @@
     "@aporia/engine": "workspace:*",
     "@aporia/scenario": "workspace:*",
     "drizzle-orm": "^0.44.0",
-    "pg": "^8.16.0"
+    "pg": "^8.16.0",
+    "graphile-worker": "^0.16.6"
   },
   "devDependencies": {
     "@types/pg": "^8.11.0",

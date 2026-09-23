@@ -133,7 +133,7 @@
 
 - id: B-M3-board-question
   title: Client interrupts with a board question
-  trigger: { emails_sent_in_assignment: { assignment: A3, count: 1 } }
+  trigger: { all: [{ assignment_open: A3 }, { document_opened: loan-and-security-agreement }] }
   sender: client_contact
   to: [associate]
   cc: [senior_associate]

@@ -132,7 +132,8 @@ export type Condition =
   | { decision_taken: { decision_point: string; position?: string } }
   | { replies_on_thread: { thread_key: string; count: number } }
   | { emails_sent_in_assignment: { assignment: string; count: number } }
-  | { intent_on_thread: { thread_key: string; intent: "deliverable" | "question" | "logistics" | "acknowledgment" } };
+  | { intent_on_thread: { thread_key: string; intent: "deliverable" | "question" | "logistics" | "acknowledgment" } }
+  | { document_opened: string };
 
 export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
   z.union([
@@ -152,6 +153,7 @@ export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
     z.object({ replies_on_thread: z.object({ thread_key: z.string(), count: z.number().int().min(1) }) }).strict(),
     z.object({ emails_sent_in_assignment: z.object({ assignment: AssignmentIdSchema, count: z.number().int().min(1) }) }).strict(),
     z.object({ intent_on_thread: z.object({ thread_key: z.string(), intent: z.enum(["deliverable", "question", "logistics", "acknowledgment"]) }) }).strict(),
+    z.object({ document_opened: DocumentIdSchema }).strict(),
   ]),
 );
 
@@ -225,7 +227,8 @@ export const AssignmentSchema = z.object({
   /** How the assignment completes. */
   completion: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("deliverable") }),
-    z.object({ kind: z.literal("any_reply"), thread_key: z.string().optional() }),
+    /** Completes once the associate has sent `count` emails on the thread (default 1). */
+    z.object({ kind: z.literal("replies"), thread_key: z.string().optional(), count: z.number().int().min(1).default(1) }),
   ]),
   approx_minutes: z.number().int().optional(),
 });
