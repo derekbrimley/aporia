@@ -1,4 +1,6 @@
-import { databaseUrl, migrate } from "@aporia/db";
+import { databaseUrl, loadEnv, migrate } from "@aporia/db";
+
+loadEnv();
 import { startWorker } from "./runner.js";
 
 const url = databaseUrl();

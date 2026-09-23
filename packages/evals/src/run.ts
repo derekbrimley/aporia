@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { closeDb, databaseUrl, getDb, getPool, migrate, seedDevData } from "@aporia/db";
+import { closeDb, databaseUrl, getDb, getPool, loadEnv, migrate, seedDevData } from "@aporia/db";
 import { getScenario, DEFAULT_SCENARIO_ID } from "@aporia/scenario";
 import { getProvider, type LlmProvider } from "@aporia/worker";
 import { BotAssociate } from "./bot.js";
@@ -43,6 +43,7 @@ const PRICE: Record<string, { in: number; out: number }> = {
 };
 
 export async function runPlaythrough(opts: { pathName: string; seed?: number; scenarioId?: string; judge?: boolean; provider?: LlmProvider; quiet?: boolean }): Promise<RunReport> {
+  loadEnv();
   const started = Date.now();
   const url = databaseUrl();
   await migrate(url);
