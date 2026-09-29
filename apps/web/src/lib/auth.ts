@@ -124,8 +124,9 @@ export async function workosSignIn(code: string): Promise<CurrentUser | null> {
     body: JSON.stringify({ client_id: env.workosClientId, client_secret: env.workosApiKey, grant_type: "authorization_code", code }),
   });
   if (!res.ok) return null;
-  const json = (await res.json()) as { user?: { id: string; email: string } };
-  if (!json.user) return null;
+  const json = (await res.json()) as { user?: { id: string; email: string; email_verified?: boolean } };
+  // Users are matched by email, so an unverified address could claim someone else's invite.
+  if (!json.user?.email_verified) return null;
   const db = getDb();
   const user = (await db.select().from(schema.users).where(and(eq(schema.users.email, json.user.email.toLowerCase()), isNull(schema.users.removedAt))))[0];
   if (!user) return null;
