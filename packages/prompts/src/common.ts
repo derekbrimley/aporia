@@ -39,16 +39,13 @@ export interface ThreadMessageForPrompt {
   cc: string[];
   at: string;
   body: string;
-  /** Present only for the reflection engine and Socratic replies. */
-  rationale?: string | null;
 }
 
 export function renderThread(msgs: ThreadMessageForPrompt[]): string {
   return msgs
     .map((m) => {
       const head = `From: ${m.from} (${m.fromRole})  To: ${m.to.join(", ")}${m.cc.length ? `  Cc: ${m.cc.join(", ")}` : ""}  Sent: ${m.at}`;
-      const rat = m.rationale ? `\n[Private rationale the associate wrote at send, not part of the email: ${m.rationale}]` : "";
-      return `${head}\n${m.body.trim()}${rat}`;
+      return `${head}\n${m.body.trim()}`;
     })
     .join("\n\n---\n\n");
 }

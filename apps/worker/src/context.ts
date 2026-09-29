@@ -18,17 +18,17 @@ export class Names {
   }
 }
 
-/** Thread messages as a prompt sees them. Rationales are included only when `withRationale` (reflection engine). */
-export function threadForPrompt(state: SessionState, threadId: string, names: Names, opts: { withRationale?: boolean; viewerId?: string } = {}): ThreadMessageForPrompt[] {
+/** Thread messages as a prompt sees them. */
+export function threadForPrompt(state: SessionState, threadId: string, names: Names, opts: { viewerId?: string } = {}): ThreadMessageForPrompt[] {
   const t = state.threads[threadId];
   if (!t) return [];
   return t.messageIds
     .map((id) => state.messages[id]!)
     .filter((m) => !opts.viewerId || m.from === opts.viewerId || m.to.includes(opts.viewerId) || m.cc.includes(opts.viewerId) || m.to.includes("associate") && opts.viewerId === "associate")
-    .map((m) => toPromptMessage(m, names, opts.withRationale ?? false));
+    .map((m) => toPromptMessage(m, names));
 }
 
-export function toPromptMessage(m: MessageState, names: Names, withRationale: boolean): ThreadMessageForPrompt {
+export function toPromptMessage(m: MessageState, names: Names): ThreadMessageForPrompt {
   return {
     from: names.name(m.from),
     fromRole: names.role(m.from),
@@ -36,7 +36,6 @@ export function toPromptMessage(m: MessageState, names: Names, withRationale: bo
     cc: m.cc.map((p) => names.name(p)),
     at: m.at.slice(0, 16).replace("T", " "),
     body: m.body,
-    rationale: withRationale ? m.rationale : undefined,
   };
 }
 

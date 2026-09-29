@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AddressBookEntry, InboxThread, Quote } from "./types";
 import { Icon } from "./icons";
-import { ConfirmSheet, SendSheet } from "./SendSheet";
 
 export interface ComposeState { threadId: string | null; to: string[]; cc: string[]; subject: string; body: string; attachments: string[]; quotes: Quote[]; draftId: string | null }
 
@@ -36,8 +35,6 @@ export function Compose(props: {
   isReply: boolean; onDiscard: () => void; onSent: (r: { threadId: string }) => void; readOnly: boolean;
 }) {
   const { state, onChange } = props;
-  const [sheet, setSheet] = useState<{ prompt: string; title: string; id: string } | null>(null);
-  const [confirm, setConfirm] = useState<{ title: string; intent: "question" | "logistics" } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<"saved" | "saving" | null>(null);
@@ -63,21 +60,16 @@ export function Compose(props: {
     return quotes ? `${quotes}\n\n${state.body}` : state.body;
   }, [state.quotes, state.body]);
 
-  async function send(extra: { rationale?: string; decisionPointId?: string; notMyAnswerYet?: boolean; confirmedIntent?: "deliverable" | "question" | "logistics" } = {}) {
+  async function send() {
     setBusy(true); setError(null);
     try {
-      const r = await fetch("/api/inbox/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ threadId: state.threadId, to: state.to, cc: state.cc, subject: props.isReply ? undefined : state.subject || "(no subject)", body: fullBody, attachments: state.attachments, quotedRefs: state.quotes.map((q) => ({ documentId: q.documentId, ref: q.ref, text: q.text })), draftId: state.draftId, ...extra }) });
-      const j = (await r.json()) as { needsRationale?: boolean; decisionPoint?: { id: string; title: string; prompt: string }; needsConfirm?: boolean; intent?: "question" | "logistics"; assignment?: { id: string; title: string }; error?: string; threadId?: string };
+      const r = await fetch("/api/inbox/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ threadId: state.threadId, to: state.to, cc: state.cc, subject: props.isReply ? undefined : state.subject || "(no subject)", body: fullBody, attachments: state.attachments, quotedRefs: state.quotes.map((q) => ({ documentId: q.documentId, ref: q.ref, text: q.text })), draftId: state.draftId }) });
+      const j = (await r.json()) as { error?: string; threadId?: string };
       if (!r.ok) { setError(j.error ?? "Could not send."); return; }
-      setConfirm(null);
-      if (j.needsConfirm && j.assignment && j.intent) { setConfirm({ title: j.assignment.title, intent: j.intent }); return; }
-      if (j.needsRationale && j.decisionPoint) { setSheet({ prompt: j.decisionPoint.prompt, title: j.decisionPoint.title, id: j.decisionPoint.id }); return; }
-      setSheet(null);
       props.onSent({ threadId: j.threadId! });
     } finally { setBusy(false); }
   }
 
-  const names = (emails: string[]) => emails.map((e) => props.addressBook.find((a) => a.email === e)?.name ?? e).join(", ");
   return (
     <div className="flex flex-col flex-1" style={{ padding: "0 28px 24px" }}>
       <div className="flex items-center justify-between h-10 px-1 border-t-2 border-ink text-[12px] font-bold tracking-[0.1em] uppercase">
@@ -111,8 +103,6 @@ export function Compose(props: {
           <button type="button" className="btn btn-primary" style={{ padding: "0 22px" }} onClick={() => send()} disabled={busy || props.readOnly || !state.to.length || !fullBody.trim()}>Send<Icon.send /></button>
         </div>
       </div>
-      {confirm && <ConfirmSheet title={confirm.title} to={names(state.to)} cc={names(state.cc)} preview={state.body} busy={busy} onBack={() => setConfirm(null)} onYes={() => send({ confirmedIntent: "deliverable" })} onNo={() => send({ confirmedIntent: confirm.intent })} />}
-      {sheet && <SendSheet prompt={sheet.prompt} title={sheet.title} to={names(state.to)} cc={names(state.cc)} preview={state.body} quote={state.quotes[0]?.text} busy={busy} onBack={() => setSheet(null)} onSend={(rationale) => send({ rationale, decisionPointId: sheet.id })} onNotMyAnswer={() => send({ notMyAnswerYet: true, decisionPointId: sheet.id })} />}
     </div>
   );
 }

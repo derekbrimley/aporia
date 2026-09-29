@@ -52,9 +52,9 @@ Dependency direction: `scenario` ← `engine` ← `db` ← `worker` / `prompts` 
 
 ### How a send becomes state
 
-1. `POST /api/inbox/send` runs the intent classifier. If the email is a deliverable and there's an open decision point, the API returns `needsRationale` and the at-send sheet collects a rationale before anything is sent.
-2. The API calls `appendEvent(email_sent)`. The engine steps and jobs are enqueued.
-3. The worker runs the assessor and appends `assessment_recorded`. The engine then completes the assignment, seeds consequences, and plans the Socratic reflection and the next beats. The worker writes each email, fact-checks it, and appends either `message_delivered` or `message_held`.
+1. `POST /api/inbox/send` appends `email_sent` through `appendEvent` with no intent. There is no at-send dialog. The engine steps and enqueues a `classify_intent` job.
+2. The worker classifies the email and appends `intent_classified`. The engine routes on that: deliverables go to the assessor, and long emails classified as questions while a deliverable is open get a silent probe assessment (`likelyDeliverable`, `isWorkProduct` in `step.ts`). Anything else gets a character reply.
+3. The worker runs the assessor and appends `assessment_recorded`. A probe that doesn't look like work product falls back to a normal reply. The engine then completes the assignment, seeds consequences, and plans the Socratic reflection and the next beats. If the deliverable went outside the firm, the reflection goes on a private `Internal: <subject>` side thread. The associate's first reply to the reflection is recorded as their reasoning and is never assessed. The worker writes each email, fact-checks it, and appends either `message_delivered` or `message_held`.
 4. The inbox picks up the new message over SSE.
 
 ## Deployment

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID, ScenarioIndex } from "@aporia/scenario";
-import { initialState, replay, step, openDecisionPoints, likelyDeliverable, type EngineEvent, type Effect, type Job, type SessionState } from "../index.js";
+import { initialState, replay, step, likelyDeliverable, type EngineEvent, type Effect, type Job, type SessionState } from "../index.js";
 
 const { pkg } = loadScenario(scenarioDir(DEFAULT_SCENARIO_ID));
 const idx = new ScenarioIndex(pkg);
@@ -44,13 +44,13 @@ class Harness {
     if (guard >= 200) throw new Error("job loop did not settle");
   }
 
-  private deliver(job: Job, from: string, threadId: string, threadKey: string | null, kind: "beat" | "reply" | "reflection" | "recap" | "debrief" | "doctrine" | "interruption", extra: Partial<{ to: string[]; cc: string[]; subject: string; body: string; attachments: string[]; beatId: string; reflectionQuestions: string[] }>) {
+  private deliver(job: Job, from: string, threadId: string, threadKey: string | null, kind: "beat" | "reply" | "reflection" | "recap" | "debrief" | "doctrine" | "interruption", extra: Partial<{ to: string[]; cc: string[]; subject: string; body: string; attachments: string[]; beatId: string; reflectionQuestions: string[]; assignmentId: string }>) {
     this.apply({
       type: "message_delivered",
       payload: {
         messageId: this.id("msg"), threadId, threadKey, beatId: extra.beatId ?? null, kind, from,
         to: extra.to ?? ["associate"], cc: extra.cc ?? [], subject: extra.subject ?? this.state.threads[threadId]?.subject ?? "Re:",
-        body: extra.body ?? `[${kind} from ${from}]`, attachments: extra.attachments ?? [], reflectionQuestions: extra.reflectionQuestions ?? [], jobKey: job.key,
+        body: extra.body ?? `[${kind} from ${from}]`, attachments: extra.attachments ?? [], reflectionQuestions: extra.reflectionQuestions ?? [], jobKey: job.key, assignmentId: extra.assignmentId ?? null,
       },
     });
   }
@@ -73,15 +73,18 @@ class Harness {
         for (const i of a.issues) issues[i.id] = this.raise.has(i.id) ? "raised" : "missed";
         const decisions: Record<string, string> = {};
         for (const d of a.decision_points) if (this.positions[d.id]) decisions[d.id] = this.positions[d.id]!;
-        this.apply({ type: "assessment_recorded", payload: { messageId: p.messageId, assignmentId: p.assignmentId, issues, decisions } });
+        this.apply({ type: "assessment_recorded", payload: { messageId: p.messageId, assignmentId: p.assignmentId, issues, decisions, probe: p.probe } });
         break;
       }
       case "character_reply":
         this.deliver(job, p.characterId, p.threadId, this.state.threads[p.threadId]?.key ?? null, "reply", {});
         break;
-      case "reflection":
-        this.deliver(job, p.characterId, p.threadId, this.state.threads[p.threadId]?.key ?? null, "reflection", { reflectionQuestions: [`Q about ${p.assignmentId} #${this.n}`] });
+      case "reflection": {
+        const side = p.sideThreadKey ?? null;
+        const threadId = side ? this.state.threadIdByKey[side] ?? this.id("thread") : p.threadId;
+        this.deliver(job, p.characterId, threadId, side ?? this.state.threads[p.threadId]?.key ?? null, "reflection", { reflectionQuestions: [`Q about ${p.assignmentId} #${this.n}`], assignmentId: p.assignmentId, subject: side ? "Internal" : undefined });
         break;
+      }
       case "doctrine_answer":
         this.deliver(job, idx.doctrineAssistant.id, p.threadId, null, "doctrine", {});
         break;
@@ -113,18 +116,20 @@ function playToClosing(h: Harness) {
   h.drain();
   h.send("orientation", ["senior_associate"], "My answers...", { intent: "question" });
   h.drain();
-  // M2: deliverable to the client with a rationale.
-  h.send("term-sheet", ["client_contact", "senior_associate"], "My comments on the term sheet.", { intent: "deliverable", rationale: "because", decisionPointId: "A2.D1" });
+  // M2: deliverable to the client; Marcus asks about it on a side thread and the associate answers.
+  const ts = h.send("term-sheet", ["client_contact", "senior_associate"], "My comments on the term sheet.", { intent: "deliverable" });
+  h.drain();
+  h.send(`reflection:${ts.messageId}`, ["senior_associate"], "because", { intent: "question" });
   h.drain();
   // M3: open the LSA (interruption), answer the board question, then deliver.
   h.apply({ type: "document_opened", payload: { documentId: "loan-and-security-agreement" } });
   h.drain();
   h.send("board-question", ["client_contact"], "No, Tranche 1 needs the Series C first.", { intent: "question" });
   h.drain();
-  h.send("big-picture", ["senior_associate"], "Structure report.", { intent: "deliverable", rationale: "x", decisionPointId: "A3.D1" });
+  h.send("big-picture", ["senior_associate"], "Structure report.", { intent: "deliverable" });
   h.drain();
   for (const [key, to] of [["comparison", ["senior_associate", "client_contact"]], ["verification", ["senior_associate"]], ["schedules", ["senior_associate", "client_contact"]], ["negotiation", ["lenders_counsel", "senior_associate"]], ["closing", ["lenders_counsel", "senior_associate"]]] as const) {
-    h.send(key, [...to], `Deliverable on ${key}`, { intent: "deliverable", rationale: "r" });
+    h.send(key, [...to], `Deliverable on ${key}`, { intent: "deliverable" });
     h.drain();
   }
 }
@@ -231,21 +236,6 @@ describe("engine: mechanics", () => {
     expect(h.jobs[0]?.kind).toBe("recap");
   });
 
-  it("exposes open decision points for the at-send sheet", () => {
-    const h = new Harness();
-    h.apply({ type: "session_started", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: "0.1.0", associateFirstName: "Sam" } });
-    h.drain();
-    h.send("orientation", ["senior_associate"], "Ready.", { intent: "acknowledgment" });
-    h.drain();
-    h.send("orientation", ["senior_associate"], "Answers.", { intent: "acknowledgment" });
-    h.drain();
-    const tid = h.state.threadIdByKey["term-sheet"]!;
-    expect(openDecisionPoints(h.state, pkg, tid).map((d) => d.id)).toEqual(["A2.D1"]);
-    // A new thread to the client also surfaces it, by recipient.
-    expect(openDecisionPoints(h.state, pkg, null, ["client_contact"]).map((d) => d.id)).toEqual(["A2.D1"]);
-    expect(openDecisionPoints(h.state, pkg, null, ["lenders_counsel"])).toEqual([]);
-  });
-
   it("uses deterministic, non-zero delays outside test mode", () => {
     let s = initialState(pkg);
     const r1 = step(s, { type: "session_started", at: "2026-10-01T09:00:00Z", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: "0.1.0", associateFirstName: "Sam" } }, pkg, {});
@@ -260,7 +250,7 @@ describe("engine: mechanics", () => {
     expect(again.effects).toEqual(r2.effects);
   });
 
-  it("asks whether a long question-shaped email is the open deliverable", () => {
+  it("picks out a long question-shaped email as a possible deliverable", () => {
     const h = toTermSheet();
     const tid = h.state.threadIdByKey["term-sheet"]!;
     const long = "Tranche 1 is only available for 30 days. Does that work for the business? ".repeat(6);
@@ -295,6 +285,79 @@ describe("engine: mechanics", () => {
     expect(send(h.state, "question")).toEqual(["character_reply"]);
     const busy = { ...h.state, jobs: { ...h.state.jobs, "reply:x:client_contact": "enqueued" as const } };
     expect(send(busy, "acknowledgment")).toEqual([]);
+  });
+});
+
+describe("engine: reflections and reasoning", () => {
+  it("asks about client-facing work on a private side thread, and internal work on its own thread", () => {
+    const h = toTermSheet();
+    h.positions = { "A2.D1": "P2", "A3.D1": "P1" };
+    const ts = h.send("term-sheet", ["client_contact", "senior_associate"], "My comments.", { intent: "deliverable" });
+    h.drain();
+    const side = h.state.threadIdByKey[`reflection:${ts.messageId}`]!;
+    const reflection = h.state.threads[side]!.messageIds.map((id) => h.state.messages[id]!).find((m) => m.kind === "reflection");
+    expect(side).not.toBe(ts.threadId);
+    expect(reflection).toMatchObject({ from: "senior_associate", to: ["associate"], cc: [], assignmentId: "A2" });
+    expect(h.state.threads[ts.threadId]!.messageIds.some((id) => h.state.messages[id]!.kind === "reflection")).toBe(false);
+
+    // Through the board question to A3, whose report goes to Marcus alone.
+    h.apply({ type: "document_opened", payload: { documentId: "loan-and-security-agreement" } });
+    h.drain();
+    h.send("board-question", ["client_contact"], "No.", { intent: "question" });
+    h.drain();
+    const bp = h.send("big-picture", ["senior_associate"], "Structure report.", { intent: "deliverable" });
+    h.drain();
+    expect(h.state.threadIdByKey[`reflection:${bp.messageId}`]).toBeUndefined();
+    expect(h.state.threads[bp.threadId]!.messageIds.some((id) => h.state.messages[id]!.kind === "reflection")).toBe(true);
+  });
+
+  it("records the first answer to a reflection as the reasoning, and never assesses it", () => {
+    const h = toTermSheet();
+    h.positions = { "A2.D1": "P2" };
+    const ts = h.send("term-sheet", ["client_contact", "senior_associate"], "My comments.", { intent: "deliverable" });
+    h.drain();
+    expect(h.state.decisions["A2.D1"]).toMatchObject({ position: "P2", rationale: null });
+    const key = `reflection:${ts.messageId}`;
+    const long = "The revenue definition drives Tranche 2, so I wanted it fixed before anyone signs. ".repeat(6);
+    const r = h.send(key, ["senior_associate"], long, { intent: "deliverable" });
+    const jobs = h.jobs.map((j) => j.kind);
+    expect(jobs).not.toContain("assess");
+    expect(jobs).toContain("character_reply");
+    expect(h.state.assignments.A2?.reasoning).toBe(long);
+    expect(h.state.decisions["A2.D1"]?.rationale).toBe(long);
+    h.drain();
+    // Replying again after Marcus answers does not overwrite it.
+    h.send(key, ["senior_associate"], "One more thought.", { intent: "question" });
+    expect(h.state.assignments.A2?.reasoning).toBe(long);
+    expect(r.threadId).toBe(h.state.threadIdByKey[key]);
+  });
+
+  it("promotes a question-shaped email to the deliverable when the probe finds work product", () => {
+    const h = toTermSheet();
+    const a2 = idx.assignment("A2");
+    h.raise = new Set(a2.issues.slice(0, Math.ceil(a2.issues.length / 2)).map((i) => i.id));
+    const tid = h.state.threadIdByKey["term-sheet"]!;
+    const long = "How is revenue defined for Tranche 2? Does the IP exclusion cover proceeds? ".repeat(6);
+    const { messageId } = h.send("term-sheet", ["client_contact"], long, { intent: "question" });
+    expect(h.jobs).toEqual([{ key: `assess:${messageId}`, kind: "assess", delaySeconds: 0, payload: { kind: "assess", messageId, assignmentId: "A2", probe: true } }]);
+    h.drain();
+    expect(h.state.messages[messageId]).toMatchObject({ intent: "deliverable", assignmentId: "A2" });
+    expect(h.state.assignments.A2).toMatchObject({ status: "complete", deliverableMessageId: messageId });
+    expect(Object.values(h.state.messages).some((m) => m.kind === "reflection" && m.assignmentId === "A2")).toBe(true);
+    expect(h.state.threads[tid]!.messageIds.some((id) => h.state.messages[id]!.kind === "reply")).toBe(false);
+  });
+
+  it("answers a question-shaped email as a question when the probe finds little", () => {
+    const h = toTermSheet();
+    h.raise = new Set(["A2.I1"]);
+    const long = "Before I draft comments, can you tell me which points matter most to the company? ".repeat(6);
+    const { messageId, threadId } = h.send("term-sheet", ["client_contact"], long, { intent: "question" });
+    h.drain();
+    expect(h.state.messages[messageId]).toMatchObject({ intent: "question", assignmentId: null });
+    expect(h.state.assignments.A2?.status).toBe("open");
+    expect(h.state.issues).toEqual({});
+    const reply = h.state.threads[threadId]!.messageIds.map((id) => h.state.messages[id]!).at(-1);
+    expect(reply).toMatchObject({ kind: "reply", from: "client_contact" });
   });
 });
 

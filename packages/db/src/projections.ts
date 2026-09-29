@@ -40,7 +40,8 @@ export async function applyProjection(client: pg.PoolClient | pg.Client, ctx: Ct
   if (event.type === "intent_classified") {
     await client.query(`update messages set intent = $2 where id = $1`, [event.payload.messageId, event.payload.intent]);
   }
-  if (event.type === "assessment_recorded") {
+  // A probe that did not turn out to be the deliverable leaves no trace in the projections.
+  if (event.type === "assessment_recorded" && (!event.payload.probe || state.messages[event.payload.messageId]?.intent === "deliverable")) {
     const p = event.payload;
     for (const [issueId, status] of Object.entries(p.issues)) {
       await client.query(
@@ -49,15 +50,11 @@ export async function applyProjection(client: pg.PoolClient | pg.Client, ctx: Ct
         [sessionId, orgId, issueId, status, event.at],
       );
     }
-    for (const [dpId, d] of Object.entries(state.decisions)) {
-      await client.query(
-        `insert into decisions (session_id, org_id, decision_point_id, position, rationale, message_id, recorded_at) values ($1, $2, $3, $4, $5, $6, $7)
-         on conflict (session_id, decision_point_id) do update set position = excluded.position, rationale = excluded.rationale`,
-        [sessionId, orgId, dpId, d.position, d.rationale, d.messageId, event.at],
-      );
-    }
-    await client.query(`update messages set assignment_id = $2 where id = $1`, [p.messageId, p.assignmentId]);
+    await upsertDecisions(client, sessionId, orgId, state, event.at);
+    await client.query(`update messages set assignment_id = $2, intent = coalesce($3, intent) where id = $1`, [p.messageId, p.assignmentId, state.messages[p.messageId]?.intent ?? null]);
   }
+  // An answer to a reflection fills in the rationale on decisions already recorded.
+  if (event.type === "email_sent" && Object.keys(state.decisions).length) await upsertDecisions(client, sessionId, orgId, state, event.at);
   for (const e of effects) {
     if (e.type === "consequence_seeded" || e.type === "consequence_fired") {
       await client.query(
@@ -66,6 +63,16 @@ export async function applyProjection(client: pg.PoolClient | pg.Client, ctx: Ct
         [sessionId, orgId, e.consequenceId, state.consequences[e.consequenceId], event.at],
       );
     }
+  }
+}
+
+async function upsertDecisions(client: pg.PoolClient | pg.Client, sessionId: string, orgId: string, state: SessionState, at: string) {
+  for (const [dpId, d] of Object.entries(state.decisions)) {
+    await client.query(
+      `insert into decisions (session_id, org_id, decision_point_id, position, rationale, message_id, recorded_at) values ($1, $2, $3, $4, $5, $6, $7)
+       on conflict (session_id, decision_point_id) do update set position = excluded.position, rationale = excluded.rationale`,
+      [sessionId, orgId, dpId, d.position, d.rationale, d.messageId, at],
+    );
   }
 }
 

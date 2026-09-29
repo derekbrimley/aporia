@@ -1,15 +1,16 @@
-import { ScenarioIndex, type Assignment, type Beat, type Character, type DecisionPoint, type ScenarioPackage } from "@aporia/scenario";
+import { ScenarioIndex, type Assignment, type Beat, type Character, type ScenarioPackage } from "@aporia/scenario";
 import { evaluate } from "./conditions.js";
 import { cloneState } from "./state.js";
 import type {
-  AssignmentState, Effect, EmailSentEvent, EngineEvent, Intent, Job, MessageState, SessionState, StepOptions, StepResult, ThreadState,
+  AssessmentRecordedEvent, AssignmentState, Effect, EmailSentEvent, EngineEvent, Intent, IssueStatus, Job, MessageState, SessionState, StepOptions, StepResult,
+  ThreadState,
 } from "./types.js";
 
 const RECAP_GAP_DAYS = 3;
 /** How long an associate email can go unanswered, with a deliverable open, before the feedback character checks in. */
 const NUDGE_DELAY_SECONDS = 20 * 60;
 const MAX_NUDGES_PER_ASSIGNMENT = 2;
-/** Word count above which an email the classifier did not call a deliverable is worth confirming at send. */
+/** Word count above which an email the classifier did not call a deliverable is worth a probe assessment. */
 const SUBSTANTIVE_WORDS = 60;
 
 /**
@@ -35,7 +36,7 @@ export function step(prev: SessionState, event: EngineEvent, pkg: ScenarioPackag
       ctx.onIntentClassified(event.payload.messageId, event.payload.intent);
       break;
     case "assessment_recorded":
-      ctx.onAssessment(event.payload.messageId, event.payload.assignmentId, event.payload.issues, event.payload.decisions, event.payload.shadow ?? false);
+      ctx.onAssessment(event.payload);
       break;
     case "message_delivered":
       ctx.onMessageDelivered(event);
@@ -130,6 +131,10 @@ class Ctx {
     thread.associateMessageCount += 1;
     thread.lastIntent = intent;
 
+    // Answering the feedback character's questions: that answer is the associate's reasoning.
+    const answered = this.reflectionAnswered(msg);
+    if (answered) this.recordReasoning(answered, p.body);
+
     // Count the email against every open assignment on this thread.
     for (const aid of thread.assignmentIds) {
       const a = s.assignments[aid];
@@ -169,8 +174,10 @@ class Ctx {
   private routeByIntent(msg: MessageState, intent: Intent) {
     const thread = this.state.threads[msg.threadId]!;
     const beatsTriggeredHere = this.settleBeats().filter((b) => b.thread_key === thread.key);
+    // Answers to Socratic questions are conversation, never another assignment's deliverable.
+    const answersReflection = this.reflectionAnswered(msg) !== null;
 
-    if (intent === "deliverable") {
+    if (intent === "deliverable" && !answersReflection) {
       const assignment = this.resolveAssignmentForDeliverable(msg);
       if (assignment && (assignment.issues.length > 0 || assignment.decision_points.length > 0)) {
         msg.assignmentId = assignment.id;
@@ -183,6 +190,18 @@ class Ctx {
     // Real colleagues don't reply to "thanks"; if the deliverable is still open, someone checks in later.
     if (intent === "acknowledgment") { this.planNudge(msg); return; }
 
+    // A substantive email that reads like a question may still be the work (comments phrased as
+    // questions). Assess it first; onAssessment decides whether it is the deliverable or gets a reply.
+    const probe = answersReflection ? undefined : likelyDeliverable(this.state, this.idx.pkg, msg.threadId, [...msg.to, ...msg.cc], msg.body, intent);
+    if (probe) {
+      this.enqueue({ key: `assess:${msg.id}`, kind: "assess", delaySeconds: 0, payload: { kind: "assess", messageId: msg.id, assignmentId: probe.id, probe: true } });
+      return;
+    }
+    this.replyOrNudge(msg);
+  }
+
+  /** The ordinary answer to an associate email: the first character addressed replies, else a later check-in. */
+  private replyOrNudge(msg: MessageState) {
     const responder = this.pickResponder(msg);
     if (!responder) { this.planNudge(msg); return; }
     this.enqueue({
@@ -191,6 +210,26 @@ class Ctx {
       delaySeconds: this.delayFor(responder, `reply:${msg.id}`),
       payload: { kind: "character_reply", messageId: msg.id, characterId: responder.id, threadId: msg.threadId },
     });
+  }
+
+  /** The assignment whose reflection this email answers (the last world message before it on the thread), if any. */
+  private reflectionAnswered(msg: MessageState): string | null {
+    const thread = this.state.threads[msg.threadId];
+    if (!thread) return null;
+    const before = thread.messageIds.slice(0, thread.messageIds.indexOf(msg.id));
+    const last = before.map((id) => this.state.messages[id]!).filter((m) => m.from !== "associate").at(-1);
+    return last?.kind === "reflection" && last.assignmentId ? last.assignmentId : null;
+  }
+
+  /** Keeps the first answer only; it also becomes the rationale on the assignment's recorded decisions. */
+  private recordReasoning(assignmentId: string, body: string) {
+    const st = this.state.assignments[assignmentId];
+    if (!st || st.reasoning) return;
+    st.reasoning = body;
+    for (const d of this.idx.assignment(assignmentId).decision_points) {
+      const rec = this.state.decisions[d.id];
+      if (rec && rec.rationale == null) rec.rationale = body;
+    }
   }
 
   private pickResponder(msg: MessageState): Character | undefined {
@@ -213,7 +252,7 @@ class Ctx {
   private planNudge(msg: MessageState) {
     if (this.opts.zeroDelays) return; // test mode and bot runs never sit idle
     // Something is still on its way. Earlier nudges and this email's own classification don't count.
-    const pending = Object.entries(this.state.jobs).some(([k, v]) => v === "enqueued" && !k.startsWith("nudge:") && k !== `classify:${msg.id}`);
+    const pending = Object.entries(this.state.jobs).some(([k, v]) => v === "enqueued" && !k.startsWith("nudge:") && k !== `classify:${msg.id}` && k !== `assess:${msg.id}`);
     if (pending) return;
     const a = deliverableAssignmentFor(this.state, this.idx, msg.threadId, [...msg.to, ...msg.cc])
       ?? openAssignments(this.state).map((id) => this.idx.assignment(id)).find((x) => x.completion.kind === "deliverable");
@@ -224,12 +263,26 @@ class Ctx {
   }
 
   // ---------------------------------------------------------------- assessment
-  onAssessment(messageId: string, assignmentId: string, issues: Record<string, "raised" | "partial" | "missed">, decisions: Record<string, string>, shadow: boolean) {
+  onAssessment(p: AssessmentRecordedEvent["payload"]) {
+    const { messageId, assignmentId, issues, decisions } = p;
     const s = this.state;
     const asg = this.idx.assignments.get(assignmentId);
     if (!asg) { this.warn(`assessment for unknown assignment ${assignmentId}`); return; }
     const msg = s.messages[messageId];
-    const shadowMode = shadow || this.opts.assessorShadowMode === true;
+    const shadowMode = (p.shadow ?? false) || this.opts.assessorShadowMode === true;
+
+    if (p.probe) {
+      // Not the work after all: answer it as the question it was classified as.
+      if (!msg || s.assignments[assignmentId]?.status !== "open" || !isWorkProduct(asg, issues, decisions)) {
+        if (msg) this.replyOrNudge(msg);
+        return;
+      }
+      msg.intent = "deliverable";
+      const thread = s.threads[msg.threadId]!;
+      thread.lastIntent = "deliverable";
+      if (!thread.assignmentIds.includes(assignmentId)) thread.assignmentIds.push(assignmentId);
+      s.assignments[assignmentId]!.deliverableMessageId = msg.id;
+    }
 
     // Every issue on the assignment gets a status; anything the assessor did not mention is missed.
     for (const i of asg.issues) s.issues[i.id] = issues[i.id] ?? "missed";
@@ -257,14 +310,16 @@ class Ctx {
     const st = s.assignments[assignmentId]!;
     if (st.status === "open" && asg.completion.kind === "deliverable" && !shadowMode) this.completeAssignment(assignmentId, messageId);
 
-    // Socratic follow-up from the feedback character, aimed by the assessment.
+    // Socratic follow-up from the feedback character, aimed by the assessment. Work that went to the
+    // client or the other side gets its questions privately, on a side thread.
     const feedback = this.idx.character(asg.feedback_from);
     if (msg) {
+      const outsideFirm = [...msg.to, ...msg.cc].some((x) => this.idx.characters.has(x) && this.idx.character(x).side !== "borrower_counsel");
       this.enqueue({
         key: `reflect:${messageId}`,
         kind: "reflection",
         delaySeconds: this.delayFor(feedback, `reflect:${messageId}`),
-        payload: { kind: "reflection", messageId, assignmentId, characterId: feedback.id, threadId: msg.threadId },
+        payload: { kind: "reflection", messageId, assignmentId, characterId: feedback.id, threadId: msg.threadId, reasoningQuality: p.reasoningQuality ?? "absent", sideThreadKey: outsideFirm ? `reflection:${messageId}` : null },
       });
     }
   }
@@ -278,7 +333,7 @@ class Ctx {
     const msg: MessageState = {
       id: p.messageId, threadId: p.threadId, from: p.from, to: p.to, cc: p.cc, subject: p.subject || thread.subject, body: p.body,
       attachments: p.attachments, at: this.at, kind: p.kind, intent: null, rationale: null, decisionPointId: null,
-      beatId: p.beatId ?? null, assignmentId: null, reflectionQuestions: p.reflectionQuestions ?? [], quotedRefs: [],
+      beatId: p.beatId ?? null, assignmentId: p.assignmentId ?? null, reflectionQuestions: p.reflectionQuestions ?? [], quotedRefs: [],
     };
     this.addMessage(msg);
     for (const d of p.attachments) if (!s.documentsReleased.includes(d)) s.documentsReleased.push(d);
@@ -436,26 +491,6 @@ class Ctx {
 
 // ---------------------------------------------------------------- read helpers used by the API and worker
 
-/** Decision points on this thread that are still open: drives the at-send sheet. */
-export function openDecisionPoints(state: SessionState, pkg: ScenarioPackage, threadId: string | null, recipients: string[] = []): (DecisionPoint & { assignment: string })[] {
-  const idx = new ScenarioIndex(pkg);
-  const out: (DecisionPoint & { assignment: string })[] = [];
-  const candidates = new Set<string>();
-  const thread = threadId ? state.threads[threadId] : undefined;
-  for (const a of thread?.assignmentIds ?? []) candidates.add(a);
-  const rec = new Set(recipients);
-  for (const [aid, st] of Object.entries(state.assignments)) {
-    if (st.status !== "open") continue;
-    const a = idx.assignment(aid);
-    if (a.expected_recipients.some((r) => rec.has(r))) candidates.add(aid);
-  }
-  for (const aid of candidates) {
-    if (state.assignments[aid]?.status !== "open") continue;
-    for (const d of idx.assignment(aid).decision_points) if (!state.decisions[d.id]) out.push({ ...d, assignment: aid });
-  }
-  return out;
-}
-
 /** Threads a character is a participant of, excluding hidden doctrine threads for everyone but the assistant. */
 export function threadsVisibleTo(state: SessionState, characterId: string): ThreadState[] {
   return Object.values(state.threads).filter((t) => t.participants.includes(characterId) && (!t.hidden || t.participants.includes(characterId)));
@@ -483,14 +518,21 @@ export function deliverableAssignmentFor(state: SessionState, idx: ScenarioIndex
 
 /**
  * The assignment a substantive email probably delivers even though the classifier called it a
- * question or logistics (comments phrased as questions, "can you review these?"). Drives the
- * "is this your answer?" step at send; undefined means send as classified.
+ * question or logistics (comments phrased as questions, "can you review these?"). Such an email is
+ * assessed as a probe first; undefined means route it as classified.
  */
 export function likelyDeliverable(state: SessionState, pkg: ScenarioPackage, threadId: string | null, recipients: string[], body: string, intent: Intent): Assignment | undefined {
   if (intent !== "question" && intent !== "logistics") return undefined;
   if (body.trim().split(/\s+/).length < SUBSTANTIVE_WORDS) return undefined;
   const a = deliverableAssignmentFor(state, new ScenarioIndex(pkg), threadId, recipients);
   return a && (a.issues.length > 0 || a.decision_points.length > 0) ? a : undefined;
+}
+
+/** A probe becomes the deliverable when it takes a position on a decision point or raises at least half the issues. */
+export function isWorkProduct(asg: Assignment, issues: Record<string, IssueStatus>, decisions: Record<string, string>): boolean {
+  if (asg.decision_points.some((d) => d.positions.some((p) => p.id === decisions[d.id]))) return true;
+  const raised = asg.issues.filter((i) => issues[i.id] === "raised").length;
+  return asg.issues.length > 0 && raised * 2 >= asg.issues.length;
 }
 
 export function openAssignments(state: SessionState): string[] {

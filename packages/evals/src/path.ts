@@ -8,7 +8,8 @@ export const PathSchema = z.object({
   name: z.string(),
   description: z.string(),
   persona: z.string(),
-  rationale_style: z.enum(["none", "thin", "full"]),
+  /** How much of the why the bot puts in its deliverables. */
+  reasoning_style: z.enum(["none", "thin", "full"]),
   raise_rate: z.object({ expected: z.number().min(0).max(1), strong: z.number().min(0).max(1), expert: z.number().min(0).max(1) }),
   positions: z.record(z.string(), z.string()).default({}),
   /** Force specific issues regardless of rate. */

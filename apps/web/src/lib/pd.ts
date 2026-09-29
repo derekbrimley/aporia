@@ -2,7 +2,7 @@ import { getPool } from "@aporia/db";
 
 export interface RosterRow { cohortId: string; cohortName: string; userId: string; name: string; email: string; status: "invited" | "not_started" | "in_progress" | "completed"; currentMilestone: string | null; lastActiveAt: string | null; activeMinutes: number; invitedAt: string }
 
-/** Progress only: no scores, issue status or rationales. Associates write honest rationales because the firm cannot read them. */
+/** Progress only: no scores, issue status or reasoning. Associates answer Marcus honestly because the firm cannot read it. */
 export async function roster(orgId: string, cohortId?: string): Promise<RosterRow[]> {
   const r = await getPool().query<RosterRow>(
     `select c.id as "cohortId", c.name as "cohortName", u.id as "userId", u.name, u.email,

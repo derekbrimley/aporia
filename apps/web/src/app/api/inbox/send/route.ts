@@ -1,10 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { appendEvent, recordActivity } from "@aporia/db";
-import { likelyDeliverable, openDecisionPoints, type Intent } from "@aporia/engine";
-import { IntentOutputSchema, intentClassifierPrompt } from "@aporia/prompts";
 import { ScenarioIndex } from "@aporia/scenario";
-import { Names, getProvider, threadForPrompt } from "@aporia/worker";
 import { apiUser } from "@/lib/auth";
 import { sessionForUser } from "@/lib/session";
 
@@ -16,22 +13,13 @@ const Body = z.object({
   body: z.string().min(1).max(20_000),
   attachments: z.array(z.string()).default([]),
   quotedRefs: z.array(z.object({ documentId: z.string(), ref: z.string(), text: z.string().max(2000) })).default([]),
-  /** Second step of the at-send sheet. */
-  rationale: z.string().max(5000).nullable().optional(),
-  decisionPointId: z.string().nullable().optional(),
-  notMyAnswerYet: z.boolean().optional(),
-  /** Answer to the "is this your answer?" step: overrides the classifier. */
-  confirmedIntent: z.enum(["deliverable", "question", "logistics"]).optional(),
   draftId: z.string().uuid().nullable().optional(),
 });
 
 /**
- * Send flow. First call classifies intent (fast Haiku). A substantive email
- * the classifier calls a question or logistics, sent where a deliverable is
- * open, returns `needsConfirm` so the associate can say whether it is their
- * answer. If the email is a deliverable on a thread (or to recipients) with an
- * open decision point, it returns `needsRationale` and nothing leaves. The
- * last call carries the rationale (or notMyAnswerYet) and the email is appended.
+ * Send flow: the email is appended as written, with no questions at send. The
+ * worker classifies its intent; the engine decides whether it is a deliverable
+ * (assessing a question-shaped one first) and who in the world responds.
  */
 export async function POST(req: Request) {
   const u = await apiUser(["associate"]);
@@ -51,38 +39,12 @@ export async function POST(req: Request) {
   const threadId = parsed.data.threadId ?? randomUUID();
   const existing = parsed.data.threadId ? s.state.threads[parsed.data.threadId] : undefined;
   if (parsed.data.threadId && !existing) return Response.json({ error: "unknown thread" }, { status: 400 });
-  const isDoctrine = to.includes(idx.doctrineAssistant.id);
-
-  let intent: Intent | null = null;
-  if (!isDoctrine) {
-    if (parsed.data.notMyAnswerYet) intent = "question";
-    else if (parsed.data.rationale != null) intent = "deliverable";
-    else if (parsed.data.confirmedIntent) intent = parsed.data.confirmedIntent;
-    else {
-      const names = new Names(s.pkg, s.state.associateFirstName);
-      const open = Object.entries(s.state.assignments).filter(([, a]) => a.status === "open").map(([id]) => idx.assignment(id));
-      const onThread = open.find((a) => existing?.assignmentIds.includes(a.id)) ?? open.find((a) => a.expected_recipients.some((r) => to.includes(r) || cc.includes(r)));
-      const p = intentClassifierPrompt({ thread: existing ? threadForPrompt(s.state, existing.id, names) : [], outgoing: { to: to.map((x) => names.name(x)), cc: cc.map((x) => names.name(x)), body: parsed.data.body, attachments: parsed.data.attachments }, openAssignmentTitle: onThread?.title ?? null });
-      const provider = await getProvider();
-      const res = await provider.generateJson({ role: "intent_classifier", system: p.system, user: p.user, promptVersion: p.version, mockContext: { body: parsed.data.body, openAssignmentTitle: onThread?.title ?? null }, sessionId: s.session.id }, IntentOutputSchema);
-      intent = res.parsed.intent;
-      const likely = likelyDeliverable(s.state, s.pkg, existing?.id ?? null, [...to, ...cc], parsed.data.body, intent);
-      if (likely) return Response.json({ needsConfirm: true, intent, assignment: { id: likely.id, title: likely.title } });
-    }
-    if (intent === "deliverable" && parsed.data.rationale == null) {
-      const dps = openDecisionPoints(s.state, s.pkg, existing?.id ?? null, [...to, ...cc]);
-      if (dps.length) {
-        const d = dps[0]!;
-        return Response.json({ needsRationale: true, intent, decisionPoint: { id: d.id, title: d.title, prompt: d.rationale_prompt } });
-      }
-    }
-  }
   const messageId = randomUUID();
   await appendEvent(s.session.id, {
     type: "email_sent",
-    payload: { messageId, threadId, subject: parsed.data.subject ?? existing?.subject ?? "(no subject)", to, cc, body: parsed.data.body, attachments: parsed.data.attachments, quotedRefs: parsed.data.quotedRefs, rationale: parsed.data.rationale ?? null, decisionPointId: parsed.data.decisionPointId ?? null, intent, notMyAnswerYet: parsed.data.notMyAnswerYet ?? false },
+    payload: { messageId, threadId, subject: parsed.data.subject ?? existing?.subject ?? "(no subject)", to, cc, body: parsed.data.body, attachments: parsed.data.attachments, quotedRefs: parsed.data.quotedRefs },
   }, "associate", s.pkg);
   await recordActivity(s.session.id, new Date());
   if (parsed.data.draftId) await (await import("@aporia/db")).getPool().query(`delete from drafts where id = $1 and session_id = $2`, [parsed.data.draftId, s.session.id]);
-  return Response.json({ ok: true, messageId, threadId, intent });
+  return Response.json({ ok: true, messageId, threadId });
 }

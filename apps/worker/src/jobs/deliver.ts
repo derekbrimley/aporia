@@ -18,6 +18,8 @@ export interface DeliverySpec {
   beatId?: string | null;
   inReplyTo?: string | null;
   reflectionQuestions?: string[];
+  /** Reflections: the assignment the questions are about. */
+  assignmentId?: string | null;
 }
 
 export interface GenerateArgs {
@@ -94,7 +96,7 @@ export function deliveryEvent(ctx: JobContext, spec: DeliverySpec, body: string,
       payload: {
         messageId, threadId: spec.threadId, threadKey: spec.threadKey, beatId: spec.beatId ?? null, kind: spec.kind, from: spec.from.id,
         to: spec.to, cc: spec.cc, subject: spec.subject, body, attachments: spec.attachments, inReplyTo: spec.inReplyTo ?? null,
-        reflectionQuestions: reflectionQuestions ?? spec.reflectionQuestions ?? [], jobKey: ctx.job.key,
+        reflectionQuestions: reflectionQuestions ?? spec.reflectionQuestions ?? [], jobKey: ctx.job.key, assignmentId: spec.assignmentId ?? null,
       },
     },
     idempotencyKey: `${ctx.session.id}:deliver:${ctx.job.key}`,

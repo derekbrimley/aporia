@@ -3,7 +3,7 @@ import {
   intentClassifierPrompt, nudgePrompt, recapPrompt, reflectionPrompt, type AssessmentOutput,
 } from "@aporia/prompts";
 import { openAssignments } from "@aporia/engine";
-import type { Job } from "@aporia/engine";
+import type { Job, JobPayload } from "@aporia/engine";
 import { formatFact, sliceFactsFor, type Facts } from "@aporia/scenario";
 import { otherThreadsFor, storyDate, threadForPrompt } from "../context.js";
 import { beatSubject, deliverFixed, generateAndDeliver, threadIdForKey } from "./deliver.js";
@@ -13,10 +13,10 @@ export async function handleJob(ctx: JobContext): Promise<JobOutcome> {
   const p = ctx.job.payload;
   switch (p.kind) {
     case "classify_intent": return classifyIntent(ctx, p.messageId);
-    case "assess": return assess(ctx, p.messageId, p.assignmentId);
+    case "assess": return assess(ctx, p.messageId, p.assignmentId, p.probe ?? false);
     case "character_reply": return characterReply(ctx, p.messageId, p.characterId, p.threadId);
     case "beat": return beat(ctx, p.beatId);
-    case "reflection": return reflection(ctx, p.messageId, p.assignmentId, p.characterId, p.threadId);
+    case "reflection": return reflection(ctx, p);
     case "doctrine_answer": return doctrine(ctx, p.messageId, p.threadId);
     case "recap": return recap(ctx, p.gapDays);
     case "nudge": return nudge(ctx, p.messageId, p.assignmentId);
@@ -48,24 +48,24 @@ async function classifyIntent(ctx: JobContext, messageId: string): Promise<JobOu
 }
 
 // ---------------------------------------------------------------- assessor
-async function assess(ctx: JobContext, messageId: string, assignmentId: string): Promise<JobOutcome> {
+async function assess(ctx: JobContext, messageId: string, assignmentId: string, probe: boolean): Promise<JobOutcome> {
   const msg = ctx.state.messages[messageId];
   const a = ctx.idx.assignment(assignmentId);
   if (!msg) throw new Error(`assess: unknown message ${messageId}`);
   const deltaIds = new Set(a.issues.map((i) => i.delta).filter(Boolean));
   const deltas = ctx.pkg.deltas.filter((d) => deltaIds.has(d.id) || d.surfaces_in === a.milestone);
   const deliverable = msg.body + (msg.quotedRefs.length ? `\n\n[Quoted passages: ${msg.quotedRefs.map((q) => `${q.ref}: "${q.text}"`).join(" | ")}]` : "");
-  const p = assessorPrompt({ assignment: a, deltas, deliverable, rationale: msg.rationale, quotedRefs: msg.quotedRefs });
+  const p = assessorPrompt({ assignment: a, deltas, deliverable, quotedRefs: msg.quotedRefs });
   const res = await ctx.provider.generateJson({
     role: "assessor", system: p.system, user: p.user, promptVersion: p.version, sessionId: ctx.session.id, jobKey: ctx.job.key,
-    mockContext: { deliverable, rationale: msg.rationale, issues: a.issues.map((i) => ({ id: i.id, keywords: i.keywords.length ? i.keywords : [i.title] })), decisionPoints: a.decision_points.map((d) => ({ id: d.id, positions: d.positions.map((x) => ({ id: x.id, label: x.label })) })) },
+    mockContext: { deliverable, issues: a.issues.map((i) => ({ id: i.id, keywords: i.keywords.length ? i.keywords : [i.title] })), decisionPoints: a.decision_points.map((d) => ({ id: d.id, positions: d.positions.map((x) => ({ id: x.id, label: x.label })) })) },
   }, AssessmentOutputSchema);
   const issues: Record<string, "raised" | "partial" | "missed"> = {};
   for (const i of a.issues) issues[i.id] = res.parsed.issues.find((x) => x.id === i.id)?.status ?? "missed";
   const decisions: Record<string, string> = {};
   for (const d of res.parsed.decisions) if (d.position && d.position !== "none") decisions[d.id] = d.position;
   return {
-    events: [{ event: { type: "assessment_recorded", payload: { messageId, assignmentId, issues, decisions, summary: res.parsed.summary, shadow: ctx.session.assessorShadowMode } }, idempotencyKey: `${ctx.session.id}:assess:${messageId}` }],
+    events: [{ event: { type: "assessment_recorded", payload: { messageId, assignmentId, issues, decisions, summary: res.parsed.summary, shadow: ctx.session.assessorShadowMode, probe, reasoningQuality: res.parsed.reasoning_quality } }, idempotencyKey: `${ctx.session.id}:assess:${messageId}` }],
     generations: [{ role: "assessor", model: res.model, provider: res.provider, promptVersion: p.version, inputRefs: { messageId, assignmentId }, systemPrompt: p.system, userPrompt: p.user, output: res.text, parsedOutput: res.parsed, usage: res.usage, latencyMs: res.latencyMs, attempt: ctx.attempt }],
   };
 }
@@ -122,7 +122,8 @@ async function beat(ctx: JobContext, beatId: string): Promise<JobOutcome> {
 }
 
 // ---------------------------------------------------------------- reflection (Socratic)
-async function reflection(ctx: JobContext, messageId: string, assignmentId: string, characterId: string, threadId: string): Promise<JobOutcome> {
+async function reflection(ctx: JobContext, job: Extract<JobPayload, { kind: "reflection" }>): Promise<JobOutcome> {
+  const { messageId, assignmentId, characterId, threadId } = job;
   const c = ctx.idx.character(characterId);
   const a = ctx.idx.assignment(assignmentId);
   const msg = ctx.state.messages[messageId];
@@ -132,15 +133,24 @@ async function reflection(ctx: JobContext, messageId: string, assignmentId: stri
   const assessment: AssessmentOutput = {
     issues: a.issues.map((i) => ({ id: i.id, status: ctx.state.issues[i.id] ?? "missed", evidence: "" })),
     decisions: a.decision_points.map((d) => ({ id: d.id, position: ctx.state.decisions[d.id]?.position ?? "none", evidence: "" })),
-    rationale_quality: !msg.rationale ? "absent" : msg.rationale.length < 40 ? "thin" : msg.rationale.length < 200 ? "adequate" : "strong",
+    reasoning_quality: job.reasoningQuality ?? "absent",
     summary: "",
   };
-  const cc = [...msg.to, ...msg.cc].filter((x) => x !== c.id && x !== "associate" && !ctx.idx.character(x).is_doctrine_assistant);
-  return generateAndDeliver(ctx, { from: c, to: ["associate"], cc, threadId, threadKey: thread.key, subject: thread.subject, attachments: [], kind: "reflection", inReplyTo: messageId }, {
+  const decisions = a.decision_points.flatMap((d) => {
+    const pos = ctx.state.decisions[d.id]?.position;
+    const label = d.positions.find((p) => p.id === pos)?.label;
+    return label ? [{ point: d, positionLabel: label }] : [];
+  });
+  // Work that went outside the firm gets its questions privately, on a side thread only the associate sees.
+  const side = job.sideThreadKey ?? null;
+  const spec = side
+    ? { threadId: threadIdForKey(ctx, side), threadKey: side, cc: [] as string[], subject: `Internal: ${thread.subject.replace(/^(re:\s*)+/i, "")}` }
+    : { threadId, threadKey: thread.key, cc: [...msg.to, ...msg.cc].filter((x) => x !== c.id && x !== "associate" && !ctx.idx.character(x).is_doctrine_assistant), subject: thread.subject };
+  return generateAndDeliver(ctx, { from: c, to: ["associate"], ...spec, attachments: [], kind: "reflection", inReplyTo: messageId, assignmentId }, {
     role: "reflection_engine",
     build: (feedback) => {
-      const p = reflectionPrompt({ character: c, facts, associateFirstName: ctx.state.associateFirstName, assignment: a, assessment, rationale: msg.rationale, thread: threadForPrompt(ctx.state, threadId, ctx.names, { withRationale: true, viewerId: c.id }), priorQuestions: ctx.state.reflectionQuestionsAsked, storyDate: storyDate(ctx.now), feedback });
-      return { ...p, mockContext: { socraticAngles: a.socratic_angles, priorQuestions: ctx.state.reflectionQuestionsAsked, associateFirstName: ctx.state.associateFirstName, signoff: signoff(c), assignmentTitle: a.title } };
+      const p = reflectionPrompt({ character: c, facts, associateFirstName: ctx.state.associateFirstName, assignment: a, assessment, decisions, privateNote: side !== null, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), priorQuestions: ctx.state.reflectionQuestionsAsked, storyDate: storyDate(ctx.now), feedback });
+      return { ...p, mockContext: { socraticAngles: a.socratic_angles, priorQuestions: ctx.state.reflectionQuestionsAsked, associateFirstName: ctx.state.associateFirstName, signoff: signoff(c), assignmentTitle: a.title, decisionLabel: decisions[0]?.positionLabel ?? null } };
     },
     parse: (res) => {
       const parsed = ReflectionOutputSchema.parse(JSON.parse(extractJson(res.text)));
@@ -239,8 +249,9 @@ async function debrief(ctx: JobContext): Promise<JobOutcome> {
         : `the associate chose "${ctx.idx.decisionPoints.get(q.seed.decision_point)?.positions.find((p) => p.id === q.seed.outcome)?.label ?? q.seed.outcome}"`;
       const rationale = "decision_point" in q.seed ? ctx.state.decisions[q.seed.decision_point]?.rationale ?? null : (() => {
         const asg = ctx.idx.issues.get((q.seed as { issue: string }).issue)?.assignment;
-        const mid = asg ? ctx.state.assignments[asg]?.deliverableMessageId : null;
-        return mid ? ctx.state.messages[mid]?.rationale ?? null : null;
+        const st = asg ? ctx.state.assignments[asg] : undefined;
+        // Sessions from before engine 0.2 carry the at-send rationale on the deliverable instead.
+        return st?.reasoning ?? (st?.deliverableMessageId ? ctx.state.messages[st.deliverableMessageId]?.rationale ?? null : null);
       })();
       return { consequence: q, seedDescription, rationale };
     });

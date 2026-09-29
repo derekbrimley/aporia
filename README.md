@@ -16,7 +16,7 @@ A borrower-side venture debt financing, run from kickoff to closing inside an em
 | `packages/prompts` | Pinned model config per role; versioned prompt builders for the eight LLM roles and the bot associate |
 | `apps/worker` | LLM providers (Anthropic, Bedrock, deterministic mock), two-layer fact checker, job handlers, delivery/hold, graphile-worker runner (one serial lane per session), held-email release |
 | `packages/evals` | Bot-associate harness with five path files, automatic checks, offline judge, Cohen's kappa, run reports |
-| `apps/web` | Next.js inbox (Oat and Plum), compose with at-send sheet, document panel (compare/replace/close, quote in reply, layout switch), live updates, tester flags, sign-in, PD roster, internal admin console, rater view |
+| `apps/web` | Next.js inbox (Oat and Plum), compose, document panel (compare/replace/close, quote in reply, layout switch), live updates, tester flags, sign-in, PD roster, internal admin console, rater view |
 
 ## Run it locally
 
@@ -52,9 +52,9 @@ Run reports land in `packages/evals/runs/`. With the mock provider, 10/10 runs a
 
 ## How a send becomes state
 
-1. The associate presses Send. `POST /api/inbox/send` runs the fast intent classifier. If the email is a deliverable and the thread (or recipients) has an open decision point, the API returns `needsRationale` and the at-send sheet opens; nothing has left yet. "Not my answer yet" sends it as a question.
-2. The API appends `email_sent` (with intent and private rationale). `appendEvent` steps the engine in the same transaction, writes projections and enqueues jobs on the session's serial lane.
-3. The worker runs the assessor (structured output mapping the work to issue/decision IDs), appends `assessment_recorded`; the engine completes the assignment, seeds consequences, plans the Socratic reflection and the next beats; the worker writes each email, runs the fact checker (rules, then model), regenerates up to twice, and either appends `message_delivered` or holds the email for admin release.
+1. The associate presses Send, and the email goes out with no dialog. `POST /api/inbox/send` appends `email_sent`. `appendEvent` steps the engine in the same transaction, writes projections and enqueues jobs on the session's serial lane.
+2. The worker runs the fast intent classifier. Deliverables go to the assessor. A long email classified as a question while a deliverable is open gets a silent probe assessment; it counts as the deliverable if it takes a decision position or raises at least half the issues, and otherwise gets a normal reply.
+3. The worker runs the assessor (structured output mapping the work to issue/decision IDs), appends `assessment_recorded`; the engine completes the assignment, seeds consequences, plans the Socratic reflection (the senior associate asks why the associate made the calls they made, on a private `Internal:` side thread if the deliverable went to the client or lender; the first reply is recorded as their reasoning) and the next beats; the worker writes each email, runs the fact checker (rules, then model), regenerates up to twice, and either appends `message_delivered` or holds the email for admin release.
 4. The inbox receives the new message over server-sent events.
 
 Every LLM call is recorded in `generations` (role, model, prompt version, inputs, output, tokens, latency, checker result). Every session is pinned to a scenario version and engine version; a scenario update never changes an in-progress session.

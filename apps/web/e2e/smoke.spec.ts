@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 /**
  * Associate smoke test against a running web server + worker (mock LLM, test mode).
  * Covers sign-in, orientation (M1), the term sheet arriving (M2), the document
- * panel, and the at-send sheet on the first deliverable.
+ * panel, and the private Socratic follow-up on the first deliverable.
  */
 const LOG = process.env.WEB_LOG ?? "/tmp/web.log";
 const shots = process.env.SHOTS_DIR ?? "/tmp/shots";
@@ -75,19 +75,13 @@ test("associate plays orientation and sends term sheet comments", async ({ page,
   await page.screenshot({ path: `${shots}/6-compose-with-quote.png` });
   await page.getByRole("button", { name: /^Send/ }).click();
 
-  // At-send sheet: rationale required at the decision point.
-  const sheet = page.getByRole("dialog", { name: "Why are you sending this?" });
-  await expect(sheet).toBeVisible({ timeout: 30_000 });
-  await expect(sheet.getByRole("button", { name: "Send email" })).toBeDisabled();
-  await page.screenshot({ path: `${shots}/7-at-send-sheet.png` });
-  await sheet.getByLabel("Your reasoning").fill("Priya is not a lawyer and wants to know what each point means for the business; the revenue definition and the cash covenant are what could hurt the company, so I led with those and asked her priorities before recommending a signature.");
-  await sheet.getByRole("button", { name: "Send email" }).click();
-  await expect(sheet).toBeHidden();
-  await expect(convo.getByText("Your reasoning · Not part of the email")).toBeVisible();
-
-  // Socratic follow-up from Marcus on the same thread.
-  await expect(convo.getByText("A few questions before we go back to the client")).toBeVisible({ timeout: 60_000 });
-  await page.screenshot({ path: `${shots}/8-socratic-follow-up.png`, fullPage: false });
+  // Nothing interrupts the send. Marcus's Socratic questions arrive privately, on a side thread without Priya.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const sideThread = page.getByRole("listitem").filter({ hasText: "Internal: Halden Bank term sheet" });
+  await expect(sideThread).toBeVisible({ timeout: 60_000 });
+  await sideThread.click();
+  await expect(convo.getByText("A few questions before we go back to the client")).toBeVisible();
+  await page.screenshot({ path: `${shots}/7-socratic-follow-up.png`, fullPage: false });
 
   // Tester flag control exists on a character email and sends nothing to characters.
   await expect(page.getByRole("button", { name: "Flag as unrealistic" }).first()).toBeVisible();

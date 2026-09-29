@@ -5,7 +5,7 @@ export function initialState(pkg: ScenarioPackage): SessionState {
   const milestones: SessionState["milestones"] = {};
   for (const m of pkg.milestones) milestones[m.id] = { enteredAt: null, completedAt: null };
   const assignments: SessionState["assignments"] = {};
-  for (const a of pkg.assignments) assignments[a.id] = { status: "pending", openedAt: null, completedAt: null, emailsSent: 0, deliverableMessageId: null };
+  for (const a of pkg.assignments) assignments[a.id] = { status: "pending", openedAt: null, completedAt: null, emailsSent: 0, deliverableMessageId: null, reasoning: null };
   return {
     scenarioId: pkg.meta.id,
     scenarioVersion: pkg.meta.version,

@@ -5,10 +5,11 @@
  * rebuilt at any time by replaying the events.
  */
 
-export const ENGINE_VERSION = "0.1.0";
+export const ENGINE_VERSION = "0.2.0";
 
 export type Intent = "deliverable" | "question" | "logistics" | "acknowledgment";
 export type IssueStatus = "raised" | "partial" | "missed";
+export type ReasoningQuality = "absent" | "thin" | "adequate" | "strong";
 export type ConsequenceState = "seeded" | "fired" | "resolved";
 export type Participant = "associate" | string; // character id
 
@@ -49,13 +50,13 @@ export type EmailSentEvent = Base<"email_sent", {
   attachments: string[];
   /** Section references quoted via "quote in reply". */
   quotedRefs?: { documentId: string; ref: string; text: string }[];
-  /** Private rationale captured on the at-send sheet. Never part of the email. */
+  /** Legacy (engine 0.1): private rationale from the retired at-send sheet. */
   rationale?: string | null;
-  /** Decision point the at-send sheet was shown for, if any. */
+  /** Legacy (engine 0.1): decision point the at-send sheet was shown for. */
   decisionPointId?: string | null;
-  /** Intent when classified before send; otherwise a classify job is enqueued. */
+  /** Intent when known at send (bot runs, tests); otherwise a classify job is enqueued. */
   intent?: Intent | null;
-  /** The associate chose "not my answer yet": the email is treated as a question. */
+  /** Legacy (engine 0.1): "not my answer yet" on the at-send sheet. */
   notMyAnswerYet?: boolean;
 }>;
 export type IntentClassifiedEvent = Base<"intent_classified", { messageId: string; intent: Intent; confidence?: number }>;
@@ -67,6 +68,10 @@ export type AssessmentRecordedEvent = Base<"assessment_recorded", {
   summary?: string;
   /** Shadow mode: the assessment is logged but does not drive consequences. */
   shadow?: boolean;
+  /** A probe of a question-shaped email; the engine decides whether it becomes the deliverable. */
+  probe?: boolean;
+  /** How well the deliverable itself explains its reasoning. Aims the reflection. */
+  reasoningQuality?: ReasoningQuality;
 }>;
 export type MessageDeliveredEvent = Base<"message_delivered", {
   messageId: string;
@@ -84,6 +89,8 @@ export type MessageDeliveredEvent = Base<"message_delivered", {
   generationId?: string | null;
   reflectionQuestions?: string[];
   jobKey?: string | null;
+  /** Reflections: the assignment the questions are about. */
+  assignmentId?: string | null;
 }>;
 export type MessageHeldEvent = Base<"message_held", { jobKey: string; reason: string; kind: MessageKind }>;
 export type MessageReleasedEvent = Base<"message_released", { jobKey: string }>;
@@ -124,9 +131,14 @@ export type JobKind =
 
 export type JobPayload =
   | { kind: "classify_intent"; messageId: string }
-  | { kind: "assess"; messageId: string; assignmentId: string }
+  | { kind: "assess"; messageId: string; assignmentId: string; probe?: boolean }
   | { kind: "character_reply"; messageId: string; characterId: string; threadId: string }
-  | { kind: "reflection"; messageId: string; assignmentId: string; characterId: string; threadId: string }
+  | {
+      kind: "reflection"; messageId: string; assignmentId: string; characterId: string; threadId: string;
+      reasoningQuality?: ReasoningQuality;
+      /** Set when the deliverable went outside the firm: the questions go on a private side thread with this key. */
+      sideThreadKey?: string | null;
+    }
   | { kind: "beat"; beatId: string }
   | { kind: "doctrine_answer"; messageId: string; threadId: string }
   | { kind: "recap"; resumedAt: string; gapDays: number }
@@ -194,6 +206,8 @@ export interface AssignmentState {
   completedAt: string | null;
   emailsSent: number;
   deliverableMessageId: string | null;
+  /** The associate's answer to the reflection on this assignment: their reasoning, in their words. */
+  reasoning: string | null;
 }
 
 export interface SessionState {

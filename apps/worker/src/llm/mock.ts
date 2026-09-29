@@ -55,7 +55,7 @@ export class MockProvider implements LlmProvider {
             const byLabel = d.positions.find((p) => deliverable.includes(p.label.toLowerCase()));
             return { id: d.id, position: forced ? forced[1]!.toUpperCase() : byLabel?.id ?? "none", evidence: forced ? "marker" : byLabel?.label ?? "none" };
           }),
-          rationale_quality: !c.rationale ? "absent" : String(c.rationale).length < 40 ? "thin" : String(c.rationale).length < 200 ? "adequate" : "strong",
+          reasoning_quality: ((n) => (n === 0 ? "absent" : n === 1 ? "thin" : n < 4 ? "adequate" : "strong"))(deliverable.split(/\bbecause\b/).length - 1),
           summary: "Mock assessment: matched issue keywords in the deliverable.",
         };
       }
@@ -77,6 +77,7 @@ export class MockProvider implements LlmProvider {
         const qs = angles.length
           ? angles.slice(n % Math.max(angles.length, 1), (n % Math.max(angles.length, 1)) + 2).map((a, i) => `${i === 0 ? "When you wrote that, " : "And "}what did you make of ${a.charAt(0).toLowerCase()}${a.slice(1).replace(/\.$/, "")}?`)
           : [`What led you to frame it that way in the ${c.assignmentTitle ?? "note"}?`];
+        if (c.decisionLabel) qs.unshift(`On the ${String(c.assignmentTitle ?? "note").toLowerCase()}, walk me through why you went with "${String(c.decisionLabel).toLowerCase()}"?`);
         const uniq = qs.map((q, i) => (prior.includes(q) ? `${q.slice(0, -1)} this time around (${n + i})?` : q));
         return { questions: uniq, email_body: `${c.associateFirstName ?? "Thanks"}, thanks for this. A few questions before we go back to the client.\n\n${uniq.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n\nNo rush.\n\n${c.signoff ?? ""}` };
       }
@@ -93,15 +94,16 @@ export class MockProvider implements LlmProvider {
       case "bot_associate": {
         const raise: { title: string; looks: string }[] = c.raise ?? [];
         const position: string | null = c.positionLabel ?? null;
+        const why = c.reasoningStyle === "none" ? "" : c.reasoningStyle === "thin" ? "That seemed right to me." : `I focused on ${raise.map((r) => r.title.toLowerCase()).join(", ") || "the client's timeline"} because those affect what the client can actually do before closing.`;
         const body = [
           c.opening ?? "Here are my thoughts.",
           raise.length ? "" : "I went through the materials against what we discussed. Nothing jumped out at me beyond the points already covered on the earlier threads, so I would be comfortable proceeding on the current drafts unless you see something I should look at more closely.",
           ...raise.map((r, i) => `${i + 1}. ${r.title}. ${r.looks}`),
           position ? `On the overall call: ${position}.` : "",
+          why,
           c.closing ?? "Happy to discuss.",
         ].filter(Boolean).join("\n\n");
-        const rationale = c.rationaleStyle === "none" ? null : c.rationaleStyle === "thin" ? "Seemed right." : `I focused on ${raise.map((r) => r.title.toLowerCase()).join(", ") || "the client's timeline"} because those affect what the client can actually do before closing.`;
-        return { body, rationale };
+        return { body };
       }
     }
     return "";
