@@ -85,19 +85,11 @@ export function DocumentPanel(props: {
   return (
     <div className="flex flex-col flex-1 min-h-0" style={{ padding: "24px 28px 24px" }}>
       <div className="flex items-center justify-between gap-3 mb-2 no-print">
-        {/* The layout only applies while a document is open (see InboxApp's grid). */}
-        {docs.length > 0 && <div className="flex items-center gap-1 bg-oat-100 rounded-full border border-oat-400 p-0.5" role="group" aria-label="Layout">
-          {([["email", "More email"], ["even", "Even split"], ["docs", "More documents"]] as const).map(([l, label]) => <button key={l} type="button" className="btn btn-sm btn-ghost" aria-pressed={props.layout === l} style={props.layout === l ? { background: "var(--color-plum-100)" } : {}} onClick={() => props.onLayout(l)}>{label}</button>)}
-        </div>}
+        <div className="flex items-center gap-1 bg-oat-100 rounded-full border border-oat-400 p-0.5" role="group" aria-label="Layout">
+          {([["email", "More email", Icon.layoutEmail], ["even", "Even split", Icon.layoutEven], ["docs", "More documents", Icon.layoutDocs]] as const).map(([l, label, LayoutIcon]) => <button key={l} type="button" className="btn btn-sm btn-ghost" aria-label={label} title={label} aria-pressed={props.layout === l} style={{ width: 36, padding: 0, ...(props.layout === l ? { background: "var(--color-plum-100)" } : {}) }} onClick={() => props.onLayout(l)}><LayoutIcon /></button>)}
+        </div>
         {docs.length === 1 && <button type="button" className="btn btn-sm" onClick={() => setPicker({ slot: 1, mode: "compare" })}>Compare</button>}
       </div>
-      {docs.length === 0 && (
-        <div className="flex-1 flex flex-col items-center justify-center gap-2.5 p-6 text-center text-ink-muted rounded-[22px]" style={{ border: "1.5px dashed var(--color-oat-500)" }}>
-          <span className="flex items-center justify-center w-[52px] h-[52px] rounded-full bg-plum-200 text-plum-600"><Icon.clip /></span>
-          <div className="display text-[20px] text-ink">Attachments open here</div>
-          <div className="max-w-[300px] text-[14.5px] leading-[1.5]">Open an attachment to read it next to your inbox. Select text to quote it in a reply.</div>
-        </div>
-      )}
       <div className="flex flex-col flex-1 min-h-0 gap-4">
         {props.open.map((d, i) => d && <DocumentView key={d.id + i} doc={d} canQuote={props.canQuote} onQuote={props.onQuote} flagsEnabled={props.flagsEnabled} onReplace={() => setPicker({ slot: i as 0 | 1, mode: "replace" })} onClose={() => props.onClose(i as 0 | 1)} />)}
       </div>

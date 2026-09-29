@@ -12,4 +12,8 @@ export const Icon = {
   clip: () => <svg {...base} width={24} height={24} strokeWidth={1.6}><path d="M20 11.5 12.5 19a5 5 0 0 1-7-7l8-8a3.5 3.5 0 0 1 5 5l-8 8a2 2 0 0 1-3-3l7-7" /></svg>,
   lock: () => <svg {...base} width={16} height={16}><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>,
   chevron: () => <svg {...base} width={13} height={13}><path d="m6 9 6 6 6-6" /></svg>,
+  // Email | documents split; the wider pane is shaded.
+  layoutEmail: () => <svg {...base} width={18} height={18}><path d="M5 5h10v14H5z" fill="currentColor" fillOpacity={0.25} stroke="none" /><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M15 5v14" /></svg>,
+  layoutEven: () => <svg {...base} width={18} height={18}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M12 5v14" /></svg>,
+  layoutDocs: () => <svg {...base} width={18} height={18}><path d="M9 5h10v14H9z" fill="currentColor" fillOpacity={0.25} stroke="none" /><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M9 5v14" /></svg>,
 };

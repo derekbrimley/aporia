@@ -91,7 +91,7 @@ export function InboxApp({ userName }: { userName: string }) {
   const milestoneTitle = view.milestones.find((m) => m.id === view.currentMilestone)?.title;
 
   return (
-    <main className="h-screen grid" style={{ gridTemplateColumns: docsOpen ? cols : "292px minmax(540px, 1fr) minmax(320px, 1fr)", minWidth: 1280 }}>
+    <main className="h-screen grid" style={{ gridTemplateColumns: docsOpen ? cols : "292px 1fr", minWidth: 1280 }}>
       {/* ---------------------------------------------------------------- thread list */}
       <section aria-label="Threads" className="flex flex-col gap-3.5 min-h-0" style={{ padding: "24px 14px 0" }}>
         <div className="flex items-center justify-between gap-2 px-1.5">
@@ -156,9 +156,9 @@ export function InboxApp({ userName }: { userName: string }) {
       </section>
 
       {/* ---------------------------------------------------------------- documents */}
-      <section aria-label="Documents" className="flex flex-col min-h-0">
+      {docsOpen && <section aria-label="Documents" className="flex flex-col min-h-0">
         <DocumentPanel open={docs} library={view.documents.map((d) => ({ id: d.id, shortTitle: d.shortTitle, title: d.title, from: d.from }))} layout={layout} onLayout={setLayout} onOpen={(id, slot) => void openDoc(id, slot)} onClose={(slot) => setDocs((p) => { const n = [...p] as (DocView | null)[]; n[slot] = null; if (!n[0] && n[1]) { n[0] = n[1]; n[1] = null; } return n; })} canQuote={!view.readOnly} onQuote={addQuote} flagsEnabled={view.testerFlagsEnabled} roleOf={role} nameOf={name} />
-      </section>
+      </section>}
 
       {library && (
         <div role="dialog" aria-modal="true" aria-label="Document library" className="fixed inset-0 z-40 flex items-center justify-center" style={{ background: "rgba(38,32,42,0.28)" }} onClick={() => setLibrary(false)}>
