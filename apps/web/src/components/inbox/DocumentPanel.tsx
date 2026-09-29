@@ -85,9 +85,10 @@ export function DocumentPanel(props: {
   return (
     <div className="flex flex-col flex-1 min-h-0" style={{ padding: "24px 28px 24px" }}>
       <div className="flex items-center justify-between gap-3 mb-2 no-print">
-        <div className="flex items-center gap-1 bg-oat-100 rounded-full border border-oat-400 p-0.5" role="group" aria-label="Layout">
+        {/* The layout only applies while a document is open (see InboxApp's grid). */}
+        {docs.length > 0 && <div className="flex items-center gap-1 bg-oat-100 rounded-full border border-oat-400 p-0.5" role="group" aria-label="Layout">
           {([["email", "More email"], ["even", "Even split"], ["docs", "More documents"]] as const).map(([l, label]) => <button key={l} type="button" className="btn btn-sm btn-ghost" aria-pressed={props.layout === l} style={props.layout === l ? { background: "var(--color-plum-100)" } : {}} onClick={() => props.onLayout(l)}>{label}</button>)}
-        </div>
+        </div>}
         {docs.length === 1 && <button type="button" className="btn btn-sm" onClick={() => setPicker({ slot: 1, mode: "compare" })}>Compare</button>}
       </div>
       {docs.length === 0 && (
