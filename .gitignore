@@ -10,3 +10,4 @@ coverage/
 packages/scenario/scenarios/*/documents/build/
 packages/evals/runs/
 .DS_Store
+*.tsbuildinfo
