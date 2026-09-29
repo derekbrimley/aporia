@@ -6,6 +6,11 @@ import type {
 } from "./types.js";
 
 const RECAP_GAP_DAYS = 3;
+/** How long an associate email can go unanswered, with a deliverable open, before the feedback character checks in. */
+const NUDGE_DELAY_SECONDS = 20 * 60;
+const MAX_NUDGES_PER_ASSIGNMENT = 2;
+/** Word count above which an email the classifier did not call a deliverable is worth confirming at send. */
+const SUBSTANTIVE_WORDS = 60;
 
 /**
  * The simulation engine. Pure: no network, no randomness, no clock other than event.at.
@@ -174,11 +179,12 @@ class Ctx {
         return;
       }
     }
-    if (intent === "acknowledgment") return; // real colleagues don't reply to "thanks"
     if (beatsTriggeredHere.length > 0) return; // a scripted beat answers this email
+    // Real colleagues don't reply to "thanks"; if the deliverable is still open, someone checks in later.
+    if (intent === "acknowledgment") { this.planNudge(msg); return; }
 
     const responder = this.pickResponder(msg);
-    if (!responder) return;
+    if (!responder) { this.planNudge(msg); return; }
     this.enqueue({
       key: `reply:${msg.id}:${responder.id}`,
       kind: "character_reply",
@@ -193,23 +199,28 @@ class Ctx {
     return id ? this.idx.character(id) : undefined;
   }
 
-  /** The open assignment on this thread, else the open assignment whose expected recipients were addressed. */
   private resolveAssignmentForDeliverable(msg: MessageState): Assignment | undefined {
     const thread = this.state.threads[msg.threadId]!;
-    const open = (aid: string) => this.state.assignments[aid]?.status === "open";
-    const onThread = thread.assignmentIds.filter(open).map((a) => this.idx.assignment(a)).find((a) => a.completion.kind === "deliverable");
-    if (onThread) return onThread;
-    const recipients = new Set([...msg.to, ...msg.cc]);
-    const current = this.state.currentMilestone ? this.idx.milestone(this.state.currentMilestone).assignments : [];
-    for (const aid of [...current, ...Object.keys(this.state.assignments)]) {
-      if (!open(aid)) continue;
-      const a = this.idx.assignment(aid);
-      if (a.completion.kind === "deliverable" && a.expected_recipients.some((r) => recipients.has(r))) {
-        if (!thread.assignmentIds.includes(aid)) thread.assignmentIds.push(aid);
-        return a;
-      }
-    }
-    return undefined;
+    const a = deliverableAssignmentFor(this.state, this.idx, thread.id, [...msg.to, ...msg.cc]);
+    if (a && !thread.assignmentIds.includes(a.id)) thread.assignmentIds.push(a.id);
+    return a;
+  }
+
+  /**
+   * Plans a check-in for when the associate's email leaves nothing for the world to do while a
+   * deliverable is still open. The worker drops it if anything has happened in the meantime.
+   */
+  private planNudge(msg: MessageState) {
+    if (this.opts.zeroDelays) return; // test mode and bot runs never sit idle
+    // Something is still on its way. Earlier nudges and this email's own classification don't count.
+    const pending = Object.entries(this.state.jobs).some(([k, v]) => v === "enqueued" && !k.startsWith("nudge:") && k !== `classify:${msg.id}`);
+    if (pending) return;
+    const a = deliverableAssignmentFor(this.state, this.idx, msg.threadId, [...msg.to, ...msg.cc])
+      ?? openAssignments(this.state).map((id) => this.idx.assignment(id)).find((x) => x.completion.kind === "deliverable");
+    if (!a) return;
+    const prior = Object.keys(this.state.jobs).filter((k) => k.startsWith(`nudge:${a.id}:`)).length;
+    if (prior >= MAX_NUDGES_PER_ASSIGNMENT) return;
+    this.enqueue({ key: `nudge:${a.id}:${msg.id}`, kind: "nudge", delaySeconds: NUDGE_DELAY_SECONDS, payload: { kind: "nudge", messageId: msg.id, assignmentId: a.id } });
   }
 
   // ---------------------------------------------------------------- assessment
@@ -452,6 +463,34 @@ export function threadsVisibleTo(state: SessionState, characterId: string): Thre
 
 export function messagesOnThread(state: SessionState, threadId: string): MessageState[] {
   return (state.threads[threadId]?.messageIds ?? []).map((id) => state.messages[id]!);
+}
+
+/** The open deliverable assignment on this thread, else the open one whose expected recipients were addressed. */
+export function deliverableAssignmentFor(state: SessionState, idx: ScenarioIndex, threadId: string | null, recipients: string[]): Assignment | undefined {
+  const open = (aid: string) => state.assignments[aid]?.status === "open";
+  const thread = threadId ? state.threads[threadId] : undefined;
+  const onThread = (thread?.assignmentIds ?? []).filter(open).map((a) => idx.assignment(a)).find((a) => a.completion.kind === "deliverable");
+  if (onThread) return onThread;
+  const rec = new Set(recipients);
+  const current = state.currentMilestone ? idx.milestone(state.currentMilestone).assignments : [];
+  for (const aid of [...current, ...Object.keys(state.assignments)]) {
+    if (!open(aid)) continue;
+    const a = idx.assignment(aid);
+    if (a.completion.kind === "deliverable" && a.expected_recipients.some((r) => rec.has(r))) return a;
+  }
+  return undefined;
+}
+
+/**
+ * The assignment a substantive email probably delivers even though the classifier called it a
+ * question or logistics (comments phrased as questions, "can you review these?"). Drives the
+ * "is this your answer?" step at send; undefined means send as classified.
+ */
+export function likelyDeliverable(state: SessionState, pkg: ScenarioPackage, threadId: string | null, recipients: string[], body: string, intent: Intent): Assignment | undefined {
+  if (intent !== "question" && intent !== "logistics") return undefined;
+  if (body.trim().split(/\s+/).length < SUBSTANTIVE_WORDS) return undefined;
+  const a = deliverableAssignmentFor(state, new ScenarioIndex(pkg), threadId, recipients);
+  return a && (a.issues.length > 0 || a.decision_points.length > 0) ? a : undefined;
 }
 
 export function openAssignments(state: SessionState): string[] {

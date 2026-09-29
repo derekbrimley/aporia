@@ -19,6 +19,7 @@ export type MessageKind =
   | "reflection"
   | "interruption"
   | "recap"
+  | "nudge"
   | "debrief"
   | "doctrine";
 
@@ -118,6 +119,7 @@ export type JobKind =
   | "beat"
   | "doctrine_answer"
   | "recap"
+  | "nudge"
   | "debrief";
 
 export type JobPayload =
@@ -128,6 +130,7 @@ export type JobPayload =
   | { kind: "beat"; beatId: string }
   | { kind: "doctrine_answer"; messageId: string; threadId: string }
   | { kind: "recap"; resumedAt: string; gapDays: number }
+  | { kind: "nudge"; messageId: string; assignmentId: string }
   | { kind: "debrief" };
 
 export interface Job {

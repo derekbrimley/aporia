@@ -1,6 +1,6 @@
 import {
   AssessmentOutputSchema, IntentOutputSchema, ReflectionOutputSchema, assessorPrompt, characterWriterPrompt, debriefPrompt, doctrinePrompt,
-  intentClassifierPrompt, recapPrompt, reflectionPrompt, type AssessmentOutput,
+  intentClassifierPrompt, nudgePrompt, recapPrompt, reflectionPrompt, type AssessmentOutput,
 } from "@aporia/prompts";
 import { openAssignments } from "@aporia/engine";
 import type { Job } from "@aporia/engine";
@@ -19,6 +19,7 @@ export async function handleJob(ctx: JobContext): Promise<JobOutcome> {
     case "reflection": return reflection(ctx, p.messageId, p.assignmentId, p.characterId, p.threadId);
     case "doctrine_answer": return doctrine(ctx, p.messageId, p.threadId);
     case "recap": return recap(ctx, p.gapDays);
+    case "nudge": return nudge(ctx, p.messageId, p.assignmentId);
     case "debrief": return debrief(ctx);
   }
 }
@@ -200,6 +201,30 @@ async function recap(ctx: JobContext, gapDays: number): Promise<JobOutcome> {
     answerKeyHints: [],
     isSocratic: false,
     inputRefs: { gapDays, milestone: m.id },
+  });
+}
+
+// ---------------------------------------------------------------- nudge
+async function nudge(ctx: JobContext, messageId: string, assignmentId: string): Promise<JobOutcome> {
+  const msg = ctx.state.messages[messageId];
+  // Stale if the assignment closed, anything arrived or was sent since, or the associate has been working.
+  const stale = !msg || ctx.state.assignments[assignmentId]?.status !== "open" || ctx.state.messageOrder.at(-1) !== messageId || ctx.state.lastActivityAt !== msg.at;
+  if (stale) return { events: [], generations: [] };
+  const a = ctx.idx.assignment(assignmentId);
+  const c = ctx.idx.character(a.feedback_from);
+  const threadId = threadIdForKey(ctx, a.thread_key);
+  const thread = ctx.state.threads[threadId];
+  return generateAndDeliver(ctx, { from: c, to: ["associate"], cc: [], threadId, threadKey: a.thread_key, subject: thread?.subject ?? a.title, attachments: [], kind: "nudge" }, {
+    role: "character_writer",
+    build: (feedback) => {
+      const p = nudgePrompt({ character: c, facts: sliceFactsFor(c, ctx.pkg.facts), associateFirstName: ctx.state.associateFirstName, assignmentTitle: a.title, deliverable: a.deliverable, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), storyDate: storyDate(ctx.now) });
+      return { ...p, user: feedback.length ? `${p.user}\n\nFix: ${feedback.join("; ")}` : p.user, mockContext: { mode: "nudge", associateFirstName: ctx.state.associateFirstName, signoff: signoff(c), assignmentTitle: a.title } };
+    },
+    parse: (res) => ({ body: res.text }),
+    check: "full",
+    answerKeyHints: a.issues.map((i) => `${i.title}: ${i.raised_looks_like}`),
+    isSocratic: c.gives_socratic_feedback,
+    inputRefs: { messageId, assignmentId },
   });
 }
 

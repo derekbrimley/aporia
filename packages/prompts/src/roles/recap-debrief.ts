@@ -1,13 +1,20 @@
 import type { Character, Consequence, Facts, Milestone } from "../deps.js";
-import { CHARACTER_HARD_RULES, characterCard, factsBlock } from "../common.js";
+import { CHARACTER_HARD_RULES, characterCard, factsBlock, renderThread, type ThreadMessageForPrompt } from "../common.js";
 
 export const RECAP_VERSION = "recap@1.0.0";
 export const DEBRIEF_VERSION = "debrief@1.0.0";
+export const NUDGE_VERSION = "nudge@1.0.0";
 
 export function recapPrompt(input: { character: Character; facts: Facts; associateFirstName: string; gapDays: number; milestone: Milestone; openItems: string[]; recentSubjects: string[]; storyDate: string }) {
   const system = `${characterCard(input.character)}\n\n${CHARACTER_HARD_RULES}\n\n${factsBlock(input.facts)}\n\nYou write a short re-entry note to ${input.associateFirstName}, who has been away from the deal for a few days. It recaps where things stand and what is outstanding. It changes nothing in the deal and adds no pressure or new asks. Under 120 words.`;
   const user = `Today is ${input.storyDate}. ${input.associateFirstName} has been away ${input.gapDays} days.\nCurrent phase: ${input.milestone.title}. ${input.milestone.recap_hint ?? input.milestone.summary}\nOpen items: ${input.openItems.join("; ") || "none"}.\nRecent threads: ${input.recentSubjects.join("; ")}.\n\nWrite only the body of the email.`;
   return { system, user, version: RECAP_VERSION };
+}
+
+export function nudgePrompt(input: { character: Character; facts: Facts; associateFirstName: string; assignmentTitle: string; deliverable: string; thread: ThreadMessageForPrompt[]; storyDate: string }) {
+  const system = `${characterCard(input.character)}\n\n${CHARACTER_HARD_RULES}\n\n${factsBlock(input.facts)}\n\nYou write a brief check-in to ${input.associateFirstName}. A piece of work you are waiting on from them is still outstanding and the thread has gone quiet. Ask plainly whether it is in hand, when you can expect it, or whether anything is holding them up. Do not hint at what the work should say, raise no legal points, and add no new asks or deadlines. Under 60 words.`;
+  const user = `Today is ${input.storyDate}.\nOutstanding: ${input.assignmentTitle}. ${input.deliverable}\n\nThe thread so far, as you have seen it:\n${renderThread(input.thread) || "(nothing you were copied on)"}\n\nWrite only the body of the email.`;
+  return { system, user, version: NUDGE_VERSION };
 }
 
 export function debriefPrompt(input: {

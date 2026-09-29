@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { appendEvent, recordActivity } from "@aporia/db";
-import { openDecisionPoints, type Intent } from "@aporia/engine";
+import { likelyDeliverable, openDecisionPoints, type Intent } from "@aporia/engine";
 import { IntentOutputSchema, intentClassifierPrompt } from "@aporia/prompts";
 import { ScenarioIndex } from "@aporia/scenario";
 import { Names, getProvider, threadForPrompt } from "@aporia/worker";
@@ -20,14 +20,18 @@ const Body = z.object({
   rationale: z.string().max(5000).nullable().optional(),
   decisionPointId: z.string().nullable().optional(),
   notMyAnswerYet: z.boolean().optional(),
+  /** Answer to the "is this your answer?" step: overrides the classifier. */
+  confirmedIntent: z.enum(["deliverable", "question", "logistics"]).optional(),
   draftId: z.string().uuid().nullable().optional(),
 });
 
 /**
- * Send flow. First call classifies intent (fast Haiku). If the email is a
- * deliverable on a thread (or to recipients) with an open decision point, it
- * returns `needsRationale` and nothing leaves. The second call carries the
- * rationale (or notMyAnswerYet) and the email is appended.
+ * Send flow. First call classifies intent (fast Haiku). A substantive email
+ * the classifier calls a question or logistics, sent where a deliverable is
+ * open, returns `needsConfirm` so the associate can say whether it is their
+ * answer. If the email is a deliverable on a thread (or to recipients) with an
+ * open decision point, it returns `needsRationale` and nothing leaves. The
+ * last call carries the rationale (or notMyAnswerYet) and the email is appended.
  */
 export async function POST(req: Request) {
   const u = await apiUser(["associate"]);
@@ -53,6 +57,7 @@ export async function POST(req: Request) {
   if (!isDoctrine) {
     if (parsed.data.notMyAnswerYet) intent = "question";
     else if (parsed.data.rationale != null) intent = "deliverable";
+    else if (parsed.data.confirmedIntent) intent = parsed.data.confirmedIntent;
     else {
       const names = new Names(s.pkg, s.state.associateFirstName);
       const open = Object.entries(s.state.assignments).filter(([, a]) => a.status === "open").map(([id]) => idx.assignment(id));
@@ -61,12 +66,14 @@ export async function POST(req: Request) {
       const provider = await getProvider();
       const res = await provider.generateJson({ role: "intent_classifier", system: p.system, user: p.user, promptVersion: p.version, mockContext: { body: parsed.data.body, openAssignmentTitle: onThread?.title ?? null }, sessionId: s.session.id }, IntentOutputSchema);
       intent = res.parsed.intent;
-      if (intent === "deliverable") {
-        const dps = openDecisionPoints(s.state, s.pkg, existing?.id ?? null, [...to, ...cc]);
-        if (dps.length) {
-          const d = dps[0]!;
-          return Response.json({ needsRationale: true, intent, decisionPoint: { id: d.id, title: d.title, prompt: d.rationale_prompt } });
-        }
+      const likely = likelyDeliverable(s.state, s.pkg, existing?.id ?? null, [...to, ...cc], parsed.data.body, intent);
+      if (likely) return Response.json({ needsConfirm: true, intent, assignment: { id: likely.id, title: likely.title } });
+    }
+    if (intent === "deliverable" && parsed.data.rationale == null) {
+      const dps = openDecisionPoints(s.state, s.pkg, existing?.id ?? null, [...to, ...cc]);
+      if (dps.length) {
+        const d = dps[0]!;
+        return Response.json({ needsRationale: true, intent, decisionPoint: { id: d.id, title: d.title, prompt: d.rationale_prompt } });
       }
     }
   }

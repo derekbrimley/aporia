@@ -105,7 +105,7 @@ export class BotAssociate {
     }
     if (m.attachments.length >= 2) await appendEvent(this.sessionId, { type: "documents_compared", payload: { documentIds: [m.attachments[0]!, m.attachments[1]!] } }, "associate", this.pkg);
     const thread = state.threads[m.threadId]!;
-    if (m.kind === "recap" || m.kind === "debrief" || m.kind === "doctrine" || m.kind === "reply") return false;
+    if (m.kind === "recap" || m.kind === "nudge" || m.kind === "debrief" || m.kind === "doctrine" || m.kind === "reply") return false;
 
     // Off-script behaviors, once each.
     if (this.path.behaviors.off_script && m.beatId === "B-M2-term-sheet" && !this.offScriptDone.has("lender_wrong_topic")) {

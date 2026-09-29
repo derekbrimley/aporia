@@ -14,7 +14,7 @@ export interface DeliverySpec {
   threadKey: string | null;
   subject: string;
   attachments: string[];
-  kind: "beat" | "reply" | "reflection" | "interruption" | "recap" | "debrief" | "doctrine";
+  kind: "beat" | "reply" | "reflection" | "interruption" | "recap" | "nudge" | "debrief" | "doctrine";
   beatId?: string | null;
   inReplyTo?: string | null;
   reflectionQuestions?: string[];

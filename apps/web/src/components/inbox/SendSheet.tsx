@@ -37,3 +37,31 @@ export function SendSheet(props: { prompt: string; title: string; to: string; cc
     </div>
   );
 }
+
+/**
+ * Shown when a substantive email reads like a question but a deliverable is open where it is going
+ * (comments phrased as questions, "can you review these?"). The associate says which it is.
+ */
+export function ConfirmSheet(props: { title: string; to: string; cc: string; preview: string; onBack: () => void; onYes: () => void; onNo: () => void; busy: boolean }) {
+  return (
+    <div role="dialog" aria-modal="true" aria-labelledby="confirm-title" className="fixed inset-0 z-40 flex items-center justify-center" style={{ background: "rgba(38,32,42,0.28)" }}>
+      <div className="flex flex-col bg-oat-50 border border-oat-500" style={{ width: 520, maxWidth: "calc(100vw - 32px)", borderRadius: 28, boxShadow: "var(--shadow-sheet)" }}>
+        <div className="flex flex-col gap-1" style={{ padding: "24px 28px 14px" }}>
+          <h2 id="confirm-title" className="display m-0 text-[23px] leading-[1.2] font-normal">Is this your answer?</h2>
+          <div className="text-sm text-ink-muted">You have “{props.title}” open. Is this email that work, or are you still asking?</div>
+        </div>
+        <div className="quote mx-7 gap-1.5">
+          <div className="flex flex-wrap gap-1.5 text-[13px] text-ink-muted"><span className="font-semibold text-ink">To</span><span>{props.to}</span>{props.cc && <><span className="ml-1.5 font-semibold text-ink">Cc</span><span>{props.cc}</span></>}</div>
+          <div className="text-[15px] leading-[1.45] line-clamp-3">{props.preview}</div>
+        </div>
+        <div className="flex items-center justify-between gap-2.5" style={{ padding: "20px 28px 24px" }}>
+          <button type="button" className="btn btn-ghost" onClick={props.onNo} disabled={props.busy}>Not my answer yet</button>
+          <div className="flex gap-2.5">
+            <button type="button" className="btn" onClick={props.onBack} disabled={props.busy}>Back to edit</button>
+            <button type="button" className="btn btn-primary" style={{ padding: "0 22px" }} disabled={props.busy} onClick={props.onYes} autoFocus>Yes, it's my answer<Icon.send /></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -64,6 +64,7 @@ export class MockProvider implements LlmProvider {
         const signoff = c.signoff ?? c.characterFirstName ?? "";
         const facts: string[] = c.mustIncludeDisplay ?? [];
         const brief: string = c.brief ?? "";
+        if (c.mode === "nudge") return `${first}, checking in on the ${String(c.assignmentTitle ?? "open item").toLowerCase()}. Is it in hand, or is anything holding you up?\n\n${signoff}`;
         const body = c.mode === "reply"
           ? `${first}, thanks for your note. ${c.replyHint ?? "Let me think about that and come back to you."} What is your own read on it?`
           : `${first}, ${brief.replace(/\s+/g, " ").trim()}${facts.length ? ` For reference: ${facts.join("; ")}.` : ""}`;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID, ScenarioIndex } from "@aporia/scenario";
-import { initialState, replay, step, openDecisionPoints, type EngineEvent, type Effect, type Job, type SessionState } from "../index.js";
+import { initialState, replay, step, openDecisionPoints, likelyDeliverable, type EngineEvent, type Effect, type Job, type SessionState } from "../index.js";
 
 const { pkg } = loadScenario(scenarioDir(DEFAULT_SCENARIO_ID));
 const idx = new ScenarioIndex(pkg);
@@ -90,6 +90,9 @@ class Harness {
         break;
       case "debrief":
         this.deliver(job, "partner", this.id("thread"), "debrief", "debrief", { subject: "Debrief" });
+        break;
+      case "nudge":
+        this.deliver(job, "senior_associate", this.state.threadIdByKey[idx.assignment(p.assignmentId).thread_key] ?? this.id("thread"), null, "reply", {});
         break;
     }
   }
@@ -256,4 +259,54 @@ describe("engine: mechanics", () => {
     const again = step(s, { type: "email_sent", at: "2026-10-01T09:05:00Z", payload: { messageId: "m1", threadId: "t1", to: ["senior_associate"], cc: [], body: "q", attachments: [], intent: "question" } }, pkg, {});
     expect(again.effects).toEqual(r2.effects);
   });
+
+  it("asks whether a long question-shaped email is the open deliverable", () => {
+    const h = toTermSheet();
+    const tid = h.state.threadIdByKey["term-sheet"]!;
+    const long = "Tranche 1 is only available for 30 days. Does that work for the business? ".repeat(6);
+    expect(likelyDeliverable(h.state, pkg, tid, ["client_contact"], long, "question")?.id).toBe("A2");
+    expect(likelyDeliverable(h.state, pkg, null, ["client_contact"], long, "logistics")?.id).toBe("A2");
+    expect(likelyDeliverable(h.state, pkg, tid, ["client_contact"], "Does the 30-day window work for you?", "question")).toBeUndefined();
+    expect(likelyDeliverable(h.state, pkg, tid, ["client_contact"], long, "deliverable")).toBeUndefined();
+    expect(likelyDeliverable(h.state, pkg, tid, ["client_contact"], long, "acknowledgment")).toBeUndefined();
+    expect(likelyDeliverable(h.state, pkg, null, ["lenders_counsel"], long, "question")).toBeUndefined();
+  });
+
+  it("nudges when an acknowledgment leaves an open deliverable with nothing pending, at most twice", () => {
+    const h = toTermSheet();
+    const tid = h.state.threadIdByKey["term-sheet"]!;
+    const ack = (n: number, at: string) => step(h.state, { type: "email_sent", at, payload: { messageId: `ack-${n}`, threadId: tid, to: ["client_contact"], cc: [], body: "Thanks, will revert.", attachments: [], intent: "acknowledgment" } }, pkg, {});
+    const r1 = ack(1, "2026-10-01T12:00:00Z");
+    const jobs1 = r1.effects.flatMap((e) => (e.type === "enqueue_job" ? [e.job] : []));
+    expect(jobs1).toEqual([{ key: "nudge:A2:ack-1", kind: "nudge", delaySeconds: 1200, payload: { kind: "nudge", messageId: "ack-1", assignmentId: "A2" } }]);
+    // An earlier nudge still waiting does not stop the next one; the cap does.
+    h.state = r1.state;
+    h.state = ack(2, "2026-10-01T12:30:00Z").state;
+    expect(h.state.jobs["nudge:A2:ack-2"]).toBe("enqueued");
+    expect(ack(3, "2026-10-01T13:00:00Z").effects.some((e) => e.type === "enqueue_job")).toBe(false);
+  });
+
+  it("does not nudge in test mode, when someone will reply, or when a job is pending", () => {
+    const h = toTermSheet();
+    const tid = h.state.threadIdByKey["term-sheet"]!;
+    const send = (state: SessionState, intent: "acknowledgment" | "question", o = {}) =>
+      step(state, { type: "email_sent", at: "2026-10-01T12:00:00Z", payload: { messageId: "m", threadId: tid, to: ["client_contact"], cc: [], body: "Thanks.", attachments: [], intent } }, pkg, o).effects.flatMap((e) => (e.type === "enqueue_job" ? [e.job.kind] : []));
+    expect(send(h.state, "acknowledgment", { zeroDelays: true })).toEqual([]);
+    expect(send(h.state, "question")).toEqual(["character_reply"]);
+    const busy = { ...h.state, jobs: { ...h.state.jobs, "reply:x:client_contact": "enqueued" as const } };
+    expect(send(busy, "acknowledgment")).toEqual([]);
+  });
 });
+
+/** Plays through orientation so the term sheet (A2) is open and nothing is pending. */
+function toTermSheet(): Harness {
+  const h = new Harness();
+  h.apply({ type: "session_started", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: "0.1.0", associateFirstName: "Sam" } });
+  h.drain();
+  h.send("orientation", ["senior_associate"], "Ready.", { intent: "acknowledgment" });
+  h.drain();
+  h.send("orientation", ["senior_associate"], "Answers.", { intent: "acknowledgment" });
+  h.drain();
+  expect(h.state.assignments.A2?.status).toBe("open");
+  return h;
+}
