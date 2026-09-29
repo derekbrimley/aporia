@@ -17,9 +17,10 @@
   "dependencies": {
     "@aporia/engine": "workspace:*",
     "@aporia/scenario": "workspace:*",
+    "@opentelemetry/api": "^1.9.1",
     "drizzle-orm": "^0.44.0",
-    "pg": "^8.16.0",
-    "graphile-worker": "^0.16.6"
+    "graphile-worker": "^0.16.6",
+    "pg": "^8.16.0"
   },
   "devDependencies": {
     "@types/pg": "^8.11.0",

@@ -25,11 +25,13 @@ export async function createMagicLink(email: string): Promise<{ url: string; del
   await db.insert(schema.magicLinks).values({ userId: user.id, tokenHash: hash(token), expiresAt: new Date(Date.now() + LINK_MINUTES * 60_000) });
   const url = `${env.appUrl}/api/auth/callback?token=${token}`;
   if (env.postmarkToken) {
-    await fetch("https://api.postmarkapp.com/email", {
+    const res = await fetch("https://api.postmarkapp.com/email", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json", "X-Postmark-Server-Token": env.postmarkToken },
       body: JSON.stringify({ From: env.emailFrom, To: user.email, Subject: `Sign in to ${env.productName}`, TextBody: `Sign in with this link (valid ${LINK_MINUTES} minutes):\n\n${url}\n\nIf you did not request this, ignore this email.`, MessageStream: "outbound" }),
     });
+    // Not thrown: the sign-in form must not reveal which addresses are invited.
+    if (!res.ok) console.error(JSON.stringify({ level: "error", event: "postmark_failed", status: res.status, body: await res.text() }));
     return { url, delivered: "email" };
   }
   console.log(JSON.stringify({ level: "info", event: "magic_link", email: user.email, url }));

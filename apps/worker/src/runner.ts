@@ -57,7 +57,7 @@ export async function recordGeneration(sessionId: string, orgId: string, jobKey:
      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
     [orgId, sessionId, jobKey, g.role, g.model, g.provider, g.promptVersion, JSON.stringify(g.inputRefs), g.systemPrompt, g.userPrompt, g.output, g.parsedOutput == null ? null : JSON.stringify(g.parsedOutput), g.usage.inputTokens, g.usage.outputTokens, g.usage.cacheReadTokens, g.latencyMs, g.attempt, g.checkerResult == null ? null : JSON.stringify(g.checkerResult)],
   );
-  traceGeneration({ sessionId, jobKey, role: g.role, model: g.model, provider: g.provider, promptVersion: g.promptVersion, latencyMs: g.latencyMs, usage: g.usage, attempt: g.attempt, checkerPass: (g.checkerResult as { pass?: boolean } | undefined)?.pass ?? null });
+  traceGeneration({ sessionId, jobKey, role: g.role, model: g.model, provider: g.provider, promptVersion: g.promptVersion, latencyMs: g.latencyMs, usage: g.usage, attempt: g.attempt, checkerPass: (g.checkerResult as { pass?: boolean } | undefined)?.pass ?? null, io: { system: g.systemPrompt, user: g.userPrompt, output: g.output } });
 }
 
 export function createTaskList(provider?: LlmProvider): TaskList {

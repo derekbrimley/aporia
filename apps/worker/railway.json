@@ -1,0 +1,11 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK",
+    "buildCommand": "pnpm scenario:build-docs"
+  },
+  "deploy": {
+    "startCommand": "pnpm --filter @aporia/worker start",
+    "restartPolicyType": "ALWAYS"
+  }
+}

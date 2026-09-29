@@ -65,4 +65,4 @@ Content lives in `packages/scenario/scenarios/venture-debt-01/`. The engine fire
 
 ## Deploying
 
-Web and worker are plain Node processes (Railway); Postgres is Neon; the queue is graphile-worker on Postgres, so there is no extra vendor. `RUN_MIGRATIONS_ON_START=1` on the worker applies migrations at boot. See `.env.example` for every variable and `docs/STATUS.md` for what is and is not done.
+Web and worker are plain Node processes (Railway); Postgres is Neon; the queue is graphile-worker on Postgres, so there is no extra vendor. Both Railway services build from the repo root and point their config file at `apps/web/railway.json` or `apps/worker/railway.json`. `RUN_MIGRATIONS_ON_START=1` on the worker applies migrations at boot. In production the web app requires `AUTH_SECRET` (32+ characters). Langfuse (worker generations) and Sentry (worker and web server errors) turn on when their keys are set; `APORIA_ENV` tags the environment. See `.env.example` for every variable and `docs/STATUS.md` for what is and is not done.

@@ -18,7 +18,7 @@ Date: 2026-09-23. Branch `claude/inspiring-pasteur-uz991g`.
 
 - **Product name.** The sign-in mock says "Associate Reps"; the repo is "aporia". `PRODUCT_NAME` env defaults to "Associate Reps".
 - **Documents are Markdown, not .docx via pandoc.** No attorney-approved .docx exists yet, and pandoc is not in this environment. The builder accepts `.docx` sources and shells out to pandoc when present. "Download PDF" opens a print-ready page (browser print-to-PDF) instead of a pre-rendered PDF.
-- **Observability vendors not wired.** Generations are traced to structured logs and the `generations` table; Langfuse and Sentry plug into `apps/worker/src/telemetry.ts`. Alerts (held email, job failed after retries) are logged, not sent.
+- **Observability.** Worker generations go to Langfuse (OpenTelemetry SDK, isolated tracer provider) with prompt, output, usage and checker result; worker exceptions and alerts, and web server request errors, go to Sentry. Both are off until keys are set; neither has been exercised against a live account yet. Browser-side errors are not captured. Alerts reach Sentry but not email/Slack.
 - **Live updates poll Postgres every 2 s behind SSE** rather than LISTEN/NOTIFY. Fine at pilot scale.
 - **Reply delays** follow `reply_delay_seconds` per character (30–120 s senior associate, 5–15 min partner, 2–10 min client, 10–30 min lender's counsel); tune in testing.
 - **Short deliverables can be classified as questions.** A one-line "deliverable" is reasonably read as a question by the classifier, so the assignment stays open and the character replies. This is the spec's open question on an explicit "submit work product" control; it surfaced in the Weak path.
@@ -31,4 +31,4 @@ Date: 2026-09-23. Branch `claude/inspiring-pasteur-uz991g`.
 
 - Legal and security documents (one-pager, subprocessor list, ToS, privacy policy, pilot agreement).
 - Playwright end-to-end tests (config placeholder only).
-- Shadow-mode confirmation UI; alerting integrations; Langfuse/Sentry SDKs; Notion import verified against the live workspace; data-retention job (delete after pilot + 12 months).
+- Shadow-mode confirmation UI; email/Slack alerting; Notion import verified against the live workspace; data-retention job (delete after pilot + 12 months).

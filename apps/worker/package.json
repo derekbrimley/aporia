@@ -15,15 +15,20 @@
     "start": "tsx src/main.ts"
   },
   "dependencies": {
+    "@anthropic-ai/bedrock-sdk": "latest",
+    "@anthropic-ai/sdk": "latest",
     "@aporia/db": "workspace:*",
     "@aporia/engine": "workspace:*",
     "@aporia/prompts": "workspace:*",
     "@aporia/scenario": "workspace:*",
-    "@anthropic-ai/sdk": "latest",
+    "@langfuse/otel": "^5.11.1",
+    "@langfuse/tracing": "^5.11.1",
+    "@opentelemetry/sdk-trace-node": "^2.11.0",
+    "@sentry/node": "^11.1.0",
     "graphile-worker": "^0.16.6",
     "pg": "^8.16.0",
-    "zod": "^4.1.0",
-    "@anthropic-ai/bedrock-sdk": "latest"
+    "tsx": "^4.23.15",
+    "zod": "^4.1.0"
   },
   "devDependencies": {
     "@types/pg": "^8.11.0"
