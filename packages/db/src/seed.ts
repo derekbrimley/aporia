@@ -16,7 +16,7 @@ export interface SeedResult {
 }
 
 /** Creates a firm, a cohort and the four role users. Idempotent on the org slug. */
-export async function seedDevData(db: Db, pkg: ScenarioPackage, opts: { slug?: string; testMode?: boolean } = {}): Promise<SeedResult> {
+export async function seedDevData(db: Db, pkg: ScenarioPackage, opts: { slug?: string; testMode?: boolean; adminEmail?: string } = {}): Promise<SeedResult> {
   const slug = opts.slug ?? "dev-firm";
   let org = (await db.select().from(t.organizations).where(eq(t.organizations.slug, slug)))[0];
   if (!org) [org] = await db.insert(t.organizations).values({ name: "Dev Firm LLP", slug }).returning();
@@ -30,6 +30,8 @@ export async function seedDevData(db: Db, pkg: ScenarioPackage, opts: { slug?: s
   const pd = await user(`pd@${slug}.example`, "Dana Whitcombe", "pd_admin");
   const admin = await user(`admin@${slug}.example`, "Internal Admin", "internal_admin");
   const rater = await user(`rater@${slug}.example`, "Internal Rater", "internal_rater");
+  // A real inbox for deployed environments, where the .example addresses can't receive magic links.
+  if (opts.adminEmail) await user(opts.adminEmail.toLowerCase().trim(), "Internal Admin", "internal_admin");
   let cohort = (await db.select().from(t.cohorts).where(eq(t.cohorts.orgId, org!.id)))[0];
   if (!cohort) [cohort] = await db.insert(t.cohorts).values({ orgId: org!.id, name: "Pilot cohort 1", scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version }).returning();
   await db.insert(t.cohortMembers).values({ cohortId: cohort!.id, userId: associate.id, orgId: org!.id }).onConflictDoNothing();
