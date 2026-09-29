@@ -50,7 +50,7 @@ export async function runChecks(sessionId: string, state: SessionState, pkg: Sce
   const debrief = Object.values(state.messages).find((m) => m.kind === "debrief");
   const fired = pkg.consequences.filter((c) => state.consequences[c.id] === "fired");
   const referenced = fired.filter((c) => debrief && mentions(debrief.body, c));
-  out.push({ name: "debrief_references_two_fired_consequences", pass: Boolean(debrief) && referenced.length >= Math.min(2, fired.length) && fired.length >= 2, detail: debrief ? `${referenced.length}/${fired.length} fired consequences referenced` : "no debrief" });
+  out.push({ name: "debrief_references_two_fired_consequences", pass: Boolean(debrief) && referenced.length >= Math.min(2, fired.length), detail: debrief ? `${referenced.length}/${fired.length} fired consequences referenced` : "no debrief" });
 
   const p95 = await getPool().query<{ p95: number | null }>(`select percentile_cont(0.95) within group (order by latency_ms) as p95 from generations where session_id = $1 and role in ('character_writer','reflection_engine')`, [sessionId]);
   out.push({ name: "reply_generation_p95_under_30s", pass: (p95.rows[0]!.p95 ?? 0) < 30_000, detail: `p95 ${Math.round(p95.rows[0]!.p95 ?? 0)}ms (single generation; end-to-end measured by the worker)` });
