@@ -3,15 +3,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AddressBookEntry, InboxThread, Quote } from "./types";
 import { Icon } from "./icons";
 
-export interface ComposeState { threadId: string | null; to: string[]; cc: string[]; subject: string; body: string; attachments: string[]; quotes: Quote[]; draftId: string | null }
+export interface ComposeState { threadId: string | null; to: string[]; cc: string[]; subject: string; body: string; attachments: string[]; quotes: Quote[]; draftId: string }
 
 export function emptyCompose(thread?: InboxThread | null, addressBook: AddressBookEntry[] = [], lastFrom?: string, lastTo: string[] = [], lastCc: string[] = []): ComposeState {
-  if (!thread) return { threadId: null, to: [], cc: [], subject: "", body: "", attachments: [], quotes: [], draftId: null };
+  // The draft id is minted here so every autosave of this draft upserts the same row.
+  if (!thread) return { threadId: null, to: [], cc: [], subject: "", body: "", attachments: [], quotes: [], draftId: crypto.randomUUID() };
   const toIds = lastFrom && lastFrom !== "associate" ? [lastFrom] : lastTo.filter((x) => x !== "associate");
   const ccIds = [...lastTo, ...lastCc].filter((x) => x !== "associate" && !toIds.includes(x));
   const email = (id: string) => addressBook.find((a) => a.id === id)?.email;
-  return { threadId: thread.id, to: toIds.map(email).filter(Boolean) as string[], cc: ccIds.map(email).filter(Boolean) as string[], subject: thread.subject, body: "", attachments: [], quotes: [], draftId: null };
+  return { threadId: thread.id, to: toIds.map(email).filter(Boolean) as string[], cc: ccIds.map(email).filter(Boolean) as string[], subject: thread.subject, body: "", attachments: [], quotes: [], draftId: crypto.randomUUID() };
 }
+
+/** What each draft last sent to the server, by draft id, so unchanged drafts aren't re-saved on reopen. */
+const lastSaved = new Map<string, string>();
+const draftPayload = (s: ComposeState) => JSON.stringify({ id: s.draftId, threadId: s.threadId, to: s.to, cc: s.cc, subject: s.subject || null, body: s.body, attachments: s.attachments, quotes: s.quotes });
+export function markDraftSaved(s: ComposeState) { lastSaved.set(s.draftId, draftPayload(s)); }
 
 function Picker({ label, id, value, onChange, addressBook, exclude }: { label: string; id: string; value: string[]; onChange: (v: string[]) => void; addressBook: AddressBookEntry[]; exclude: string[] }) {
   const options = addressBook.filter((a) => !value.includes(a.email) && !exclude.includes(a.email));
@@ -40,20 +46,40 @@ export function Compose(props: {
   const [saved, setSaved] = useState<"saved" | "saving" | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const latest = useRef(state);
+  latest.current = state;
+  const pending = useRef(false);
 
-  // Autosave every few seconds; drafts survive reloads.
+  const save = async (s: ComposeState) => {
+    const body = draftPayload(s);
+    const r = await fetch("/api/inbox/drafts", { method: "PUT", keepalive: true, headers: { "Content-Type": "application/json" }, body });
+    if (r.ok) lastSaved.set(s.draftId, body);
+    return r;
+  };
+  const cancelSave = () => { pending.current = false; if (saveTimer.current) clearTimeout(saveTimer.current); };
+
+  // Autosave every few seconds; drafts survive reloads. Reopening a draft that hasn't changed
+  // since its last save doesn't save it again.
   useEffect(() => {
     if (props.readOnly) return;
-    if (!state.body && !state.to.length) return;
+    if (!state.body && !state.to.length && !state.quotes.length) return;
+    if (lastSaved.get(state.draftId) === draftPayload(state)) return;
     setSaved("saving");
+    pending.current = true;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
-      const r = await fetch("/api/inbox/drafts", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: state.draftId ?? undefined, threadId: state.threadId, to: state.to, cc: state.cc, subject: state.subject || null, body: state.body, attachments: state.attachments }) });
-      if (r.ok) { const j = (await r.json()) as { id: string }; if (!state.draftId) onChange({ ...state, draftId: j.id }); setSaved("saved"); }
+      pending.current = false;
+      const r = await save(latest.current);
+      if (r.ok) setSaved("saved");
     }, 2500);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.body, state.to, state.cc, state.subject, state.attachments]);
+  }, [state.body, state.to, state.cc, state.subject, state.attachments, state.quotes]);
+
+  // Navigating to another thread unmounts the draft; flush any save still waiting on the timer.
+  useEffect(() => () => { if (pending.current) void save(latest.current); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function discard() { cancelSave(); props.onDiscard(); }
 
   const fullBody = useMemo(() => {
     const quotes = state.quotes.map((q) => `From ${q.documentTitle} · ${q.ref}:\n“${q.text}”`).join("\n\n");
@@ -66,6 +92,7 @@ export function Compose(props: {
       const r = await fetch("/api/inbox/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ threadId: state.threadId, to: state.to, cc: state.cc, subject: props.isReply ? undefined : state.subject || "(no subject)", body: fullBody, attachments: state.attachments, quotedRefs: state.quotes.map((q) => ({ documentId: q.documentId, ref: q.ref, text: q.text })), draftId: state.draftId }) });
       const j = (await r.json()) as { error?: string; threadId?: string };
       if (!r.ok) { setError(j.error ?? "Could not send."); return; }
+      cancelSave();
       props.onSent({ threadId: j.threadId! });
     } finally { setBusy(false); }
   }
@@ -99,7 +126,7 @@ export function Compose(props: {
           {props.documents.filter((d) => !state.attachments.includes(d.id)).map((d) => <option key={d.id} value={d.id}>{d.shortTitle}</option>)}
         </select>
         <div className="flex gap-2.5">
-          <button type="button" className="btn" onClick={props.onDiscard} disabled={busy}>Discard</button>
+          <button type="button" className="btn" onClick={discard} disabled={busy}>Discard</button>
           <button type="button" className="btn btn-primary" style={{ padding: "0 22px" }} onClick={() => send()} disabled={busy || props.readOnly || !state.to.length || !fullBody.trim()}>Send<Icon.send /></button>
         </div>
       </div>

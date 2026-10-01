@@ -1,12 +1,16 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DocView, InboxView, Layout, Quote } from "./types";
+import type { DocView, InboxThread, InboxView, Layout, Quote } from "./types";
 import { Icon } from "./icons";
 import { FlagButton } from "./FlagButton";
-import { Compose, emptyCompose, type ComposeState } from "./Compose";
+import { Compose, emptyCompose, markDraftSaved, type ComposeState } from "./Compose";
 import { DocumentPanel } from "./DocumentPanel";
 
 type Folder = "inbox" | "sent";
+
+/** Drafts are keyed by thread id; a new email that has no thread yet uses this key. */
+const NEW = "new";
+const draftKey = (c: ComposeState) => c.threadId ?? NEW;
 
 const fmt = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
@@ -16,7 +20,8 @@ export function InboxApp({ userName }: { userName: string }) {
   const [folder, setFolder] = useState<Folder>("inbox");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
-  const [compose, setCompose] = useState<ComposeState | null>(null);
+  const [selectedRow, setSelectedRow] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, ComposeState>>({});
   const [docs, setDocs] = useState<(DocView | null)[]>([null, null]);
   const [layout, setLayout] = useState<Layout>("even");
   const [library, setLibrary] = useState(false);
@@ -32,6 +37,22 @@ export function InboxApp({ userName }: { userName: string }) {
 
   useEffect(() => { void load(); }, [load]);
 
+  // Restore autosaved drafts so they survive a reload. Newest first, so the latest draft per thread wins.
+  useEffect(() => {
+    void fetch("/api/inbox/drafts", { cache: "no-store" }).then(async (r) => {
+      if (!r.ok) return;
+      const { drafts: rows } = (await r.json()) as { drafts: { id: string; threadId: string | null; to: string[]; cc: string[]; subject: string | null; body: string; attachments: string[]; quotes: Quote[] }[] };
+      const restored: Record<string, ComposeState> = {};
+      for (const d of rows) {
+        const key = d.threadId ?? NEW;
+        if (restored[key]) continue;
+        restored[key] = { threadId: d.threadId, to: d.to, cc: d.cc, subject: d.subject ?? "", body: d.body, attachments: d.attachments, quotes: d.quotes, draftId: d.id };
+        markDraftSaved(restored[key]);
+      }
+      setDrafts((cur) => ({ ...restored, ...cur }));
+    });
+  }, []);
+
   // Live updates over server-sent events; quiet unread indicator, no pop-ups.
   useEffect(() => {
     const es = new EventSource("/api/inbox/stream");
@@ -43,15 +64,36 @@ export function InboxApp({ userName }: { userName: string }) {
   const name = useCallback((id: string) => (id === "associate" ? "you" : view?.addressBook.find((a) => a.id === id)?.name ?? id), [view]);
   const role = useCallback((id: string) => (id === "associate" ? "Associate" : view?.addressBook.find((a) => a.id === id)?.roleLabel ?? ""), [view]);
 
-  const threads = useMemo(() => {
+  // One row per thread in Inbox (keyed to the latest received message), one row per sent email in Sent.
+  const rows = useMemo(() => {
     if (!view) return [];
     const q = search.trim().toLowerCase();
-    return view.threads
-      .filter((t) => (folder === "sent" ? t.messageIds.some((id) => view.messages.find((m) => m.id === id)?.from === "associate") : true))
-      .filter((t) => !q || t.subject.toLowerCase().includes(q) || t.messageIds.some((id) => view.messages.find((m) => m.id === id)?.body.toLowerCase().includes(q)));
+    const byId = new Map(view.messages.map((m) => [m.id, m]));
+    const matches = (subject: string, bodies: string[]) => !q || subject.toLowerCase().includes(q) || bodies.some((b) => b.toLowerCase().includes(q));
+    if (folder === "sent") {
+      const subjects = new Map(view.threads.map((t) => [t.id, t.subject]));
+      return view.messages
+        .filter((m) => m.from === "associate")
+        .sort((a, b) => b.at.localeCompare(a.at))
+        .map((m) => ({ key: m.id, threadId: m.threadId, subject: subjects.get(m.threadId) ?? m.subject, message: m, unread: 0 }))
+        .filter((r) => matches(r.subject, [r.message.body]));
+    }
+    return view.threads.flatMap((t) => {
+      const msgs = t.messageIds.map((id) => byId.get(id)).filter((m) => m !== undefined);
+      const received = msgs.filter((m) => m.from !== "associate");
+      // A thread with no reply yet stays listed, shown by who it went to rather than as from the associate.
+      const last = received[received.length - 1] ?? msgs[msgs.length - 1];
+      if (!last || !matches(t.subject, msgs.map((m) => m.body))) return [];
+      return [{ key: t.id, threadId: t.id, subject: t.subject, message: last, unread: t.unread }];
+    });
   }, [view, folder, search]);
 
   const thread = view?.threads.find((t) => t.id === selected) ?? null;
+  // The open draft follows the selection: the reply draft for the selected thread, or the new email.
+  const compose = drafts[selected ?? NEW] ?? null;
+  const putDraft = (c: ComposeState) => setDrafts((d) => ({ ...d, [draftKey(c)]: c }));
+  const dropDraft = (key: string) => setDrafts(({ [key]: _, ...rest }) => rest);
+  const hasText = (c: ComposeState | undefined) => Boolean(c && (c.body.trim() || c.quotes.length));
   const messages = useMemo(() => (thread && view ? thread.messageIds.map((id) => view.messages.find((m) => m.id === id)!).filter(Boolean) : []), [thread, view]);
 
   // Mark visible messages read.
@@ -75,13 +117,19 @@ export function InboxApp({ userName }: { userName: string }) {
     setLibrary(false);
   }
 
-  function startReply() {
-    if (!thread || !view) return;
+  function replyTo(t: InboxThread) {
     const last = [...messages].reverse().find((m) => m.from !== "associate") ?? messages[messages.length - 1];
-    setCompose(emptyCompose(thread, view.addressBook, last?.from, last?.to ?? [], last?.cc ?? []));
+    return emptyCompose(t, view?.addressBook, last?.from, last?.to ?? [], last?.cc ?? []);
   }
-  function startNew() { setCompose(emptyCompose()); setSelected(null); }
-  function addQuote(q: Quote) { setCompose((c) => ({ ...(c ?? emptyCompose(thread, view?.addressBook)), quotes: [...(c?.quotes ?? []), q] })); }
+  function startReply() { if (thread && !drafts[thread.id]) putDraft(replyTo(thread)); }
+  function startNew() { if (!drafts[NEW]) putDraft(emptyCompose()); setSelected(null); setSelectedRow(null); }
+  function addQuote(q: Quote) {
+    const key = thread?.id ?? NEW;
+    setDrafts((d) => {
+      const c = d[key] ?? (thread ? replyTo(thread) : emptyCompose());
+      return { ...d, [key]: { ...c, quotes: [...c.quotes, q] } };
+    });
+  }
 
   if (error) return <main className="min-h-screen flex items-center justify-center p-6"><div className="card max-w-[520px]"><h1 className="display text-[26px] font-normal m-0 mb-2">Nothing here yet</h1><p className="m-0 text-ink-muted">{error}</p><form action="/api/auth/sign-out" method="post" className="mt-4"><button className="btn">Sign out</button></form></div></main>;
   if (!view) return <main className="min-h-screen flex items-center justify-center text-ink-muted">Loading your inbox…</main>;
@@ -107,18 +155,27 @@ export function InboxApp({ userName }: { userName: string }) {
           {milestoneTitle && <span className="ml-auto self-center text-[12px] text-ink-muted truncate" title="Where the deal is">{view.readOnly ? "Closed" : milestoneTitle}</span>}
         </div>
         <div className="flex flex-col gap-1 overflow-auto flex-1 min-h-0" role="list">
-          {threads.map((t) => {
-            const last = view.messages.find((m) => m.id === t.messageIds[t.messageIds.length - 1]);
-            const from = folder === "sent" ? "associate" : last?.from ?? "associate";
+          {drafts[NEW] && (
+            <button type="button" role="listitem" className="thread-item" aria-current={selected === null} onClick={() => { setSelected(null); setSelectedRow(null); }}>
+              <span className="flex items-center justify-between gap-2 w-full"><span className="text-[15px] font-medium text-plum-700">Draft</span><span className="role-chip">New email</span></span>
+              <span className="display text-[16px] leading-[1.35]">{drafts[NEW].subject || "(no subject)"}</span>
+              <span className="snippet">{drafts[NEW].body.replace(/\s+/g, " ").slice(0, 90)}</span>
+            </button>
+          )}
+          {rows.map((r) => {
+            const sent = folder === "sent";
+            const outgoing = r.message.from === "associate";
+            const who = outgoing ? `To ${r.message.to.map(name).join(", ")}` : name(r.message.from);
+            const current = r.threadId === selected && (!sent || selectedRow === null || selectedRow === r.key);
             return (
-              <button key={t.id} type="button" role="listitem" className="thread-item" aria-current={t.id === selected} onClick={() => { setSelected(t.id); if (compose && compose.threadId !== t.id) setCompose(null); }}>
-                <span className="flex items-center justify-between gap-2 w-full"><span className={`flex items-center gap-2 text-[15px] ${t.unread ? "font-bold" : "font-medium"}`}>{t.unread > 0 && <span className="unread-dot" aria-label="Unread" />}{from === "associate" ? "You" : name(from)}</span><span className={`role-chip ${t.unread ? "role-chip-accent" : ""}`}>{role(from)}</span></span>
-                <span className="display text-[16px] leading-[1.35]">{t.subject}</span>
-                <span className="snippet">{last?.from === "associate" ? "You: " : ""}{last?.body.replace(/\s+/g, " ").slice(0, 90)}</span>
+              <button key={r.key} type="button" role="listitem" className="thread-item" aria-current={current} onClick={() => { setSelected(r.threadId); setSelectedRow(sent ? r.key : null); }}>
+                <span className="flex items-center justify-between gap-2 w-full"><span className={`flex items-center gap-2 text-[15px] min-w-0 truncate ${r.unread ? "font-bold" : "font-medium"}`}>{r.unread > 0 && <span className="unread-dot" aria-label="Unread" />}{who}</span>{outgoing ? <span className="text-[12.5px] text-ink-muted whitespace-nowrap">{fmt(r.message.at)}</span> : <span className={`role-chip ${r.unread ? "role-chip-accent" : ""}`}>{role(r.message.from)}</span>}</span>
+                <span className="display text-[16px] leading-[1.35]">{r.subject}</span>
+                <span className="snippet">{!sent && hasText(drafts[r.threadId]) && <span className="text-plum-700">Draft · </span>}{r.message.body.replace(/\s+/g, " ").slice(0, 90)}</span>
               </button>
             );
           })}
-          {!threads.length && <p className="text-ink-muted text-sm px-3">Nothing here yet.</p>}
+          {!rows.length && <p className="text-ink-muted text-sm px-3">Nothing here yet.</p>}
         </div>
         <div style={{ padding: "0 0 20px" }}>
           <button type="button" className="btn w-full" style={{ height: 48, justifyContent: "flex-start" }} onClick={() => setLibrary(true)} disabled={!view.documents.length}><span className="flex text-plum-600"><Icon.library /></span><span className="flex-1 text-left">Document library</span>{view.documents.length > 0 && <span className="text-ink-muted text-[13px]">{view.documents.length}</span>}</button>
@@ -152,7 +209,7 @@ export function InboxApp({ userName }: { userName: string }) {
             {!compose && !view.readOnly && <div className="border-t border-oat-400 mt-auto" style={{ padding: "16px 32px 24px" }}><button type="button" className="btn btn-primary" onClick={startReply}><Icon.reply />Reply</button></div>}
           </>
         ) : (!compose && <div className="flex-1 flex items-center justify-center text-ink-muted">Select a thread</div>)}
-        {compose && <Compose state={compose} onChange={setCompose} addressBook={view.addressBook} documents={view.documents} isReply={Boolean(compose.threadId)} readOnly={view.readOnly} onDiscard={() => { if (compose.draftId) void fetch("/api/inbox/drafts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: compose.draftId }) }); setCompose(null); }} onSent={({ threadId }) => { setCompose(null); setSelected(threadId); void load(); }} />}
+        {compose && <Compose key={draftKey(compose)} state={compose} onChange={putDraft} addressBook={view.addressBook} documents={view.documents} isReply={Boolean(compose.threadId)} readOnly={view.readOnly} onDiscard={() => { if (compose.draftId) void fetch("/api/inbox/drafts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: compose.draftId }) }); dropDraft(draftKey(compose)); }} onSent={({ threadId }) => { dropDraft(draftKey(compose)); setSelected(threadId); void load(); }} />}
       </section>
 
       {/* ---------------------------------------------------------------- documents */}
