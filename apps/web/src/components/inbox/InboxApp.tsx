@@ -75,7 +75,7 @@ export function InboxApp({ userName }: { userName: string }) {
       return view.messages
         .filter((m) => m.from === "associate")
         .sort((a, b) => b.at.localeCompare(a.at))
-        .map((m) => ({ key: m.id, threadId: m.threadId, subject: subjects.get(m.threadId) ?? m.subject, message: m, unread: 0 }))
+        .map((m) => ({ key: m.id, threadId: m.threadId, subject: subjects.get(m.threadId) ?? m.subject, message: m, unread: 0, people: [] as string[], at: m.at }))
         .filter((r) => matches(r.subject, [r.message.body]));
     }
     return view.threads.flatMap((t) => {
@@ -84,7 +84,7 @@ export function InboxApp({ userName }: { userName: string }) {
       // A thread with no reply yet stays listed, shown by who it went to rather than as from the associate.
       const last = received[received.length - 1] ?? msgs[msgs.length - 1];
       if (!last || !matches(t.subject, msgs.map((m) => m.body))) return [];
-      return [{ key: t.id, threadId: t.id, subject: t.subject, message: last, unread: t.unread }];
+      return [{ key: t.id, threadId: t.id, subject: t.subject, message: last, unread: t.unread, people: t.participants.filter((p) => p !== "associate"), at: t.lastMessageAt }];
     });
   }, [view, folder, search]);
 
@@ -165,11 +165,13 @@ export function InboxApp({ userName }: { userName: string }) {
           {rows.map((r) => {
             const sent = folder === "sent";
             const outgoing = r.message.from === "associate";
-            const who = outgoing ? `To ${r.message.to.map(name).join(", ")}` : name(r.message.from);
+            // Everyone on the thread, so a sender stays visible after someone else replies on it.
+            const group = !outgoing && r.people.length > 1;
+            const who = outgoing ? `To ${r.message.to.map(name).join(", ")}` : group ? [...r.people.map((p) => name(p).split(" ")[0]), "You"].join(", ") : name(r.message.from);
             const current = r.threadId === selected && (!sent || selectedRow === null || selectedRow === r.key);
             return (
               <button key={r.key} type="button" role="listitem" className="thread-item" aria-current={current} onClick={() => { setSelected(r.threadId); setSelectedRow(sent ? r.key : null); }}>
-                <span className="flex items-center justify-between gap-2 w-full"><span className={`flex items-center gap-2 text-[15px] min-w-0 truncate ${r.unread ? "font-bold" : "font-medium"}`}>{r.unread > 0 && <span className="unread-dot" aria-label="Unread" />}{who}</span>{outgoing ? <span className="text-[12.5px] text-ink-muted whitespace-nowrap">{fmt(r.message.at)}</span> : <span className={`role-chip ${r.unread ? "role-chip-accent" : ""}`}>{role(r.message.from)}</span>}</span>
+                <span className="flex items-center justify-between gap-2 w-full"><span className={`flex items-center gap-2 text-[15px] min-w-0 ${r.unread ? "font-bold" : "font-medium"}`} title={group ? r.people.map(name).join(", ") : undefined}>{r.unread > 0 && <span className="unread-dot" aria-label="Unread" />}<span className="truncate">{who}</span></span>{outgoing || group ? <span className="text-[12.5px] text-ink-muted whitespace-nowrap">{fmt(r.at)}</span> : <span className={`role-chip ${r.unread ? "role-chip-accent" : ""}`}>{role(r.message.from)}</span>}</span>
                 <span className="display text-[16px] leading-[1.35]">{r.subject}</span>
                 <span className="snippet">{!sent && hasText(drafts[r.threadId]) && <span className="text-plum-700">Draft · </span>}{r.message.body.replace(/\s+/g, " ").slice(0, 90)}</span>
               </button>

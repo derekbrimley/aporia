@@ -49,12 +49,17 @@ export function Compose(props: {
   const latest = useRef(state);
   latest.current = state;
   const pending = useRef(false);
+  // The last autosave request; send waits for it so a late upsert can't recreate the sent draft.
+  const inFlight = useRef<Promise<Response> | null>(null);
 
-  const save = async (s: ComposeState) => {
+  const save = (s: ComposeState) => {
     const body = draftPayload(s);
-    const r = await fetch("/api/inbox/drafts", { method: "PUT", keepalive: true, headers: { "Content-Type": "application/json" }, body });
-    if (r.ok) lastSaved.set(s.draftId, body);
-    return r;
+    const p = fetch("/api/inbox/drafts", { method: "PUT", keepalive: true, headers: { "Content-Type": "application/json" }, body }).then((r) => {
+      if (r.ok) lastSaved.set(s.draftId, body);
+      return r;
+    });
+    inFlight.current = p;
+    return p;
   };
   const cancelSave = () => { pending.current = false; if (saveTimer.current) clearTimeout(saveTimer.current); };
 
@@ -89,10 +94,13 @@ export function Compose(props: {
   async function send() {
     setBusy(true); setError(null);
     try {
+      // The send deletes the draft row, so no autosave may land after it.
+      cancelSave();
+      await inFlight.current?.catch(() => undefined);
       const r = await fetch("/api/inbox/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ threadId: state.threadId, to: state.to, cc: state.cc, subject: props.isReply ? undefined : state.subject || "(no subject)", body: fullBody, attachments: state.attachments, quotedRefs: state.quotes.map((q) => ({ documentId: q.documentId, ref: q.ref, text: q.text })), draftId: state.draftId }) });
       const j = (await r.json()) as { error?: string; threadId?: string };
-      if (!r.ok) { setError(j.error ?? "Could not send."); return; }
-      cancelSave();
+      // Not sent: the draft is still live, so save what autosave was cancelled from saving.
+      if (!r.ok) { setError(j.error ?? "Could not send."); void save(latest.current); return; }
       props.onSent({ threadId: j.threadId! });
     } finally { setBusy(false); }
   }
