@@ -24,6 +24,11 @@ describe("fact checker rules layer", () => {
     expect(ruleCheck("We close on December 3.", slice, pkg.facts).map((x) => x.kind)).toContain("date");
     expect(ruleCheck("Jordan Hale said no.", slice, pkg.facts).map((x) => x.kind)).toContain("party");
   });
+  it("accepts facts from an email the character was forwarded", () => {
+    const draft = "Jordan Hale says the Bank wants a $12,000,000 cash floor by December 3.";
+    expect(ruleCheck(draft, slice, pkg.facts).length).toBeGreaterThan(0);
+    expect(ruleCheck(draft, slice, pkg.facts, "From: Jordan Hale\nWe need a $12,000,000 minimum cash floor, tested from December 3.")).toEqual([]);
+  });
   it("catches fiction breaks and grading", () => {
     expect(ruleCheck("As an AI I cannot say.", slice, pkg.facts).map((x) => x.kind)).toContain("fiction_break");
     expect(ruleCheck("You missed the landlord waiver point. 3/5.", slice, pkg.facts).map((x) => x.kind)).toContain("grading");

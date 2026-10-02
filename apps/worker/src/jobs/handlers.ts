@@ -1,11 +1,11 @@
 import {
   AssessmentOutputSchema, IntentOutputSchema, ReflectionOutputSchema, assessorPrompt, characterWriterPrompt, debriefPrompt, doctrinePrompt,
-  intentClassifierPrompt, nudgePrompt, recapPrompt, reflectionPrompt, type AssessmentOutput,
+  intentClassifierPrompt, nudgePrompt, recapPrompt, reflectionPrompt, renderForwarded, type AssessmentOutput,
 } from "@aporia/prompts";
-import { openAssignments } from "@aporia/engine";
+import { openAssignments, workText } from "@aporia/engine";
 import type { Job, JobPayload } from "@aporia/engine";
 import { formatFact, sliceFactsFor, type Facts } from "@aporia/scenario";
-import { otherThreadsFor, storyDate, threadForPrompt } from "../context.js";
+import { forwardedForPrompt, otherThreadsFor, storyDate, threadForPrompt } from "../context.js";
 import { beatSubject, deliverFixed, generateAndDeliver, threadIdForKey } from "./deliver.js";
 import type { JobContext, JobOutcome } from "./types.js";
 
@@ -39,8 +39,9 @@ async function classifyIntent(ctx: JobContext, messageId: string): Promise<JobOu
   const thread = threadForPrompt(ctx.state, msg.threadId, ctx.names).slice(0, -1);
   const open = openAssignments(ctx.state).map((a) => ctx.idx.assignment(a));
   const onThread = open.find((a) => ctx.state.threads[msg.threadId]?.assignmentIds.includes(a.id)) ?? open.find((a) => a.expected_recipients.some((r) => msg.to.includes(r) || msg.cc.includes(r)));
-  const p = intentClassifierPrompt({ thread, outgoing: { to: msg.to.map((x) => ctx.names.name(x)), cc: msg.cc.map((x) => ctx.names.name(x)), body: msg.body, attachments: msg.attachments }, openAssignmentTitle: onThread?.title ?? null });
-  const res = await ctx.provider.generateJson({ role: "intent_classifier", system: p.system, user: p.user, promptVersion: p.version, mockContext: { body: msg.body, openAssignmentTitle: onThread?.title ?? null }, sessionId: ctx.session.id, jobKey: ctx.job.key }, IntentOutputSchema);
+  const fwd = msg.forwardedMessageId ? ctx.state.messages[msg.forwardedMessageId] : undefined;
+  const p = intentClassifierPrompt({ thread, outgoing: { to: msg.to.map((x) => ctx.names.name(x)), cc: msg.cc.map((x) => ctx.names.name(x)), body: msg.body, attachments: msg.attachments, forwarded: fwd ? forwardedForPrompt(fwd, ctx.names) : null }, openAssignmentTitle: onThread?.title ?? null });
+  const res = await ctx.provider.generateJson({ role: "intent_classifier", system: p.system, user: p.user, promptVersion: p.version, mockContext: { body: workText(ctx.state, msg), forwardsOther: Boolean(fwd && fwd.from !== "associate"), openAssignmentTitle: onThread?.title ?? null }, sessionId: ctx.session.id, jobKey: ctx.job.key }, IntentOutputSchema);
   return {
     events: [{ event: { type: "intent_classified", payload: { messageId, intent: res.parsed.intent, confidence: res.parsed.confidence } }, idempotencyKey: `${ctx.session.id}:intent:${messageId}` }],
     generations: [{ role: "intent_classifier", model: res.model, provider: res.provider, promptVersion: p.version, inputRefs: { messageId }, systemPrompt: p.system, userPrompt: p.user, output: res.text, parsedOutput: res.parsed, usage: res.usage, latencyMs: res.latencyMs, attempt: ctx.attempt }],
@@ -54,7 +55,8 @@ async function assess(ctx: JobContext, messageId: string, assignmentId: string, 
   if (!msg) throw new Error(`assess: unknown message ${messageId}`);
   const deltaIds = new Set(a.issues.map((i) => i.delta).filter(Boolean));
   const deltas = ctx.pkg.deltas.filter((d) => deltaIds.has(d.id) || d.surfaces_in === a.milestone);
-  const deliverable = msg.body + (msg.quotedRefs.length ? `\n\n[Quoted passages: ${msg.quotedRefs.map((q) => `${q.ref}: "${q.text}"`).join(" | ")}]` : "");
+  // Only the associate's own words are assessed: a forward of someone else's email adds nothing.
+  const deliverable = workText(ctx.state, msg) + (msg.quotedRefs.length ? `\n\n[Quoted passages: ${msg.quotedRefs.map((q) => `${q.ref}: "${q.text}"`).join(" | ")}]` : "");
   const p = assessorPrompt({ assignment: a, deltas, deliverable, quotedRefs: msg.quotedRefs });
   const res = await ctx.provider.generateJson({
     role: "assessor", system: p.system, user: p.user, promptVersion: p.version, sessionId: ctx.session.id, jobKey: ctx.job.key,
@@ -91,6 +93,7 @@ async function characterReply(ctx: JobContext, messageId: string, characterId: s
     check: "full",
     answerKeyHints: hints,
     isSocratic: c.gives_socratic_feedback,
+    readText: forwardedText(ctx, msg.forwardedMessageId),
     inputRefs: { messageId, characterId, threadId },
   });
 }
@@ -275,6 +278,12 @@ async function debrief(ctx: JobContext): Promise<JobOutcome> {
 }
 
 // ---------------------------------------------------------------- helpers
+/** The forwarded email as plain text, for the fact checker. */
+function forwardedText(ctx: JobContext, forwardedMessageId: string | null | undefined): string | undefined {
+  const fwd = forwardedMessageId ? ctx.state.messages[forwardedMessageId] : undefined;
+  return fwd ? renderForwarded(forwardedForPrompt(fwd, ctx.names)) : undefined;
+}
+
 function answerKeyHints(ctx: JobContext, threadId: string): string[] {
   const t = ctx.state.threads[threadId];
   const ids = new Set(t?.assignmentIds ?? []);

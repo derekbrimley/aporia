@@ -1,7 +1,7 @@
 import type { Beat, Character, Facts, NegotiationPoint } from "../deps.js";
 import { CHARACTER_HARD_RULES, characterCard, factsBlock, renderThread, type ThreadMessageForPrompt } from "../common.js";
 
-export const CHARACTER_WRITER_VERSION = "character_writer@1.0.0";
+export const CHARACTER_WRITER_VERSION = "character_writer@1.1.0";
 
 export interface CharacterWriterInput {
   character: Character;
@@ -21,6 +21,11 @@ export interface CharacterWriterInput {
   storyDate: string;
 }
 
+/** Whether the most recent email on the thread forwards another one. */
+function forwardsSomething(thread: ThreadMessageForPrompt[]): boolean {
+  return Boolean(thread.at(-1)?.forwarded);
+}
+
 /**
  * Stable content (character card, facts, rules) comes first so the prompt
  * prefix caches across calls; the thread and the brief come last.
@@ -34,7 +39,7 @@ export function characterWriterPrompt(input: CharacterWriterInput) {
 
   let task: string;
   if (input.mode.kind === "reply") {
-    task = `Write your reply to the most recent email on this thread. Respond as you would in a real deal, in your voice, within what you know. If the email asks you to decide something legal or to give the answer to the associate's assignment, do what this person would really do: ask what they think, redirect, or defer.`;
+    task = `Write your reply to the most recent email on this thread. Respond as you would in a real deal, in your voice, within what you know. If the email asks you to decide something legal or to give the answer to the associate's assignment, do what this person would really do: ask what they think, redirect, or defer.${forwardsSomething(input.thread) ? ` The associate forwarded you the email quoted under "Forwarded message"; you have now read it and may refer to what it says.` : ""}`;
   } else {
     const b = input.mode.beat;
     const must = Object.keys(input.mode.mustIncludeFacts).length ? `\nThese facts must appear accurately in the email:\n${factsBlock(input.mode.mustIncludeFacts).split("\n").slice(1).join("\n")}` : "";

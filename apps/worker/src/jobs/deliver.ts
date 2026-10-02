@@ -33,6 +33,8 @@ export interface GenerateArgs {
   isSocratic: boolean;
   /** Facts the checker treats as known in addition to the character's slice (must_include_facts). */
   extraFacts?: Facts;
+  /** Text the character has read beyond their slice (a forwarded email); the checker accepts facts from it. */
+  readText?: string;
   inputRefs: Record<string, unknown>;
 }
 
@@ -59,8 +61,8 @@ export async function generateAndDeliver(ctx: JobContext, spec: DeliverySpec, ge
     let pass = true;
     if (gen.check !== "none" && lastBody) {
       const result = gen.check === "full"
-        ? await checkDraft({ draft: lastBody, character: spec.from, slice, allFacts: ctx.pkg.facts, answerKeyHints: gen.answerKeyHints, isSocratic: gen.isSocratic, provider: ctx.provider, sessionId: ctx.session.id, jobKey: ctx.job.key })
-        : rulesOnly(lastBody, spec.from, slice, ctx.pkg.facts);
+        ? await checkDraft({ draft: lastBody, character: spec.from, slice, allFacts: ctx.pkg.facts, answerKeyHints: gen.answerKeyHints, isSocratic: gen.isSocratic, readText: gen.readText, provider: ctx.provider, sessionId: ctx.session.id, jobKey: ctx.job.key })
+        : rulesOnly(lastBody, spec.from, slice, ctx.pkg.facts, gen.readText);
       pass = result.pass;
       checker = { pass: result.pass, violations: result.violations, layers: result.layers };
       if (result.generation) {
@@ -103,9 +105,9 @@ export function deliveryEvent(ctx: JobContext, spec: DeliverySpec, body: string,
   };
 }
 
-function rulesOnly(draft: string, character: Character, slice: Facts, all: Facts) {
+function rulesOnly(draft: string, character: Character, slice: Facts, all: Facts, readText?: string) {
   const { ruleCheck } = require("../factcheck/rules.js") as typeof import("../factcheck/rules.js");
-  const v = ruleCheck(draft, slice, all);
+  const v = ruleCheck(draft, slice, all, readText);
   return { pass: v.length === 0, violations: v, layers: { rules: v, model: null }, generation: undefined };
 }
 

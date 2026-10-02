@@ -1,5 +1,5 @@
 import type { MessageState, SessionState } from "@aporia/engine";
-import type { ThreadMessageForPrompt } from "@aporia/prompts";
+import type { ForwardedForPrompt, ThreadMessageForPrompt } from "@aporia/prompts";
 import { ScenarioIndex, type ScenarioPackage } from "@aporia/scenario";
 
 /** Display helpers that turn participant ids into names for prompts and the UI. */
@@ -25,10 +25,11 @@ export function threadForPrompt(state: SessionState, threadId: string, names: Na
   return t.messageIds
     .map((id) => state.messages[id]!)
     .filter((m) => !opts.viewerId || m.from === opts.viewerId || m.to.includes(opts.viewerId) || m.cc.includes(opts.viewerId) || m.to.includes("associate") && opts.viewerId === "associate")
-    .map((m) => toPromptMessage(m, names));
+    .map((m) => toPromptMessage(m, names, state));
 }
 
-export function toPromptMessage(m: MessageState, names: Names): ThreadMessageForPrompt {
+export function toPromptMessage(m: MessageState, names: Names, state?: SessionState): ThreadMessageForPrompt {
+  const fwd = state && m.forwardedMessageId ? state.messages[m.forwardedMessageId] : undefined;
   return {
     from: names.name(m.from),
     fromRole: names.role(m.from),
@@ -36,6 +37,22 @@ export function toPromptMessage(m: MessageState, names: Names): ThreadMessageFor
     cc: m.cc.map((p) => names.name(p)),
     at: m.at.slice(0, 16).replace("T", " "),
     body: m.body,
+    forwarded: fwd ? forwardedForPrompt(fwd, names) : null,
+  };
+}
+
+/** A forwarded email as its new recipients see it. Attachments are named by document title. */
+export function forwardedForPrompt(m: MessageState, names: Names): ForwardedForPrompt {
+  const docs = new Map(names.pkg.documents.map((d) => [d.id, d.title]));
+  return {
+    from: names.name(m.from),
+    fromRole: names.role(m.from),
+    to: m.to.map((p) => names.name(p)),
+    cc: m.cc.map((p) => names.name(p)),
+    at: m.at.slice(0, 16).replace("T", " "),
+    subject: m.subject,
+    body: m.body,
+    attachments: m.attachments.map((d) => docs.get(d) ?? d),
   };
 }
 

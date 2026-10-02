@@ -39,13 +39,34 @@ export interface ThreadMessageForPrompt {
   cc: string[];
   at: string;
   body: string;
+  /** The email this one forwards, quoted beneath the body. */
+  forwarded?: ForwardedForPrompt | null;
+}
+
+export interface ForwardedForPrompt {
+  from: string;
+  fromRole: string;
+  to: string[];
+  cc: string[];
+  at: string;
+  subject: string;
+  body: string;
+  attachments: string[];
+}
+
+export function renderForwarded(f: ForwardedForPrompt): string {
+  const head = [`From: ${f.from} (${f.fromRole})`, `Sent: ${f.at}`, `Subject: ${f.subject}`, `To: ${f.to.join(", ")}`];
+  if (f.cc.length) head.push(`Cc: ${f.cc.join(", ")}`);
+  if (f.attachments.length) head.push(`Attachments: ${f.attachments.join(", ")}`);
+  return `---------- Forwarded message ----------\n${head.join("\n")}\n\n${f.body.trim()}`;
 }
 
 export function renderThread(msgs: ThreadMessageForPrompt[]): string {
   return msgs
     .map((m) => {
       const head = `From: ${m.from} (${m.fromRole})  To: ${m.to.join(", ")}${m.cc.length ? `  Cc: ${m.cc.join(", ")}` : ""}  Sent: ${m.at}`;
-      return `${head}\n${m.body.trim()}`;
+      const body = [m.body.trim(), m.forwarded ? renderForwarded(m.forwarded) : ""].filter(Boolean).join("\n\n");
+      return `${head}\n${body}`;
     })
     .join("\n\n---\n\n");
 }

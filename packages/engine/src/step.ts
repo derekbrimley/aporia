@@ -120,12 +120,15 @@ class Ctx {
     const isDoctrine = p.to.includes(this.idx.doctrineAssistant.id) || p.cc.includes(this.idx.doctrineAssistant.id);
     if (isDoctrine) thread.hidden = true;
 
+    const forwarded = p.forwardedMessageId ? s.messages[p.forwardedMessageId] : undefined;
+    if (p.forwardedMessageId && !forwarded) this.warn(`email_sent forwards unknown message ${p.forwardedMessageId}`);
     const intent: Intent | null = p.notMyAnswerYet ? "question" : p.intent ?? null;
     const msg: MessageState = {
       id: p.messageId, threadId: p.threadId, from: "associate", to: p.to, cc: p.cc,
       subject: thread.subject, body: p.body, attachments: p.attachments, at: this.at, kind: "associate",
       intent, rationale: p.rationale ?? null, decisionPointId: p.decisionPointId ?? null, beatId: null,
       assignmentId: null, reflectionQuestions: [], quotedRefs: p.quotedRefs ?? [],
+      forwardedMessageId: forwarded?.id ?? null,
     };
     this.addMessage(msg);
     thread.associateMessageCount += 1;
@@ -192,7 +195,7 @@ class Ctx {
 
     // A substantive email that reads like a question may still be the work (comments phrased as
     // questions). Assess it first; onAssessment decides whether it is the deliverable or gets a reply.
-    const probe = answersReflection ? undefined : likelyDeliverable(this.state, this.idx.pkg, msg.threadId, [...msg.to, ...msg.cc], msg.body, intent);
+    const probe = answersReflection ? undefined : likelyDeliverable(this.state, this.idx.pkg, msg.threadId, [...msg.to, ...msg.cc], workText(this.state, msg), intent);
     if (probe) {
       this.enqueue({ key: `assess:${msg.id}`, kind: "assess", delaySeconds: 0, payload: { kind: "assess", messageId: msg.id, assignmentId: probe.id, probe: true } });
       return;
@@ -494,6 +497,17 @@ class Ctx {
 /** Threads a character is a participant of, excluding hidden doctrine threads for everyone but the assistant. */
 export function threadsVisibleTo(state: SessionState, characterId: string): ThreadState[] {
   return Object.values(state.threads).filter((t) => t.participants.includes(characterId) && (!t.hidden || t.participants.includes(characterId)));
+}
+
+/**
+ * The text of an associate email that counts as their work: the body, plus the forwarded email when
+ * they are forwarding their own earlier email (resending work to the right people). Anything they
+ * forward from someone else is never their work.
+ */
+export function workText(state: SessionState, msg: MessageState): string {
+  const fwd = msg.forwardedMessageId ? state.messages[msg.forwardedMessageId] : undefined;
+  if (!fwd || fwd.from !== "associate") return msg.body;
+  return msg.body.trim() ? `${msg.body}\n\n${fwd.body}` : fwd.body;
 }
 
 export function messagesOnThread(state: SessionState, threadId: string): MessageState[] {

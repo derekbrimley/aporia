@@ -5,6 +5,7 @@ export const Icon = {
   file: () => <svg {...base} width={16} height={16}><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5" /></svg>,
   flag: () => <svg {...base} width={14} height={14}><path d="M5 21V4h11l-2 4 2 4H5" /></svg>,
   reply: () => <svg {...base} width={16} height={16}><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 6 6v3" /></svg>,
+  forward: () => <svg {...base} width={16} height={16}><path d="m15 14 5-5-5-5" /><path d="M20 9H10a6 6 0 0 0-6 6v3" /></svg>,
   send: () => <svg {...base} strokeWidth={2}><path d="M5 12h14M13 6l6 6-6 6" /></svg>,
   close: () => <svg {...base} width={13} height={13} strokeWidth={2}><path d="m6 6 12 12M18 6 6 18" /></svg>,
   quote: () => <svg {...base}><path d="M9 8H6v5h3l-1 4M18 8h-3v5h3l-1 4" /></svg>,

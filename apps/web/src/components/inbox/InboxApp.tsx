@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DocView, InboxThread, InboxView, Layout, Quote } from "./types";
 import { Icon } from "./icons";
 import { FlagButton } from "./FlagButton";
-import { Compose, emptyCompose, markDraftSaved, type ComposeState } from "./Compose";
+import { Compose, emptyCompose, forwardCompose, markDraftSaved, type ComposeState } from "./Compose";
+import { Forwarded } from "./Forwarded";
 import { DocumentPanel } from "./DocumentPanel";
 
 type Folder = "inbox" | "sent";
@@ -41,12 +42,12 @@ export function InboxApp({ userName }: { userName: string }) {
   useEffect(() => {
     void fetch("/api/inbox/drafts", { cache: "no-store" }).then(async (r) => {
       if (!r.ok) return;
-      const { drafts: rows } = (await r.json()) as { drafts: { id: string; threadId: string | null; to: string[]; cc: string[]; subject: string | null; body: string; attachments: string[]; quotes: Quote[] }[] };
+      const { drafts: rows } = (await r.json()) as { drafts: { id: string; threadId: string | null; to: string[]; cc: string[]; subject: string | null; body: string; attachments: string[]; quotes: Quote[]; forwardedMessageId: string | null }[] };
       const restored: Record<string, ComposeState> = {};
       for (const d of rows) {
         const key = d.threadId ?? NEW;
         if (restored[key]) continue;
-        restored[key] = { threadId: d.threadId, to: d.to, cc: d.cc, subject: d.subject ?? "", body: d.body, attachments: d.attachments, quotes: d.quotes, draftId: d.id };
+        restored[key] = { threadId: d.threadId, to: d.to, cc: d.cc, subject: d.subject ?? "", body: d.body, attachments: d.attachments, quotes: d.quotes, draftId: d.id, forwardedMessageId: d.forwardedMessageId ?? null };
         markDraftSaved(restored[key]);
       }
       setDrafts((cur) => ({ ...restored, ...cur }));
@@ -93,7 +94,9 @@ export function InboxApp({ userName }: { userName: string }) {
   const compose = drafts[selected ?? NEW] ?? null;
   const putDraft = (c: ComposeState) => setDrafts((d) => ({ ...d, [draftKey(c)]: c }));
   const dropDraft = (key: string) => setDrafts(({ [key]: _, ...rest }) => rest);
-  const hasText = (c: ComposeState | undefined) => Boolean(c && (c.body.trim() || c.quotes.length));
+  const hasText = (c: ComposeState | undefined) => Boolean(c && (c.body.trim() || c.quotes.length || c.forwardedMessageId));
+  const messageById = useCallback((id: string | null) => (id ? view?.messages.find((m) => m.id === id) ?? null : null), [view]);
+  const docTitle = (id: string) => view?.documents.find((x) => x.id === id)?.shortTitle ?? id;
   const messages = useMemo(() => (thread && view ? thread.messageIds.map((id) => view.messages.find((m) => m.id === id)!).filter(Boolean) : []), [thread, view]);
 
   // Mark visible messages read.
@@ -122,6 +125,14 @@ export function InboxApp({ userName }: { userName: string }) {
     return emptyCompose(t, view?.addressBook, last?.from, last?.to ?? [], last?.cc ?? []);
   }
   function startReply() { if (thread && !drafts[thread.id]) putDraft(replyTo(thread)); }
+  /** Forwarding opens it as the new email; an unsent new email is only replaced if the associate agrees. */
+  function startForward(m: InboxView["messages"][number]) {
+    if (hasText(drafts[NEW]) && !window.confirm("Replace your unsent new email with this forward?")) return;
+    const old = drafts[NEW];
+    if (old) void fetch("/api/inbox/drafts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: old.draftId }) });
+    putDraft(forwardCompose(m));
+    setSelected(null); setSelectedRow(null);
+  }
   function startNew() { if (!drafts[NEW]) putDraft(emptyCompose()); setSelected(null); setSelectedRow(null); }
   function addQuote(q: Quote) {
     const key = thread?.id ?? NEW;
@@ -173,7 +184,7 @@ export function InboxApp({ userName }: { userName: string }) {
               <button key={r.key} type="button" role="listitem" className="thread-item" aria-current={current} onClick={() => { setSelected(r.threadId); setSelectedRow(sent ? r.key : null); }}>
                 <span className="flex items-center justify-between gap-2 w-full"><span className={`flex items-center gap-2 text-[15px] min-w-0 ${r.unread ? "font-bold" : "font-medium"}`} title={group ? r.people.map(name).join(", ") : undefined}>{r.unread > 0 && <span className="unread-dot" aria-label="Unread" />}<span className="truncate">{who}</span></span>{outgoing || group ? <span className="text-[12.5px] text-ink-muted whitespace-nowrap">{fmt(r.at)}</span> : <span className={`role-chip ${r.unread ? "role-chip-accent" : ""}`}>{role(r.message.from)}</span>}</span>
                 <span className="display text-[16px] leading-[1.35]">{r.subject}</span>
-                <span className="snippet">{!sent && hasText(drafts[r.threadId]) && <span className="text-plum-700">Draft · </span>}{r.message.body.replace(/\s+/g, " ").slice(0, 90)}</span>
+                <span className="snippet">{!sent && hasText(drafts[r.threadId]) && <span className="text-plum-700">Draft · </span>}{(r.message.body.trim() || (r.message.forwardedMessageId ? "Forwarded message" : "")).replace(/\s+/g, " ").slice(0, 90)}</span>
               </button>
             );
           })}
@@ -201,9 +212,13 @@ export function InboxApp({ userName }: { userName: string }) {
                     <div className="flex items-center gap-2"><span className="text-[14.5px] font-semibold text-ink whitespace-nowrap">{m.from === "associate" ? "You" : name(m.from)}</span><span className="role-chip">{role(m.from)}</span><span className="text-[12.5px]">{fmt(m.at)}</span></div>
                     <div>To {m.to.map(name).join(", ")}{m.cc.length > 0 && <> · Cc {m.cc.map(name).join(", ")}</>}</div>
                   </div>
-                  {m.from !== "associate" && <FlagButton targetType="message" targetId={m.id} enabled={view.testerFlagsEnabled} />}
+                  <div className="flex items-center gap-1">
+                    {!view.readOnly && !m.private && <button type="button" className="btn btn-ghost btn-sm" onClick={() => startForward(m)}><Icon.forward />Forward</button>}
+                    {m.from !== "associate" && <FlagButton targetType="message" targetId={m.id} enabled={view.testerFlagsEnabled} />}
+                  </div>
                 </div>
-                <div className="email-body">{m.body}</div>
+                {m.body.trim() && <div className="email-body">{m.body}</div>}
+                {messageById(m.forwardedMessageId) && <Forwarded message={messageById(m.forwardedMessageId)!} nameOf={name} docTitle={docTitle} onOpenDoc={(d) => openDoc(d, 0)} />}
                 {m.rationale && <div className="quote"><div className="flex items-center gap-1.5 text-[12px] text-ink-muted"><Icon.lock />Your reasoning · Not part of the email</div><div className="text-[14px] leading-[1.5]">{m.rationale}</div></div>}
                 {m.attachments.length > 0 && <div className="flex flex-wrap gap-2">{m.attachments.map((d) => <button key={d} type="button" className="btn btn-sm" onClick={() => openDoc(d, 0)}><span className="flex text-plum-600"><Icon.file /></span>{view.documents.find((x) => x.id === d)?.shortTitle ?? d}</button>)}</div>}
               </article>
@@ -211,7 +226,7 @@ export function InboxApp({ userName }: { userName: string }) {
             {!compose && !view.readOnly && <div className="border-t border-oat-400 mt-auto" style={{ padding: "16px 32px 24px" }}><button type="button" className="btn btn-primary" onClick={startReply}><Icon.reply />Reply</button></div>}
           </>
         ) : (!compose && <div className="flex-1 flex items-center justify-center text-ink-muted">Select a thread</div>)}
-        {compose && <Compose key={draftKey(compose)} state={compose} onChange={putDraft} addressBook={view.addressBook} documents={view.documents} isReply={Boolean(compose.threadId)} readOnly={view.readOnly} onDiscard={() => { if (compose.draftId) void fetch("/api/inbox/drafts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: compose.draftId }) }); dropDraft(draftKey(compose)); }} onSent={({ threadId }) => { dropDraft(draftKey(compose)); setSelected(threadId); void load(); }} />}
+        {compose && <Compose key={draftKey(compose)} state={compose} onChange={putDraft} addressBook={view.addressBook} documents={view.documents} isReply={Boolean(compose.threadId)} readOnly={view.readOnly} forwarded={messageById(compose.forwardedMessageId)} nameOf={name} onDiscard={() => { if (compose.draftId) void fetch("/api/inbox/drafts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: compose.draftId }) }); dropDraft(draftKey(compose)); }} onSent={({ threadId }) => { dropDraft(draftKey(compose)); setSelected(threadId); void load(); }} />}
       </section>
 
       {/* ---------------------------------------------------------------- documents */}

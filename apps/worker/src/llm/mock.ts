@@ -34,6 +34,7 @@ export class MockProvider implements LlmProvider {
         if (marker) return { intent: marker[1], confidence: 1 };
         const trimmed = body.trim();
         if (/^(thanks|thank you|noted|will do|got it|sounds good|ok)\b/i.test(trimmed) && trimmed.length < 80) return { intent: "acknowledgment", confidence: 0.9 };
+        if (c.forwardsOther && trimmed.length <= 150 && !/\?\s*$/.test(trimmed)) return { intent: "logistics", confidence: 0.8 };
         if (c.openAssignmentTitle && trimmed.length > 150 && !/\?\s*$/.test(trimmed)) return { intent: "deliverable", confidence: 0.8 };
         if (/\?/.test(trimmed)) return { intent: "question", confidence: 0.8 };
         if (/attached|scheduling|call at|calendar|forward/i.test(trimmed)) return { intent: "logistics", confidence: 0.7 };

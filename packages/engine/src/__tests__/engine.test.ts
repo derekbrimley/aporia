@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID, ScenarioIndex } from "@aporia/scenario";
-import { initialState, replay, step, likelyDeliverable, type EngineEvent, type Effect, type Job, type SessionState } from "../index.js";
+import { initialState, replay, step, likelyDeliverable, workText, type EngineEvent, type Effect, type Job, type SessionState } from "../index.js";
 
 const { pkg } = loadScenario(scenarioDir(DEFAULT_SCENARIO_ID));
 const idx = new ScenarioIndex(pkg);
@@ -285,6 +285,36 @@ describe("engine: mechanics", () => {
     expect(send(h.state, "question")).toEqual(["character_reply"]);
     const busy = { ...h.state, jobs: { ...h.state.jobs, "reply:x:client_contact": "enqueued" as const } };
     expect(send(busy, "acknowledgment")).toEqual([]);
+  });
+});
+
+describe("engine: forwarding", () => {
+  it("records the forwarded message, and never counts someone else's email as the associate's work", () => {
+    const h = toTermSheet();
+    const theirs = h.state.messageOrder.map((id) => h.state.messages[id]!).find((m) => m.from !== "associate")!;
+    const { messageId } = h.send(null, ["senior_associate"], "FYI, see below.", { forwardedMessageId: theirs.id });
+    const msg = h.state.messages[messageId]!;
+    expect(msg.forwardedMessageId).toBe(theirs.id);
+    expect(workText(h.state, msg)).toBe("FYI, see below.");
+  });
+
+  it("counts a forward of the associate's own email as their work, so it can be the deliverable", () => {
+    const h = toTermSheet();
+    const comments = "Tranche 1 is only available for 30 days. Does that work for the business? ".repeat(6);
+    const own = h.send(null, ["senior_associate"], comments, { intent: "question" });
+    h.drain();
+    h.jobs = [];
+    const fwd = h.send(null, ["client_contact"], "", { forwardedMessageId: own.messageId, intent: "logistics" });
+    expect(workText(h.state, h.state.messages[fwd.messageId]!)).toBe(comments);
+    expect(h.jobs.find((j) => j.kind === "assess")?.payload).toMatchObject({ messageId: fwd.messageId, assignmentId: "A2", probe: true });
+  });
+
+  it("ignores a forward of an unknown message, with a warning", () => {
+    const h = toTermSheet();
+    const before = h.effects.length;
+    const { messageId } = h.send(null, ["senior_associate"], "See below.", { forwardedMessageId: "nope" });
+    expect(h.state.messages[messageId]!.forwardedMessageId).toBeNull();
+    expect(h.effects.slice(before).some((e) => e.type === "warning")).toBe(true);
   });
 });
 

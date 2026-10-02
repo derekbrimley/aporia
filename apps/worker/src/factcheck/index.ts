@@ -22,13 +22,15 @@ export async function checkDraft(args: {
   allFacts: Facts;
   answerKeyHints: string[];
   isSocratic: boolean;
+  /** Text the character has read beyond their slice (a forwarded email); facts in it are known. */
+  readText?: string;
   provider: LlmProvider;
   sessionId?: string;
   jobKey?: string;
 }): Promise<CheckResult> {
-  const rules = ruleCheck(args.draft, args.slice, args.allFacts);
+  const rules = ruleCheck(args.draft, args.slice, args.allFacts, args.readText);
   if (rules.length) return { pass: false, violations: rules, layers: { rules, model: null } };
-  const p = factCheckerPrompt({ character: args.character, slice: args.slice, draft: args.draft, answerKeyHints: args.answerKeyHints, isSocratic: args.isSocratic });
+  const p = factCheckerPrompt({ character: args.character, slice: args.slice, draft: args.draft, answerKeyHints: args.answerKeyHints, isSocratic: args.isSocratic, readText: args.readText });
   const res = await args.provider.generateJson({ role: "fact_checker", system: p.system, user: p.user, promptVersion: p.version, sessionId: args.sessionId, jobKey: args.jobKey }, FactCheckOutputSchema);
   const model: Violation[] = res.parsed.violations.map((v) => ({ kind: v.kind, detail: v.detail }));
   return {

@@ -52,11 +52,14 @@ function numbersInText(facts: Facts): Set<number> {
  * party names from the draft and compare each to the character's slice.
  * Any mismatch fails. Small integers that are not money are ignored.
  */
-export function ruleCheck(draft: string, slice: Facts, allFacts: Facts): Violation[] {
+export function ruleCheck(draft: string, slice: Facts, allFacts: Facts, readText = ""): Violation[] {
   const out: Violation[] = [];
   const knownMoney = moneyValues(slice);
   const knownPct = percentValues(slice);
   const inText = numbersInText(slice);
+  // Text the character has read (a forwarded email) is known to them too.
+  for (const m of readText.matchAll(MONEY_RE)) inText.add(toNumber(m[1]!, m[2]));
+  for (const m of readText.matchAll(PERCENT_RE)) inText.add(Number(m[1]));
 
   for (const m of draft.matchAll(MONEY_RE)) {
     const n = toNumber(m[1]!, m[2]);
@@ -78,13 +81,14 @@ export function ruleCheck(draft: string, slice: Facts, allFacts: Facts): Violati
     const t = textOf(v);
     for (const m of t.matchAll(DATE_RE)) knownDates.add(m[0].toLowerCase().replace(/,\s*\d{4}$/, ""));
   }
+  for (const m of readText.matchAll(DATE_RE)) knownDates.add(m[0].toLowerCase().replace(/,\s*\d{4}$/, ""));
   for (const m of draft.matchAll(DATE_RE)) {
     const raw = m[0].toLowerCase();
     const noYear = raw.replace(/,\s*\d{4}$/, "");
     if (!knownDates.has(raw) && !knownDates.has(noYear)) out.push({ kind: "date", detail: `Date "${m[0]}" is not in the character's known facts` });
   }
   // Party names known to the deal but outside this character's slice.
-  const sliceText = Object.values(slice).map((v) => textOf(v) + ("aliases" in v ? " " + v.aliases.join(" ") : "")).join(" ").toLowerCase();
+  const sliceText = Object.values(slice).map((v) => textOf(v) + ("aliases" in v ? " " + v.aliases.join(" ") : "")).join(" ").toLowerCase() + " " + readText.toLowerCase();
   for (const [key, v] of Object.entries(allFacts)) {
     if (v.type !== "party" || key in slice) continue;
     const names = [v.value, ...v.aliases].filter((n) => n.length > 4);
