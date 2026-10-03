@@ -3,7 +3,7 @@ import { CHARACTER_HARD_RULES, characterCard, factsBlock, renderThread, type Thr
 
 export const RECAP_VERSION = "recap@1.0.0";
 export const DEBRIEF_VERSION = "debrief@1.1.0";
-export const NUDGE_VERSION = "nudge@1.0.0";
+export const NUDGE_VERSION = "nudge@1.1.0";
 
 export function recapPrompt(input: { character: Character; facts: Facts; associateFirstName: string; gapDays: number; milestone: Milestone; openItems: string[]; recentSubjects: string[]; storyDate: string }) {
   const system = `${characterCard(input.character)}\n\n${CHARACTER_HARD_RULES}\n\n${factsBlock(input.facts)}\n\nYou write a short re-entry note to ${input.associateFirstName}, who has been away from the deal for a few days. It recaps where things stand and what is outstanding. It changes nothing in the deal and adds no pressure or new asks. Under 120 words.`;

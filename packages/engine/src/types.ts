@@ -5,7 +5,7 @@
  * rebuilt at any time by replaying the events.
  */
 
-export const ENGINE_VERSION = "0.2.0";
+export const ENGINE_VERSION = "0.3.0";
 
 export type Intent = "deliverable" | "question" | "logistics" | "acknowledgment";
 export type IssueStatus = "raised" | "partial" | "missed";
@@ -50,6 +50,8 @@ export type EmailSentEvent = Base<"email_sent", {
   attachments: string[];
   /** Section references quoted via "quote in reply". */
   quotedRefs?: { documentId: string; ref: string; text: string }[];
+  /** The message this email forwards, which recipients see quoted beneath the body. */
+  forwardedMessageId?: string | null;
   /** Legacy (engine 0.1): private rationale from the retired at-send sheet. */
   rationale?: string | null;
   /** Legacy (engine 0.1): decision point the at-send sheet was shown for. */
@@ -198,6 +200,8 @@ export interface MessageState {
   assignmentId: string | null;
   reflectionQuestions: string[];
   quotedRefs: { documentId: string; ref: string; text: string }[];
+  /** Associate forwards: the message forwarded. Absent on snapshots from before forwarding existed. */
+  forwardedMessageId?: string | null;
 }
 
 export interface AssignmentState {
