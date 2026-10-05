@@ -1,9 +1,9 @@
-name: Nightly evals
+name: Real-model evals
 # Run by hand from the Actions tab (Run workflow). It calls the real Anthropic API.
 on:
   workflow_dispatch:
 jobs:
-  nightly:
+  evals:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -20,7 +20,7 @@ jobs:
       - name: Check for ANTHROPIC_API_KEY
         run: |
           if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "::error title=Missing ANTHROPIC_API_KEY::Nightly evals call the real Anthropic API. Add an ANTHROPIC_API_KEY repository secret under Settings > Secrets and variables > Actions."
+            echo "::error title=Missing ANTHROPIC_API_KEY::These evals call the real Anthropic API. Add an ANTHROPIC_API_KEY repository secret under Settings > Secrets and variables > Actions."
             exit 1
           fi
       - uses: actions/checkout@v4
