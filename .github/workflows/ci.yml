@@ -33,8 +33,3 @@ jobs:
       - run: pnpm test:db
       - name: Fast playthroughs (3 x Mixed path, mock LLM)
         run: pnpm evals:fast
-  nightly:
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Nightly suite runs via the 'nightly' workflow with real model keys."
