@@ -83,6 +83,8 @@ textarea { resize: none; }
 .email-body { white-space: pre-wrap; font-size: 15px; line-height: 1.62; }
 .admin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .admin-table th, .admin-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--color-oat-400); vertical-align: top; }
-.admin-table th { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-ink-muted); }
+.admin-table th { white-space: nowrap; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-ink-muted); }
 .card { background: var(--color-oat-100); border: 1px solid var(--color-oat-400); border-radius: 28px; padding: 28px; box-shadow: var(--shadow-soft); }
+.table-card { padding: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 767px) { .admin-table { min-width: 720px; } }
 @media print { body { background: #fff; } .no-print { display: none !important; } }

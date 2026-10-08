@@ -18,8 +18,8 @@ export function CohortAdmin({ role, cohorts, orgs }: { role: string; cohorts: { 
     setMsg(r.ok ? "Cohort created. Reload to see it." : ((await r.json()) as { error?: string }).error ?? "Failed");
   }
   return (
-    <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 1fr" }}>
-      <div className="card" style={{ padding: 0, overflow: "hidden", gridColumn: "1 / -1" }}>
+    <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+      <div className="card table-card md:col-span-2">
         <table className="admin-table"><thead><tr><th>Firm</th><th>Cohort</th><th>Scenario</th><th>Assessor</th><th>Members</th></tr></thead><tbody>{cohorts.map((c) => <tr key={c.id}><td>{c.orgName}</td><td>{c.name}</td><td>{c.scenarioId}@{c.scenarioVersion}</td><td>{c.assessorShadowMode ? "shadow (human confirms)" : "live"}</td><td>{c.members}</td></tr>)}</tbody></table>
       </div>
       <form onSubmit={doInvite} className="card flex flex-col gap-3">

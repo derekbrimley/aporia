@@ -12,7 +12,7 @@ export default async function PdPage() {
   return (
     <Shell user={u} title="Cohort progress">
       <p className="text-ink-muted text-sm mb-4 max-w-[720px]">This view shows progress only. Associates' emails, work product and reasoning are private to them, which is what lets them write honestly.</p>
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="card table-card">
         <table className="admin-table">
           <thead><tr><th>Cohort</th><th>Associate</th><th>Status</th><th>Current milestone</th><th>Last active</th><th>Active time</th></tr></thead>
           <tbody>

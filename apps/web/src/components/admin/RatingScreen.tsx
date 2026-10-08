@@ -15,7 +15,7 @@ export function RatingScreen({ sample }: { sample: { id: string; from: string; k
     setI(i + 1); setNotes(""); setAcceptable(true); setR({ realism: 3, legalAccuracy: 3, socraticQuality: 3, voiceConsistency: 3 });
   }
   return (
-    <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 360px" }}>
+    <div className="grid gap-6 grid-cols-1 lg:grid-cols-[1fr_360px]">
       <article className="card"><div className="text-sm text-ink-muted">{m.from} · {m.kind} · {i + 1} of {sample.length}</div><h2 className="display text-[20px] font-normal mt-1">{m.subject}</h2><div className="email-body">{m.body}</div></article>
       <div className="card flex flex-col gap-4">
         {DIMS.map(([k, label]) => <label key={k} className="flex flex-col gap-1 text-sm"><span className="flex justify-between"><b>{label}</b><span>{r[k]}</span></span><input type="range" min={1} max={5} value={r[k]} onChange={(e) => setR({ ...r, [k]: Number(e.target.value) })} /></label>)}
