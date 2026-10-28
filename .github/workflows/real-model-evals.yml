@@ -1,7 +1,13 @@
 name: Real-model evals
-# Run by hand from the Actions tab (Run workflow). It calls the real Anthropic API.
+# Run by hand from the Actions tab (Run workflow), on main. It calls the real Anthropic API.
+# Auth is Workload Identity Federation: the job's GitHub OIDC token is exchanged for a
+# short-lived Anthropic token, so there is no ANTHROPIC_API_KEY secret. The federation
+# rule only matches runs on refs/heads/main, so running this from another branch fails auth.
 on:
   workflow_dispatch:
+permissions:
+  id-token: write
+  contents: read
 jobs:
   evals:
     runs-on: ubuntu-latest
@@ -14,15 +20,59 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/aporia_evals
       LLM_PROVIDER: anthropic
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       APORIA_TEST_MODE: "1"
+      # Identifiers, not secrets. The SDK reads these when ANTHROPIC_API_KEY is unset.
+      ANTHROPIC_FEDERATION_RULE_ID: fdrl_017xNqdDVDLnU7FDNAj2MC9b
+      ANTHROPIC_ORGANIZATION_ID: bbf3d633-0697-44d1-889e-ec2eded263bc
+      ANTHROPIC_SERVICE_ACCOUNT_ID: svac_0139yhMi1zRdJQmqehx99ixb
+      ANTHROPIC_WORKSPACE_ID: wrkspc_017K1kGuTwEcRLkrMQ9GLPRh
+      ANTHROPIC_IDENTITY_TOKEN_FILE: /tmp/aporia-gha-oidc-token
     steps:
-      - name: Check for ANTHROPIC_API_KEY
+      - name: Check Claude auth
+        # Exchanges a fresh OIDC token once so a bad federation setup fails here, in seconds,
+        # instead of partway through the evals. Prints only the token lifetime.
         run: |
-          if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "::error title=Missing ANTHROPIC_API_KEY::These evals call the real Anthropic API. Add an ANTHROPIC_API_KEY repository secret under Settings > Secrets and variables > Actions."
+          jwt=$(curl -sSf -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://api.anthropic.com" | jq -r .value)
+          jq -n --arg jwt "$jwt" '{
+            grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            assertion: $jwt,
+            federation_rule_id: env.ANTHROPIC_FEDERATION_RULE_ID,
+            organization_id: env.ANTHROPIC_ORGANIZATION_ID,
+            service_account_id: env.ANTHROPIC_SERVICE_ACCOUNT_ID,
+            workspace_id: env.ANTHROPIC_WORKSPACE_ID
+          }' > "$RUNNER_TEMP/exchange.json"
+          status=$(curl -sS -o "$RUNNER_TEMP/exchange-res.json" -w '%{http_code}' \
+            https://api.anthropic.com/v1/oauth/token -H "content-type: application/json" \
+            --data @"$RUNNER_TEMP/exchange.json")
+          rm -f "$RUNNER_TEMP/exchange.json"
+          if [ "$status" != "200" ]; then
+            echo "::error title=Claude auth failed::Token exchange returned HTTP $status. Run this workflow from main, and check the authentication history at platform.claude.com/settings/workload-identity-federation."
+            jq '{type, error}' "$RUNNER_TEMP/exchange-res.json" || true
             exit 1
           fi
+          echo "Token exchange OK (expires_in: $(jq -r .expires_in "$RUNNER_TEMP/exchange-res.json")s)"
+          rm -f "$RUNNER_TEMP/exchange-res.json"
+      - name: Keep the OIDC token file fresh
+        # GitHub's tokens last about 5 minutes and each can be exchanged only once, while the
+        # SDK re-reads the file on every refresh. Rewrite it every minute for the whole job.
+        run: |
+          cat > "$RUNNER_TEMP/refresh-oidc.sh" <<'SH'
+          #!/usr/bin/env bash
+          set -u
+          fetch() {
+            curl -sSf -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://api.anthropic.com" \
+              | jq -er .value > "$ANTHROPIC_IDENTITY_TOKEN_FILE.tmp" \
+              && mv "$ANTHROPIC_IDENTITY_TOKEN_FILE.tmp" "$ANTHROPIC_IDENTITY_TOKEN_FILE"
+          }
+          fetch || exit 1
+          while sleep 60; do fetch || echo "OIDC token refresh failed; retrying in 60s" >&2; done
+          SH
+          chmod +x "$RUNNER_TEMP/refresh-oidc.sh"
+          nohup "$RUNNER_TEMP/refresh-oidc.sh" > "$RUNNER_TEMP/refresh-oidc.log" 2>&1 &
+          for _ in $(seq 1 20); do [ -s "$ANTHROPIC_IDENTITY_TOKEN_FILE" ] && exit 0; sleep 0.5; done
+          echo "::error::Could not fetch the GitHub OIDC token"; exit 1
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4 # version comes from packageManager in package.json
       - uses: actions/setup-node@v4
