@@ -1,6 +1,6 @@
-import type { Job } from "@aporia/engine";
-import { appendEvent, getPool } from "@aporia/db";
-import { getScenario } from "@aporia/scenario";
+import type { Job } from "@rematter/engine";
+import { appendEvent, getPool } from "@rematter/db";
+import { getScenario } from "@rematter/scenario";
 import { Logger, run, runOnce, type Runner, type TaskList, type JobHelpers } from "graphile-worker";
 
 const quietLogger = new Logger(() => () => {});
@@ -8,7 +8,7 @@ import { getProvider, type LlmProvider } from "./llm/index.js";
 import { handleJob } from "./jobs/handlers.js";
 import { makeContext, type GenerationRecord, type JobOutcome } from "./jobs/types.js";
 import { alert, captureException, traceGeneration } from "./telemetry.js";
-import { loadSnapshot } from "@aporia/db";
+import { loadSnapshot } from "@rematter/db";
 
 export const SESSION_TASK = "session_job";
 
@@ -91,7 +91,7 @@ export async function startWorker(opts: { connectionString: string; concurrency?
 
 /** Processes every runnable job then returns. Used by the headless harness and tests (delays are zero in test mode). */
 export async function drainJobs(opts: { connectionString: string; provider?: LlmProvider }): Promise<void> {
-  await runOnce({ connectionString: opts.connectionString, concurrency: 1, taskList: createTaskList(opts.provider), logger: process.env.APORIA_QUIET === "1" ? quietLogger : undefined });
+  await runOnce({ connectionString: opts.connectionString, concurrency: 1, taskList: createTaskList(opts.provider), logger: process.env.REMATTER_QUIET === "1" ? quietLogger : undefined });
 }
 
 /** Count of jobs still queued for a session (any run_at). */

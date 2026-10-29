@@ -3,7 +3,7 @@ import path from "node:path";
 
 const config: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@aporia/scenario", "@aporia/engine", "@aporia/db", "@aporia/prompts", "@aporia/worker"],
+  transpilePackages: ["@rematter/scenario", "@rematter/engine", "@rematter/db", "@rematter/prompts", "@rematter/worker"],
   serverExternalPackages: ["pg", "graphile-worker", "@anthropic-ai/sdk", "@anthropic-ai/bedrock-sdk"],
   outputFileTracingRoot: path.join(process.cwd(), "../../"),
   experimental: { serverActions: { bodySizeLimit: "2mb" } },

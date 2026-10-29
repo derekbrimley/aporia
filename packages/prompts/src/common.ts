@@ -1,5 +1,5 @@
 import type { Character, Facts } from "./deps.js";
-import { renderFactsForPrompt } from "@aporia/scenario";
+import { renderFactsForPrompt } from "@rematter/scenario";
 
 /**
  * Hard rules every character prompt carries. Kept as one constant so the eval

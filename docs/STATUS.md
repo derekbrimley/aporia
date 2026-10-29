@@ -16,7 +16,7 @@ Date: 2026-09-23. Branch `claude/inspiring-pasteur-uz991g`.
 
 ## Deviations and gaps to decide
 
-- **Product name.** The sign-in mock says "Associate Reps"; the repo is "aporia". `PRODUCT_NAME` env defaults to "Associate Reps".
+- **Product name.** The product is "Re:matter" (written "Rematter" or "rematter" where a colon isn't allowed: package scope `@rematter/*`, env vars `REMATTER_*`, cookies, database names). `PRODUCT_NAME` env defaults to "Re:matter". The GitHub repo is still named "aporia", and staging still uses `staging.associatereps.com` and `no-reply@associatereps.com` until the new domain is set up.
 - **Documents are Markdown, not .docx via pandoc.** No attorney-approved .docx exists yet, and pandoc is not in this environment. The builder accepts `.docx` sources and shells out to pandoc when present. "Download PDF" opens a print-ready page (browser print-to-PDF) instead of a pre-rendered PDF.
 - **Observability.** Worker generations go to Langfuse (OpenTelemetry SDK, isolated tracer provider) with prompt, output, usage and checker result; worker exceptions and alerts, and web server request errors, go to Sentry. Both are off until keys are set; neither has been exercised against a live account yet. Browser-side errors are not captured. Alerts reach Sentry but not email/Slack.
 - **Live updates poll Postgres every 2 s behind SSE** rather than LISTEN/NOTIFY. Fine at pilot scale.

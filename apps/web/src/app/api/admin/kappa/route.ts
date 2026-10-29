@@ -1,4 +1,4 @@
-import { agreementKappa } from "@aporia/evals";
+import { agreementKappa } from "@rematter/evals";
 import { apiUser } from "@/lib/auth";
 export async function GET() {
   const u = await apiUser(["internal_admin"]);

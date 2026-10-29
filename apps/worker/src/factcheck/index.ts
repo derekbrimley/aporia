@@ -1,5 +1,5 @@
-import { FactCheckOutputSchema, factCheckerPrompt } from "@aporia/prompts";
-import type { Character, Facts } from "@aporia/scenario";
+import { FactCheckOutputSchema, factCheckerPrompt } from "@rematter/prompts";
+import type { Character, Facts } from "@rematter/scenario";
 import type { LlmProvider } from "../llm/provider.js";
 import { ruleCheck, type Violation } from "./rules.js";
 

@@ -2,13 +2,13 @@ import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, eq, gt, isNull } from "drizzle-orm";
-import { getDb, schema } from "@aporia/db";
+import { getDb, schema } from "@rematter/db";
 import { env } from "./env.js";
 
 export type Role = "associate" | "pd_admin" | "internal_admin" | "internal_rater";
 export interface CurrentUser { id: string; orgId: string; email: string; name: string; firstName: string; role: Role }
 
-const COOKIE = "aporia_session";
+const COOKIE = "rematter_session";
 const SESSION_DAYS = 14;
 const LINK_MINUTES = 20;
 

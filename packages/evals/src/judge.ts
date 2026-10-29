@@ -1,8 +1,8 @@
-import { getPool } from "@aporia/db";
-import type { SessionState } from "@aporia/engine";
-import { JudgeOutputSchema, characterCard, judgePrompt, renderThread, type JudgeOutput } from "@aporia/prompts";
-import { ScenarioIndex, type ScenarioPackage } from "@aporia/scenario";
-import { Names, threadForPrompt, type LlmProvider } from "@aporia/worker";
+import { getPool } from "@rematter/db";
+import type { SessionState } from "@rematter/engine";
+import { JudgeOutputSchema, characterCard, judgePrompt, renderThread, type JudgeOutput } from "@rematter/prompts";
+import { ScenarioIndex, type ScenarioPackage } from "@rematter/scenario";
+import { Names, threadForPrompt, type LlmProvider } from "@rematter/worker";
 
 export interface JudgedMessage { messageId: string; from: string; kind: string; rating: JudgeOutput }
 

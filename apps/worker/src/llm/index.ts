@@ -1,7 +1,7 @@
 import { AnthropicProvider } from "./anthropic.js";
 import { MockProvider } from "./mock.js";
 import type { LlmProvider, ProviderName } from "./provider.js";
-import { loadEnv } from "@aporia/db";
+import { loadEnv } from "@rematter/db";
 
 export * from "./provider.js";
 export { MockProvider } from "./mock.js";

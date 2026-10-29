@@ -1,4 +1,4 @@
-import { getPool, listEvents, getSessionState, rebuildProjections } from "@aporia/db";
+import { getPool, listEvents, getSessionState, rebuildProjections } from "@rematter/db";
 import { getScenario } from "./scenario.js";
 
 export async function listSessions() {

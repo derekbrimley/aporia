@@ -1,4 +1,4 @@
-import { discardHeldEmail, releaseHeldEmail } from "@aporia/worker";
+import { discardHeldEmail, releaseHeldEmail } from "@rematter/worker";
 import { apiUser } from "@/lib/auth";
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const u = await apiUser(["internal_admin"]);

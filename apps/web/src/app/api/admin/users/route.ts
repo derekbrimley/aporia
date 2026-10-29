@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
-import { getDb, schema } from "@aporia/db";
+import { getDb, schema } from "@rematter/db";
 import { apiUser, audit, createMagicLink } from "@/lib/auth";
 
 const Invite = z.object({ orgId: z.string().uuid().optional(), cohortId: z.string().uuid().optional(), email: z.string().email(), name: z.string().min(1), role: z.enum(["associate", "pd_admin", "internal_admin", "internal_rater"]), sendLink: z.boolean().default(true) });

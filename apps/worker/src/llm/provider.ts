@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { LlmRole } from "@aporia/prompts";
+import type { LlmRole } from "@rematter/prompts";
 
 export type ProviderName = "anthropic" | "bedrock" | "mock";
 

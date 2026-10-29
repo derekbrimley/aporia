@@ -1,4 +1,4 @@
-import { getPool } from "@aporia/db";
+import { getPool } from "@rematter/db";
 import { apiUser, audit } from "@/lib/auth";
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const u = await apiUser(["internal_admin"]);

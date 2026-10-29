@@ -1,4 +1,4 @@
-import { getPool } from "@aporia/db";
+import { getPool } from "@rematter/db";
 import { apiUser } from "@/lib/auth";
 
 /** Pseudonymized transcripts: session and user ids only, no names, emails or firm identity. */

@@ -1,4 +1,4 @@
-import { getPool } from "@aporia/db";
+import { getPool } from "@rematter/db";
 
 export interface RosterRow { cohortId: string; cohortName: string; userId: string; name: string; email: string; status: "invited" | "not_started" | "in_progress" | "completed"; currentMilestone: string | null; lastActiveAt: string | null; activeMinutes: number; invitedAt: string }
 

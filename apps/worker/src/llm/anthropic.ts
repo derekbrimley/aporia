@@ -1,14 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { z } from "zod";
-import { MODELS } from "@aporia/prompts";
+import { MODELS } from "@rematter/prompts";
 import { LlmRefusalError, type LlmJsonResult, type LlmProvider, type LlmRequest, type LlmTextResult, type ProviderName } from "./provider.js";
 
 type Client = Pick<Anthropic, "messages">;
 
 /**
  * Anthropic API provider, also used for Bedrock through the Mantle client
- * (same Messages surface). Model IDs come from @aporia/prompts; scenario
+ * (same Messages surface). Model IDs come from @rematter/prompts; scenario
  * content sits at the front of the system prompt and is cached.
  */
 export class AnthropicProvider implements LlmProvider {

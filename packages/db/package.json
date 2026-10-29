@@ -1,5 +1,5 @@
 {
-  "name": "@aporia/db",
+  "name": "@rematter/db",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,8 +15,8 @@
     "seed": "tsx src/cli/seed.ts"
   },
   "dependencies": {
-    "@aporia/engine": "workspace:*",
-    "@aporia/scenario": "workspace:*",
+    "@rematter/engine": "workspace:*",
+    "@rematter/scenario": "workspace:*",
     "@opentelemetry/api": "^1.9.1",
     "drizzle-orm": "^0.44.0",
     "graphile-worker": "^0.16.6",

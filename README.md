@@ -1,4 +1,4 @@
-# Aporia: Simulation 01 (Venture Debt)
+# Re:matter: Simulation 01 (Venture Debt)
 
 A borrower-side venture debt financing, run from kickoff to closing inside an email inbox where every other participant is played by AI. Built from the Notion spec "V1 Build Spec: Simulation 01 (Venture Debt)".
 
@@ -25,7 +25,7 @@ Requirements: Node 22, pnpm 10, Postgres 16.
 ```bash
 pnpm install
 cp .env.example .env            # defaults: local Postgres, mock LLM, test mode
-createdb aporia_dev
+createdb rematter_dev
 pnpm scenario:validate          # schema + cross-reference check of the scenario package
 pnpm scenario:build-docs        # Markdown -> HTML with section anchors
 pnpm db:migrate                 # SQL migrations + graphile-worker schema
@@ -36,7 +36,7 @@ pnpm dev:web                    # in another; open http://localhost:3000/sign-in
 
 Sign in as `associate@dev-firm.example` (or `pd@…`, `admin@…`, `rater@…`). Without Postmark configured, the magic link is printed in the web server log and, in development, returned to the sign-in form.
 
-Set `LLM_PROVIDER=anthropic` plus `ANTHROPIC_API_KEY` for real generations (`bedrock` + AWS credentials for firms that require AWS). Unset `APORIA_TEST_MODE` to get realistic per-character reply delays.
+Set `LLM_PROVIDER=anthropic` plus `ANTHROPIC_API_KEY` for real generations (`bedrock` + AWS credentials for firms that require AWS). Unset `REMATTER_TEST_MODE` to get realistic per-character reply delays.
 
 ## Tests and evals
 
@@ -65,4 +65,4 @@ Content lives in `packages/scenario/scenarios/venture-debt-01/`. The engine fire
 
 ## Deploying
 
-Web and worker are plain Node processes (Railway); Postgres is Neon; the queue is graphile-worker on Postgres, so there is no extra vendor. Both Railway services are defined in `.railway/railway.ts` (Railway infrastructure as code): preview with `railway config plan`, apply with `railway config apply`. Secrets are declared with `preserve()` and set with `railway variables`, so their values never enter git. Custom domains are added in the dashboard or with `railway domain`. `RUN_MIGRATIONS_ON_START=1` on the worker applies migrations at boot. In production the web app requires `AUTH_SECRET` (32+ characters). Langfuse (worker generations) and Sentry (worker and web server errors) turn on when their keys are set; `APORIA_ENV` tags the environment. See `.env.example` for every variable and `docs/STATUS.md` for what is and is not done.
+Web and worker are plain Node processes (Railway); Postgres is Neon; the queue is graphile-worker on Postgres, so there is no extra vendor. Both Railway services are defined in `.railway/railway.ts` (Railway infrastructure as code): preview with `railway config plan`, apply with `railway config apply`. Secrets are declared with `preserve()` and set with `railway variables`, so their values never enter git. Custom domains are added in the dashboard or with `railway domain`. `RUN_MIGRATIONS_ON_START=1` on the worker applies migrations at boot. In production the web app requires `AUTH_SECRET` (32+ characters). Langfuse (worker generations) and Sentry (worker and web server errors) turn on when their keys are set; `REMATTER_ENV` tags the environment. See `.env.example` for every variable and `docs/STATUS.md` for what is and is not done.

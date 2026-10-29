@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Aporia is an inbox-based venture debt deal simulation for junior transactional associates. Every other participant (senior associate, partner, client, lender's counsel) is played by an LLM. `README.md` covers setup; `docs/STATUS.md` tracks what is done, known deviations from the V1 spec, and what hasn't been started.
+Re:matter is an inbox-based venture debt deal simulation for junior transactional associates. Every other participant (senior associate, partner, client, lender's counsel) is played by an LLM. `README.md` covers setup; `docs/STATUS.md` tracks what is done, known deviations from the V1 spec, and what hasn't been started.
 
 ## Commands
 
@@ -25,16 +25,16 @@ pnpm dev:worker / pnpm dev:web  # run both for the app (http://localhost:3000/si
 pnpm playthrough -- --path mixed   # one headless bot run through closing
 pnpm evals:fast                 # 3 × mixed path (CI runs this)
 pnpm evals:nightly              # 4 × each of the 5 paths + judge
-pnpm --filter @aporia/web e2e   # Playwright smoke test
+pnpm --filter @rematter/web e2e   # Playwright smoke test
 ```
 
-CI (`.github/workflows/ci.yml`) runs validate → build-docs → typecheck → test:unit → db:migrate → test:db → evals:fast, with `LLM_PROVIDER=mock` and `APORIA_TEST_MODE=1`.
+CI (`.github/workflows/ci.yml`) runs validate → build-docs → typecheck → test:unit → db:migrate → test:db → evals:fast, with `LLM_PROVIDER=mock` and `REMATTER_TEST_MODE=1`.
 
 Don't run `pnpm format`: most files predate Prettier and it rewrites the whole repo. Format only the files you touch with `pnpm exec prettier --write <files>`, and only if they were already clean.
 
 Test placement: unit tests are `**/__tests__/*.test.ts` in engine, scenario, prompts, worker and evals. Tests that touch Postgres must live in `packages/db` or be named `*.db.test.ts`, which keeps them in the serial `db` project. See `vitest.config.ts`.
 
-Env: CLIs and the worker load the nearest repo-root `.env` through `loadEnv()` in `packages/db/src/env.ts`, and variables already exported take precedence. Next.js loads `.env` itself. `LLM_PROVIDER=mock` (the default) makes runs deterministic and needs no API key. `APORIA_TEST_MODE=1` sets every reply delay to zero.
+Env: CLIs and the worker load the nearest repo-root `.env` through `loadEnv()` in `packages/db/src/env.ts`, and variables already exported take precedence. Next.js loads `.env` itself. `LLM_PROVIDER=mock` (the default) makes runs deterministic and needs no API key. `REMATTER_TEST_MODE=1` sets every reply delay to zero.
 
 ## Architecture
 

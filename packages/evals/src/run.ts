@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { closeDb, databaseUrl, getDb, getPool, loadEnv, migrate, seedDevData } from "@aporia/db";
-import { getScenario, DEFAULT_SCENARIO_ID } from "@aporia/scenario";
-import { getProvider, type LlmProvider } from "@aporia/worker";
+import { closeDb, databaseUrl, getDb, getPool, loadEnv, migrate, seedDevData } from "@rematter/db";
+import { getScenario, DEFAULT_SCENARIO_ID } from "@rematter/scenario";
+import { getProvider, type LlmProvider } from "@rematter/worker";
 import { BotAssociate } from "./bot.js";
 import { runChecks, type CheckResult } from "./checks.js";
 import { judgeSession } from "./judge.js";

@@ -1,4 +1,4 @@
-import type { Facts, FactValue } from "@aporia/scenario";
+import type { Facts, FactValue } from "@rematter/scenario";
 
 export interface Violation {
   kind: "amount" | "percent" | "date" | "party" | "fiction_break" | "grading" | "slice_contradiction" | "answer_key_leak" | "invented_fact";

@@ -1,5 +1,5 @@
 {
-  "name": "@aporia/evals",
+  "name": "@rematter/evals",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -16,11 +16,11 @@
     "nightly": "tsx src/cli/run-suite.ts --paths strong,weak,mixed,answer-seeker,off-script --runs 4 --judge"
   },
   "dependencies": {
-    "@aporia/db": "workspace:*",
-    "@aporia/engine": "workspace:*",
-    "@aporia/prompts": "workspace:*",
-    "@aporia/scenario": "workspace:*",
-    "@aporia/worker": "workspace:*",
+    "@rematter/db": "workspace:*",
+    "@rematter/engine": "workspace:*",
+    "@rematter/prompts": "workspace:*",
+    "@rematter/scenario": "workspace:*",
+    "@rematter/worker": "workspace:*",
     "yaml": "^2.7.0",
     "zod": "^4.1.0"
   },

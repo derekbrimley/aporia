@@ -1,13 +1,13 @@
 import { and, eq } from "drizzle-orm";
-import { ENGINE_VERSION } from "@aporia/engine";
-import { appendEvent, ensureSession, getDb, getPool, getSessionState, recordActivity, schema } from "@aporia/db";
+import { ENGINE_VERSION } from "@rematter/engine";
+import { appendEvent, ensureSession, getDb, getPool, getSessionState, recordActivity, schema } from "@rematter/db";
 import type { CurrentUser } from "./auth.js";
 import { getScenario } from "./scenario.js";
 
 /**
  * Finds the associate's session in their cohort, starting it on first load and
  * appending session_resumed when they come back after a gap. Test mode follows
- * the environment (APORIA_TEST_MODE=1) for new sessions only.
+ * the environment (REMATTER_TEST_MODE=1) for new sessions only.
  */
 export async function bootstrapSession(user: CurrentUser) {
   const db = getDb();
@@ -19,7 +19,7 @@ export async function bootstrapSession(user: CurrentUser) {
   if (!membership) return null;
   const cohort = membership.cohort;
   const { pkg } = getScenario(cohort.scenarioId, cohort.scenarioVersion);
-  const session = await ensureSession(db, { orgId: user.orgId, userId: user.id, cohortId: cohort.id, scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: ENGINE_VERSION, testMode: process.env.APORIA_TEST_MODE === "1" });
+  const session = await ensureSession(db, { orgId: user.orgId, userId: user.id, cohortId: cohort.id, scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: ENGINE_VERSION, testMode: process.env.REMATTER_TEST_MODE === "1" });
   const row = (await getPool().query<{ status: string; last_activity_at: Date | null }>(`select status, last_activity_at from sessions where id = $1`, [session.id])).rows[0]!;
   const now = new Date();
   if (row.status === "not_started") {

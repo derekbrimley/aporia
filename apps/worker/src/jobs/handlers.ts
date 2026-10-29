@@ -1,10 +1,10 @@
 import {
   AssessmentOutputSchema, IntentOutputSchema, ReflectionOutputSchema, assessorPrompt, characterWriterPrompt, debriefPrompt, doctrinePrompt,
   intentClassifierPrompt, nudgePrompt, recapPrompt, reflectionPrompt, renderForwarded, type AssessmentOutput,
-} from "@aporia/prompts";
-import { openAssignments, workText } from "@aporia/engine";
-import type { Job, JobPayload } from "@aporia/engine";
-import { formatFact, sliceFactsFor, type Facts } from "@aporia/scenario";
+} from "@rematter/prompts";
+import { openAssignments, workText } from "@rematter/engine";
+import type { Job, JobPayload } from "@rematter/engine";
+import { formatFact, sliceFactsFor, type Facts } from "@rematter/scenario";
 import { forwardedForPrompt, otherThreadsFor, storyDate, threadForPrompt } from "../context.js";
 import { beatSubject, deliverFixed, generateAndDeliver, threadIdForKey } from "./deliver.js";
 import type { JobContext, JobOutcome } from "./types.js";

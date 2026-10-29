@@ -1,4 +1,4 @@
-import type { ScenarioPackage } from "@aporia/scenario";
+import type { ScenarioPackage } from "@rematter/scenario";
 import { ENGINE_VERSION, type SessionState } from "./types.js";
 
 export function initialState(pkg: ScenarioPackage): SessionState {
