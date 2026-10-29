@@ -13,6 +13,15 @@ const config: NextConfig = {
     return config;
   },
   turbopack: { resolveExtensions: [".tsx", ".ts", ".jsx", ".js", ".mjs", ".json"] },
+  // The old staging host stays attached in Railway so existing links and bookmarks land on the new domain.
+  redirects: async () => [
+    {
+      source: "/:path*",
+      has: [{ type: "host", value: "staging.associatereps.com" }],
+      destination: "https://staging.getrematter.com/:path*",
+      permanent: false,
+    },
+  ],
   headers: async () => [
     {
       source: "/(.*)",
