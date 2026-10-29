@@ -1,2 +1,2 @@
-export { getDb, getPool, schema } from "@aporia/db";
-export * as t from "@aporia/db";
+export { getDb, getPool, schema } from "@rematter/db";
+export * as t from "@rematter/db";

@@ -14,19 +14,19 @@ jobs:
     services:
       postgres:
         image: postgres:16
-        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: aporia_evals }
+        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: rematter_evals }
         ports: ["5432:5432"]
         options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/aporia_evals
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/rematter_evals
       LLM_PROVIDER: anthropic
-      APORIA_TEST_MODE: "1"
+      REMATTER_TEST_MODE: "1"
       # Identifiers, not secrets. The SDK reads these when ANTHROPIC_API_KEY is unset.
       ANTHROPIC_FEDERATION_RULE_ID: fdrl_017xNqdDVDLnU7FDNAj2MC9b
       ANTHROPIC_ORGANIZATION_ID: bbf3d633-0697-44d1-889e-ec2eded263bc
       ANTHROPIC_SERVICE_ACCOUNT_ID: svac_0139yhMi1zRdJQmqehx99ixb
       ANTHROPIC_WORKSPACE_ID: wrkspc_017K1kGuTwEcRLkrMQ9GLPRh
-      ANTHROPIC_IDENTITY_TOKEN_FILE: /tmp/aporia-gha-oidc-token
+      ANTHROPIC_IDENTITY_TOKEN_FILE: /tmp/rematter-gha-oidc-token
     steps:
       - name: Check Claude auth
         # Exchanges a fresh OIDC token once so a bad federation setup fails here, in seconds,

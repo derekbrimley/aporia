@@ -1,4 +1,4 @@
-import { databaseUrl, loadEnv, migrate } from "@aporia/db";
+import { databaseUrl, loadEnv, migrate } from "@rematter/db";
 
 loadEnv();
 import { startWorker } from "./runner.js";

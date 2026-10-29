@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getPool } from "@aporia/db";
+import { getPool } from "@rematter/db";
 import { apiUser } from "@/lib/auth";
 import { sessionForUser } from "@/lib/session";
 

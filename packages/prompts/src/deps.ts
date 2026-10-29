@@ -1,1 +1,1 @@
-export type { Character, Facts, Assignment, Beat, DecisionPoint, Issue, Delta, NegotiationPoint, Consequence, Milestone } from "@aporia/scenario";
+export type { Character, Facts, Assignment, Beat, DecisionPoint, Issue, Delta, NegotiationPoint, Consequence, Milestone } from "@rematter/scenario";

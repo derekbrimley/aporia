@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { appendEvent, getDb, schema } from "@aporia/db";
+import { appendEvent, getDb, schema } from "@rematter/db";
 import { apiUser } from "@/lib/auth";
 import { sessionForUser } from "@/lib/session";
 

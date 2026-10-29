@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID, ScenarioIndex, sliceFactsFor } from "@aporia/scenario";
+import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID, ScenarioIndex, sliceFactsFor } from "@rematter/scenario";
 import { ruleCheck } from "../factcheck/rules.js";
 import { MockProvider } from "../llm/mock.js";
 import { derivedUuid } from "../ids.js";
@@ -43,14 +43,14 @@ describe("fact checker rules layer", () => {
 describe("mock provider", () => {
   it("classifies intent from body shape and honours markers", async () => {
     const m = new MockProvider();
-    const q = await m.generateJson({ role: "intent_classifier", system: "", user: "", promptVersion: "x", mockContext: { body: "Thanks!" } }, (await import("@aporia/prompts")).IntentOutputSchema);
+    const q = await m.generateJson({ role: "intent_classifier", system: "", user: "", promptVersion: "x", mockContext: { body: "Thanks!" } }, (await import("@rematter/prompts")).IntentOutputSchema);
     expect(q.parsed.intent).toBe("acknowledgment");
-    const d = await m.generateJson({ role: "intent_classifier", system: "", user: "", promptVersion: "x", mockContext: { body: "x".repeat(200), openAssignmentTitle: "Term sheet comments" } }, (await import("@aporia/prompts")).IntentOutputSchema);
+    const d = await m.generateJson({ role: "intent_classifier", system: "", user: "", promptVersion: "x", mockContext: { body: "x".repeat(200), openAssignmentTitle: "Term sheet comments" } }, (await import("@rematter/prompts")).IntentOutputSchema);
     expect(d.parsed.intent).toBe("deliverable");
   });
   it("assesses by issue keywords", async () => {
     const m = new MockProvider();
-    const r = await m.generateJson({ role: "assessor", system: "", user: "", promptVersion: "x", mockContext: { deliverable: "The landlord waiver for the leased site is a long-lead item.", rationale: "x", issues: [{ id: "A2.I4", keywords: ["landlord", "waiver"] }, { id: "A2.I1", keywords: ["revenue", "tested"] }], decisionPoints: [] } }, (await import("@aporia/prompts")).AssessmentOutputSchema);
+    const r = await m.generateJson({ role: "assessor", system: "", user: "", promptVersion: "x", mockContext: { deliverable: "The landlord waiver for the leased site is a long-lead item.", rationale: "x", issues: [{ id: "A2.I4", keywords: ["landlord", "waiver"] }, { id: "A2.I1", keywords: ["revenue", "tested"] }], decisionPoints: [] } }, (await import("@rematter/prompts")).AssessmentOutputSchema);
     expect(r.parsed.issues.find((i) => i.id === "A2.I4")?.status).toBe("raised");
     expect(r.parsed.issues.find((i) => i.id === "A2.I1")?.status).toBe("missed");
   });

@@ -1,4 +1,4 @@
-import type { Condition } from "@aporia/scenario";
+import type { Condition } from "@rematter/scenario";
 import type { SessionState } from "./types.js";
 
 /** Evaluates a scenario condition against session state. Pure. */

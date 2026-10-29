@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { appendEvent, recordActivity } from "@aporia/db";
-import { ScenarioIndex } from "@aporia/scenario";
+import { appendEvent, recordActivity } from "@rematter/db";
+import { ScenarioIndex } from "@rematter/scenario";
 import { apiUser } from "@/lib/auth";
 import { sessionForUser } from "@/lib/session";
 
@@ -55,6 +55,6 @@ export async function POST(req: Request) {
     payload: { messageId, threadId, subject: parsed.data.subject ?? existing?.subject ?? "(no subject)", to, cc, body: parsed.data.body, attachments: parsed.data.attachments, quotedRefs: parsed.data.quotedRefs, forwardedMessageId: fwd?.id ?? null },
   }, "associate", s.pkg);
   await recordActivity(s.session.id, new Date());
-  if (parsed.data.draftId) await (await import("@aporia/db")).getPool().query(`delete from drafts where id = $1 and session_id = $2`, [parsed.data.draftId, s.session.id]);
+  if (parsed.data.draftId) await (await import("@rematter/db")).getPool().query(`delete from drafts where id = $1 and session_id = $2`, [parsed.data.draftId, s.session.id]);
   return Response.json({ ok: true, messageId, threadId });
 }

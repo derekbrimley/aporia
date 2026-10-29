@@ -32,7 +32,7 @@ let langfuse: NodeTracerProvider | null = null;
 let sentry = false;
 
 export function initTelemetry(): void {
-  const environment = process.env.APORIA_ENV ?? "development";
+  const environment = process.env.REMATTER_ENV ?? "development";
   if (process.env.SENTRY_DSN && !sentry) {
     Sentry.init({ dsn: process.env.SENTRY_DSN, environment, tracesSampleRate: 0 });
     sentry = true;
@@ -52,7 +52,7 @@ export async function shutdownTelemetry(): Promise<void> {
 
 export function traceGeneration(t: GenerationTrace) {
   const { io, ...meta } = t;
-  if (process.env.APORIA_QUIET !== "1")
+  if (process.env.REMATTER_QUIET !== "1")
     console.log(JSON.stringify({ level: "info", event: "generation", ...meta }));
   if (!langfuse) return;
   const end = new Date();

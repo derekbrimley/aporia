@@ -1,5 +1,5 @@
-import type { Beat, Character, Facts } from "@aporia/scenario";
-import { sliceFactsFor } from "@aporia/scenario";
+import type { Beat, Character, Facts } from "@rematter/scenario";
+import { sliceFactsFor } from "@rematter/scenario";
 import { checkDraft } from "../factcheck/index.js";
 import { derivedUuid } from "../ids.js";
 import type { LlmProvider, LlmTextResult } from "../llm/provider.js";

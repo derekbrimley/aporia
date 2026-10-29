@@ -1,5 +1,5 @@
-import { appendEvent, getPool } from "@aporia/db";
-import { getScenario } from "@aporia/scenario";
+import { appendEvent, getPool } from "@rematter/db";
+import { getScenario } from "@rematter/scenario";
 
 /** Releases a held email after human review, optionally with an edited body. Audit-logged. */
 export async function releaseHeldEmail(heldId: string, adminUserId: string, editedBody?: string): Promise<void> {

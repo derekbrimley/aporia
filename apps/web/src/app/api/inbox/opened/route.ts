@@ -1,4 +1,4 @@
-import { appendEvent, recordActivity } from "@aporia/db";
+import { appendEvent, recordActivity } from "@rematter/db";
 import { apiUser } from "@/lib/auth";
 import { sessionForUser } from "@/lib/session";
 

@@ -1,5 +1,5 @@
 import type pg from "pg";
-import type { Effect, EngineEvent, SessionState } from "@aporia/engine";
+import type { Effect, EngineEvent, SessionState } from "@rematter/engine";
 
 interface Ctx { sessionId: string; orgId: string; seq: number }
 

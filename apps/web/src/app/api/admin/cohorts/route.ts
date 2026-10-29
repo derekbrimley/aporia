@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { getDb, getPool, schema } from "@aporia/db";
-import { DEFAULT_SCENARIO_ID } from "@aporia/scenario";
+import { getDb, getPool, schema } from "@rematter/db";
+import { DEFAULT_SCENARIO_ID } from "@rematter/scenario";
 import { apiUser, audit } from "@/lib/auth";
 import { getScenario } from "@/lib/scenario";
 

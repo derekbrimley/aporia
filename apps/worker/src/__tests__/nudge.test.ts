@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type pg from "pg";
-import { initialState, type Job, type SessionState } from "@aporia/engine";
-import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID } from "@aporia/scenario";
+import { initialState, type Job, type SessionState } from "@rematter/engine";
+import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID } from "@rematter/scenario";
 import { handleJob } from "../jobs/handlers.js";
 import { makeContext } from "../jobs/types.js";
 import { MockProvider } from "../llm/mock.js";

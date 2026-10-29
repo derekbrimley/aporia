@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getDb, getPool, schema } from "@aporia/db";
+import { getDb, getPool, schema } from "@rematter/db";
 import { apiUser } from "@/lib/auth";
 import { ratingSample } from "@/lib/admin";
 

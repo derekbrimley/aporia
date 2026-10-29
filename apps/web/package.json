@@ -1,5 +1,5 @@
 {
-  "name": "@aporia/web",
+  "name": "@rematter/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,12 +11,12 @@
     "e2e": "playwright test"
   },
   "dependencies": {
-    "@aporia/db": "workspace:*",
-    "@aporia/engine": "workspace:*",
-    "@aporia/evals": "workspace:*",
-    "@aporia/prompts": "workspace:*",
-    "@aporia/scenario": "workspace:*",
-    "@aporia/worker": "workspace:*",
+    "@rematter/db": "workspace:*",
+    "@rematter/engine": "workspace:*",
+    "@rematter/evals": "workspace:*",
+    "@rematter/prompts": "workspace:*",
+    "@rematter/scenario": "workspace:*",
+    "@rematter/worker": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.0",
     "@radix-ui/react-dropdown-menu": "^2.1.0",
     "@radix-ui/react-tooltip": "^1.2.0",

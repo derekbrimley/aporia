@@ -1,6 +1,6 @@
-import type { MessageState, SessionState } from "@aporia/engine";
-import type { ForwardedForPrompt, ThreadMessageForPrompt } from "@aporia/prompts";
-import { ScenarioIndex, type ScenarioPackage } from "@aporia/scenario";
+import type { MessageState, SessionState } from "@rematter/engine";
+import type { ForwardedForPrompt, ThreadMessageForPrompt } from "@rematter/prompts";
+import { ScenarioIndex, type ScenarioPackage } from "@rematter/scenario";
 
 /** Display helpers that turn participant ids into names for prompts and the UI. */
 export class Names {

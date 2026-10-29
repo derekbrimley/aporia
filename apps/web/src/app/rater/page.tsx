@@ -1,4 +1,4 @@
-import { getPool } from "@aporia/db";
+import { getPool } from "@rematter/db";
 import { requireUser } from "@/lib/auth";
 import { Shell } from "@/components/admin/Shell";
 

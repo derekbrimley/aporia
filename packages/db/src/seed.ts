@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { ENGINE_VERSION } from "@aporia/engine";
-import type { ScenarioPackage } from "@aporia/scenario";
+import { ENGINE_VERSION } from "@rematter/engine";
+import type { ScenarioPackage } from "@rematter/scenario";
 import type { Db } from "./client.js";
 import * as t from "./schema.js";
 import { ensureSession } from "./runtime.js";

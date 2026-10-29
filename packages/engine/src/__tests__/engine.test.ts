@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID, ScenarioIndex } from "@aporia/scenario";
+import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID, ScenarioIndex } from "@rematter/scenario";
 import { initialState, replay, step, likelyDeliverable, workText, type EngineEvent, type Effect, type Job, type SessionState } from "../index.js";
 
 const { pkg } = loadScenario(scenarioDir(DEFAULT_SCENARIO_ID));

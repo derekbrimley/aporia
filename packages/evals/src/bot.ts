@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { appendEvent, getPool, getSessionState } from "@aporia/db";
-import { openAssignments, type MessageState, type SessionState } from "@aporia/engine";
-import { botAssociatePrompt } from "@aporia/prompts";
-import { ScenarioIndex, type Assignment, type ScenarioPackage } from "@aporia/scenario";
-import { Names, drainJobs, pendingJobCount, threadForPrompt, type LlmProvider } from "@aporia/worker";
+import { appendEvent, getPool, getSessionState } from "@rematter/db";
+import { openAssignments, type MessageState, type SessionState } from "@rematter/engine";
+import { botAssociatePrompt } from "@rematter/prompts";
+import { ScenarioIndex, type Assignment, type ScenarioPackage } from "@rematter/scenario";
+import { Names, drainJobs, pendingJobCount, threadForPrompt, type LlmProvider } from "@rematter/worker";
 import { z } from "zod";
 import type { PathFile } from "./path.js";
 import { rng } from "./rng.js";

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID, ScenarioIndex, sliceFactsFor } from "@aporia/scenario";
+import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID, ScenarioIndex, sliceFactsFor } from "@rematter/scenario";
 import { characterWriterPrompt, doctrinePrompt, intentClassifierPrompt, renderThread, MODELS, CHARACTER_HARD_RULES } from "../index.js";
 
 const { pkg } = loadScenario(scenarioDir(DEFAULT_SCENARIO_ID));

@@ -1,7 +1,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import type pg from "pg";
-import { initialState, replay, step, type Effect, type EngineEvent, type Job, type SessionState, type StepOptions } from "@aporia/engine";
-import type { ScenarioPackage } from "@aporia/scenario";
+import { initialState, replay, step, type Effect, type EngineEvent, type Job, type SessionState, type StepOptions } from "@rematter/engine";
+import type { ScenarioPackage } from "@rematter/scenario";
 import { getDb, getPool, type Db } from "./client.js";
 import { applyProjection, clearProjections } from "./projections.js";
 import * as t from "./schema.js";

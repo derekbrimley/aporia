@@ -1,6 +1,6 @@
-import type { SessionState } from "@aporia/engine";
-import { getPool } from "@aporia/db";
-import { ScenarioIndex, type ScenarioPackage } from "@aporia/scenario";
+import type { SessionState } from "@rematter/engine";
+import { getPool } from "@rematter/db";
+import { ScenarioIndex, type ScenarioPackage } from "@rematter/scenario";
 
 export interface CheckResult { name: string; pass: boolean; detail: string }
 

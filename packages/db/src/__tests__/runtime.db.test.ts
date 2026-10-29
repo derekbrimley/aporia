@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 
 const MSG = randomUUID();
 const THREAD = randomUUID();
-import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID } from "@aporia/scenario";
+import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID } from "@rematter/scenario";
 import { migrate } from "../migrate.js";
 import { getDb, getPool, closeDb, databaseUrl } from "../client.js";
 import { seedDevData } from "../seed.js";

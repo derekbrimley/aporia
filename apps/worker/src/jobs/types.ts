@@ -1,7 +1,7 @@
 import type pg from "pg";
-import type { EngineEvent, Job, SessionState } from "@aporia/engine";
-import type { BuiltDocument, Facts, ScenarioPackage } from "@aporia/scenario";
-import { ScenarioIndex } from "@aporia/scenario";
+import type { EngineEvent, Job, SessionState } from "@rematter/engine";
+import type { BuiltDocument, Facts, ScenarioPackage } from "@rematter/scenario";
+import { ScenarioIndex } from "@rematter/scenario";
 import type { LlmProvider } from "../llm/provider.js";
 import { Names } from "../context.js";
 

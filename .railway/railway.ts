@@ -9,7 +9,7 @@ const source = github("derekbrimley/aporia", { branch: "main" });
 const region = { "us-east4-eqdc4a": 1 }; // US East (Virginia), next to Neon's us-east-1
 
 const shared = {
-  APORIA_ENV: "staging",
+  REMATTER_ENV: "staging",
   LLM_PROVIDER: "anthropic",
   DATABASE_URL: preserve(),
   ANTHROPIC_API_KEY: preserve(),
@@ -21,8 +21,8 @@ export default defineRailway(() => {
     source,
     rootDirectory: "/",
     regions: region,
-    build: "pnpm scenario:build-docs && pnpm --filter @aporia/web build",
-    start: "pnpm --filter @aporia/web start",
+    build: "pnpm scenario:build-docs && pnpm --filter @rematter/web build",
+    start: "pnpm --filter @rematter/web start",
     healthcheck: "/sign-in",
     healthcheckTimeout: 120,
     deploy: { restartPolicyMaxRetries: 5 }, // restart policy ON_FAILURE is Railway's default
@@ -41,7 +41,7 @@ export default defineRailway(() => {
     rootDirectory: "/",
     regions: region,
     build: "pnpm scenario:build-docs",
-    start: "pnpm --filter @aporia/worker start",
+    start: "pnpm --filter @rematter/worker start",
     deploy: { restartPolicyType: "ALWAYS" },
     env: {
       ...shared,

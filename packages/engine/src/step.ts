@@ -1,4 +1,4 @@
-import { ScenarioIndex, type Assignment, type Beat, type Character, type ScenarioPackage } from "@aporia/scenario";
+import { ScenarioIndex, type Assignment, type Beat, type Character, type ScenarioPackage } from "@rematter/scenario";
 import { evaluate } from "./conditions.js";
 import { cloneState } from "./state.js";
 import type {

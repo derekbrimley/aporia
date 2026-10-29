@@ -11,14 +11,14 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: aporia_test
+          POSTGRES_DB: rematter_test
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/aporia_test
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/rematter_test
       LLM_PROVIDER: mock
-      APORIA_TEST_MODE: "1"
+      REMATTER_TEST_MODE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4 # version comes from packageManager in package.json

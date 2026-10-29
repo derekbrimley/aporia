@@ -1,5 +1,5 @@
 {
-  "name": "aporia",
+  "name": "rematter",
   "private": true,
   "version": "0.1.0",
   "description": "Simulation 01 (Venture Debt): an inbox-based deal simulation for junior transactional associates.",
@@ -15,16 +15,16 @@
     "test:db": "vitest run --project db",
     "lint": "prettier --check .",
     "format": "prettier --write .",
-    "scenario:validate": "pnpm --filter @aporia/scenario run validate",
-    "scenario:build-docs": "pnpm --filter @aporia/scenario run build-docs",
-    "scenario:import": "pnpm --filter @aporia/scenario run import",
-    "db:migrate": "pnpm --filter @aporia/db run migrate",
-    "db:seed": "pnpm --filter @aporia/db run seed",
-    "playthrough": "pnpm --filter @aporia/evals run playthrough",
-    "evals:fast": "pnpm --filter @aporia/evals run fast",
-    "evals:nightly": "pnpm --filter @aporia/evals run nightly",
-    "dev:web": "pnpm --filter @aporia/web run dev",
-    "dev:worker": "pnpm --filter @aporia/worker run dev"
+    "scenario:validate": "pnpm --filter @rematter/scenario run validate",
+    "scenario:build-docs": "pnpm --filter @rematter/scenario run build-docs",
+    "scenario:import": "pnpm --filter @rematter/scenario run import",
+    "db:migrate": "pnpm --filter @rematter/db run migrate",
+    "db:seed": "pnpm --filter @rematter/db run seed",
+    "playthrough": "pnpm --filter @rematter/evals run playthrough",
+    "evals:fast": "pnpm --filter @rematter/evals run fast",
+    "evals:nightly": "pnpm --filter @rematter/evals run nightly",
+    "dev:web": "pnpm --filter @rematter/web run dev",
+    "dev:worker": "pnpm --filter @rematter/worker run dev"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

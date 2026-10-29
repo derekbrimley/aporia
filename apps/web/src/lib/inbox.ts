@@ -1,6 +1,6 @@
-import type { SessionState } from "@aporia/engine";
-import { ScenarioIndex, type ScenarioPackage } from "@aporia/scenario";
-import { getPool } from "@aporia/db";
+import type { SessionState } from "@rematter/engine";
+import { ScenarioIndex, type ScenarioPackage } from "@rematter/scenario";
+import { getPool } from "@rematter/db";
 
 export interface AddressBookEntry { id: string; name: string; email: string; roleLabel: string; title: string; organization: string; isDoctrine: boolean }
 export interface InboxMessage {

@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { ratingSample } from "@/lib/admin";
-import { agreementKappa } from "@aporia/evals";
+import { agreementKappa } from "@rematter/evals";
 import { Shell } from "@/components/admin/Shell";
 import { RatingScreen } from "@/components/admin/RatingScreen";
 
