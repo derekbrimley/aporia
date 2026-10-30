@@ -1,4 +1,4 @@
-# Re:matter: Simulation 01 (Venture Debt)
+# re:matter: Simulation 01 (Venture Debt)
 
 A borrower-side venture debt financing, run from kickoff to closing inside an email inbox where every other participant is played by AI. Built from the Notion spec "V1 Build Spec: Simulation 01 (Venture Debt)".
 
