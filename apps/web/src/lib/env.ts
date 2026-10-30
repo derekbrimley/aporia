@@ -18,6 +18,6 @@ export const env = {
   workosClientId: process.env.WORKOS_CLIENT_ID,
   postmarkToken: process.env.POSTMARK_SERVER_TOKEN,
   emailFrom: process.env.EMAIL_FROM ?? "no-reply@example.com",
-  productName: process.env.PRODUCT_NAME ?? "Re:matter",
+  productName: process.env.PRODUCT_NAME ?? "re:matter",
   isProd,
 };

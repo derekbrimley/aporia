@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Re:matter is an inbox-based venture debt deal simulation for junior transactional associates. Every other participant (senior associate, partner, client, lender's counsel) is played by an LLM. `README.md` covers setup; `docs/STATUS.md` tracks what is done, known deviations from the V1 spec, and what hasn't been started.
+re:matter is an inbox-based venture debt deal simulation for junior transactional associates. Every other participant (senior associate, partner, client, lender's counsel) is played by an LLM. `README.md` covers setup; `docs/STATUS.md` tracks what is done, known deviations from the V1 spec, and what hasn't been started.
 
 ## Commands
 
