@@ -28,8 +28,8 @@ export default defineRailway(() => {
     deploy: { restartPolicyMaxRetries: 5 }, // restart policy ON_FAILURE is Railway's default
     env: {
       ...shared,
-      APP_URL: "https://staging.associatereps.com",
-      EMAIL_FROM: "no-reply@associatereps.com",
+      APP_URL: "https://staging.getrematter.com",
+      EMAIL_FROM: "no-reply@getrematter.com",
       AUTH_SECRET: preserve(),
       POSTMARK_SERVER_TOKEN: preserve(),
       WORKOS_API_KEY: preserve(),
