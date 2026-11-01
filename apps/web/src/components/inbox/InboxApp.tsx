@@ -55,12 +55,17 @@ export function InboxApp({ userName }: { userName: string }) {
   }, []);
 
   // Live updates over server-sent events; quiet unread indicator, no pop-ups.
+  // Opened only after the first load: GET /api/inbox is what starts a new associate's session, and the
+  // stream 404s without one. EventSource never retries a non-200 response, so opening it in parallel
+  // on a first visit left the inbox frozen until a manual refresh.
+  const ready = view !== null;
   useEffect(() => {
+    if (!ready) return;
     const es = new EventSource("/api/inbox/stream");
     es.addEventListener("inbox", () => void load());
     es.onerror = () => { /* the browser reconnects automatically */ };
     return () => es.close();
-  }, [load]);
+  }, [load, ready]);
 
   const name = useCallback((id: string) => (id === "associate" ? "you" : view?.addressBook.find((a) => a.id === id)?.name ?? id), [view]);
   const role = useCallback((id: string) => (id === "associate" ? "Associate" : view?.addressBook.find((a) => a.id === id)?.roleLabel ?? ""), [view]);
@@ -188,7 +193,7 @@ export function InboxApp({ userName }: { userName: string }) {
               </button>
             );
           })}
-          {!rows.length && <p className="text-ink-muted text-sm px-3">Nothing here yet.</p>}
+          {!rows.length && <p className="text-ink-muted text-sm px-3">{folder === "inbox" && !view.messages.length ? "Your first email is on its way. It will appear here in a moment." : "Nothing here yet."}</p>}
         </div>
         <div style={{ padding: "0 0 20px" }}>
           <button type="button" className="btn w-full" style={{ height: 48, justifyContent: "flex-start" }} onClick={() => setLibrary(true)} disabled={!view.documents.length}><span className="flex text-plum-600"><Icon.library /></span><span className="flex-1 text-left">Document library</span>{view.documents.length > 0 && <span className="text-ink-muted text-[13px]">{view.documents.length}</span>}</button>
