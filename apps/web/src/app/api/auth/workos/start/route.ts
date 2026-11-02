@@ -2,10 +2,10 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { workosAuthorizeUrl, workosEnabled } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: Request) {
   if (!workosEnabled()) return NextResponse.json({ error: "WorkOS is not configured" }, { status: 404 });
   const state = crypto.randomBytes(16).toString("hex");
-  const res = NextResponse.redirect(workosAuthorizeUrl(state));
+  const res = NextResponse.redirect(workosAuthorizeUrl(state, new URL(req.url).searchParams.get("login_hint")));
   res.cookies.set("rematter_oauth_state", state, { httpOnly: true, sameSite: "lax", maxAge: 600, path: "/" });
   return res;
 }

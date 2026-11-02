@@ -110,13 +110,15 @@ export function workosEnabled(): boolean {
   return Boolean(env.workosApiKey && env.workosClientId);
 }
 
-export function workosAuthorizeUrl(state: string): string {
+/** `loginHint` pre-fills the email on the AuthKit page. It is only a convenience: the callback still checks the verified email. */
+export function workosAuthorizeUrl(state: string, loginHint?: string | null): string {
   const u = new URL("https://api.workos.com/user_management/authorize");
   u.searchParams.set("client_id", env.workosClientId!);
   u.searchParams.set("redirect_uri", `${env.appUrl}/api/auth/workos/callback`);
   u.searchParams.set("response_type", "code");
   u.searchParams.set("provider", "authkit");
   u.searchParams.set("state", state);
+  if (loginHint && loginHint.length <= 320 && loginHint.includes("@")) u.searchParams.set("login_hint", loginHint);
   return u.toString();
 }
 
