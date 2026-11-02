@@ -130,12 +130,43 @@ export async function workosSignIn(code: string): Promise<CurrentUser | null> {
     body: JSON.stringify({ client_id: env.workosClientId, client_secret: env.workosApiKey, grant_type: "authorization_code", code }),
   });
   if (!res.ok) return null;
-  const json = (await res.json()) as { user?: { id: string; email: string; email_verified?: boolean } };
+  const json = (await res.json()) as { user?: { id: string; email: string; email_verified?: boolean }; access_token?: string };
   // Users are matched by email, so an unverified address could claim someone else's invite.
   if (!json.user?.email_verified) return null;
   const db = getDb();
   const user = (await db.select().from(schema.users).where(and(eq(schema.users.email, json.user.email.toLowerCase()), isNull(schema.users.removedAt))))[0];
   if (!user) return null;
   await db.update(schema.users).set({ authSubject: json.user.id }).where(eq(schema.users.id, user.id));
-  return signIn(user.id);
+  const signedIn = await signIn(user.id);
+  // Remember the WorkOS session so sign-out can end it too. Otherwise AuthKit signs the next person straight back in.
+  const sid = workosSessionId(json.access_token);
+  if (sid) (await cookies()).set(WORKOS_SID_COOKIE, sid, { httpOnly: true, sameSite: "lax", secure: env.isProd, maxAge: SESSION_DAYS * 86_400, path: "/" });
+  return signedIn;
+}
+
+const WORKOS_SID_COOKIE = "rematter_workos_sid";
+
+/** Reads the `sid` claim from the AuthKit access token. Not verified: the token came straight from WorkOS over TLS, and the sid is only used to log out. */
+function workosSessionId(accessToken?: string): string | null {
+  const payload = accessToken?.split(".")[1];
+  if (!payload) return null;
+  try {
+    const sid = (JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { sid?: unknown }).sid;
+    return typeof sid === "string" ? sid : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Clears the stored WorkOS session and returns the AuthKit logout URL, or null if this browser has no WorkOS session. */
+export async function workosLogoutUrl(returnTo: string): Promise<string | null> {
+  const jar = await cookies();
+  const sid = jar.get(WORKOS_SID_COOKIE)?.value;
+  if (!sid) return null;
+  jar.delete(WORKOS_SID_COOKIE);
+  if (!workosEnabled()) return null;
+  const u = new URL("https://api.workos.com/user_management/sessions/logout");
+  u.searchParams.set("session_id", sid);
+  u.searchParams.set("return_to", returnTo);
+  return u.toString();
 }
