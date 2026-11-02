@@ -85,7 +85,7 @@ stateDiagram-v2
 
 1. **Explicit abort.** There's no cancel button. Leaving the page abandons the request, but if the request already reached the server, the link was still created and emailed.
 2. **The user doing something else mid-way.** Asking again while a link is out creates a second valid link. Each one works once. Pressing **Continue** on a link meant for user B, in a browser signed in as user A, switches the browser to user B with no warning.
-3. **Clean "complete" events.** Pressing **Continue** uses up the link. Clicking the link and then closing the confirm page leaves it unused, so it can still be used within its 20 minutes. Signing out (**Sign out** posts to `/api/auth/sign-out`) deletes that browser's sign-in and returns to `/sign-in`. Other browsers stay signed in. Opening `/api/auth/sign-out` directly in the address bar returns 405 and does nothing.
+3. **Clean "complete" events.** Pressing **Continue** uses up the link. Clicking the link and then closing the confirm page leaves it unused, so it can still be used within its 20 minutes. Signing out (**Sign out** posts to `/api/auth/sign-out`) deletes that browser's sign-in and returns to `/sign-in`. If they signed in through WorkOS, it also ends their WorkOS session (via AuthKit's logout page), so the next WorkOS sign-in asks for a password again. Other browsers stay signed in. Opening `/api/auth/sign-out` directly in the address bar returns 405 and does nothing.
 4. **The environment failing.**
    - If the link request fails (network down, server error), the button stays disabled and nothing is shown. The user has to reload. **B-03**
    - If the email provider rejects the send, the error is only logged, and the page still says the link is on its way. **B-07**
