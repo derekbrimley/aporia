@@ -5,7 +5,7 @@
  * rebuilt at any time by replaying the events.
  */
 
-export const ENGINE_VERSION = "0.5.0";
+export const ENGINE_VERSION = "0.6.0";
 
 export type Intent = "deliverable" | "question" | "logistics" | "acknowledgment";
 export type IssueStatus = "raised" | "partial" | "missed";
@@ -253,6 +253,19 @@ export interface SessionState {
   documentsReleased: string[];
   eventCount: number;
   lastRecapAt: string | null;
+  /**
+   * Emails the world has planned, by job key: who is writing, where it will land and when it is due.
+   * Read with the job's status (still "enqueued") to show "Marcus is writing…". Absent on older snapshots.
+   */
+  mailPlans?: Record<string, MailPlan>;
+}
+
+export interface MailPlan {
+  from: string;
+  /** The thread it lands on when that thread already exists, else its scenario thread key. */
+  threadId: string | null;
+  threadKey: string | null;
+  dueAt: string;
 }
 
 export interface StepOptions {

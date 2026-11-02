@@ -36,13 +36,13 @@ test("associate plays orientation and sends term sheet comments", async ({ page,
   await page.screenshot({ path: `${shots}/2-first-inbox.png` });
 
   // Reply -> self-check arrives over the live connection.
-  await page.getByRole("button", { name: "Reply" }).click();
+  await page.getByRole("button", { name: "Reply", exact: true }).last().click();
   await page.getByLabel("Email body").fill("Thanks Marcus, I've read this and I'm ready for the questions.");
   await page.getByRole("button", { name: /^Send/ }).click();
   await expect(convo.getByText("Three questions, in your own words")).toBeVisible({ timeout: 45_000 });
   await page.screenshot({ path: `${shots}/3-self-check.png` });
 
-  await page.getByRole("button", { name: "Reply" }).click();
+  await page.getByRole("button", { name: "Reply", exact: true }).last().click();
   await page.getByLabel("Email body").fill("1. The lender is underwriting the equity round behind the company. 2. IP is where the value sits; equipment is replaceable. 3. Gating Tranche 1 on the Series C protects the Bank from funding a company that cannot raise.");
   await page.getByRole("button", { name: /^Send/ }).click();
 
@@ -59,8 +59,9 @@ test("associate plays orientation and sends term sheet comments", async ({ page,
   await page.getByRole("combobox", { name: "Contents" }).selectOption("Section 6");
   await page.screenshot({ path: `${shots}/5-document-panel.png` });
 
-  // Quote in reply via selection, then the deliverable.
-  await page.getByRole("button", { name: "Reply" }).click();
+  // Quote in reply via selection, then the deliverable. Marcus's note to the associate alone is the
+  // latest message, so Reply all on Priya's email is what reaches her (a draft to Marcus is only a draft).
+  await convo.getByRole("button", { name: "Reply all" }).first().click();
   await page.evaluate(() => {
     const el = document.querySelector('.deal-document [data-ref="Section 6"] p');
     if (!el) return;

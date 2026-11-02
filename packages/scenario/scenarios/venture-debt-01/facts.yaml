@@ -231,16 +231,28 @@ liens.insider_notes.amount:
   value: 5000000
   display: $5,000,000
 
+# Deal dates follow the associate's calendar: `offset_days` counts from the day the
+# session starts (weekends move to the nearest business day; see packages/scenario/src/dates.ts).
+# `value` and `display` are only the fallback when there is no session. Name a date in
+# beats and document sources as {{dates.term_sheet}} rather than writing it out.
 dates.term_sheet:
   type: date
+  offset_days: -3
   value: 2026-09-08
   display: September 8, 2026
+dates.lsa_draft:
+  type: date
+  offset_days: 0
+  value: 2026-09-22
+  display: September 22, 2026
 dates.target_series_close:
   type: date
+  offset_days: 22
   value: 2026-11-14
   display: November 14, 2026
 dates.target_loan_close:
   type: date
+  offset_days: 28
   value: 2026-11-20
   display: November 20, 2026
 dates.term_sheet_signed:

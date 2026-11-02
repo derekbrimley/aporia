@@ -1,6 +1,6 @@
 # Loan and Security Agreement
 
-*Draft of September 22, 2026. Corwin & Pratt LLP draft for discussion. Subject to the Bank's credit approval.*
+*Draft of {{dates.lsa_draft}}. Corwin & Pratt LLP draft for discussion. Subject to the Bank's credit approval.*
 
 This Loan and Security Agreement (this "Agreement") is entered into as of the Closing Date between HALDEN BANK ("Bank") and NORTHLAKE COMPUTE, INC., a Delaware corporation ("Borrower"). The parties agree as follows.
 
@@ -282,7 +282,7 @@ Borrower shall indemnify Bank against all losses arising from this Agreement, ot
 
 ### 12.3 Entire agreement
 
-The Loan Documents are the entire agreement of the parties and supersede the Summary of Terms dated September 8, 2026.
+The Loan Documents are the entire agreement of the parties and supersede the Summary of Terms dated {{dates.term_sheet}}.
 
 ## Exhibit A – Description of Collateral
 

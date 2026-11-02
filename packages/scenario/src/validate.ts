@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Condition, ScenarioPackage } from "./schema.js";
+import { factTokens } from "./dates.js";
 
 export interface ValidationIssue {
   level: "error" | "warning";
@@ -121,6 +122,7 @@ export function crossValidate(pkg: ScenarioPackage, dir?: string): ValidationIss
     for (const k of b.must_include_facts) checkRef("fact", k, `Beat ${b.id} must_include_facts`);
     for (const a of b.after) checkRef("beat", a, `Beat ${b.id} after`);
     if (b.opens_assignment) checkRef("assignment", b.opens_assignment, `Beat ${b.id} opens_assignment`);
+    for (const k of factTokens(`${b.body ?? ""} ${b.brief ?? ""}`)) checkRef("fact", k, `Beat ${b.id} {{${k}}}`);
     const sender = pkg.characters.find((c) => c.id === b.sender);
     if (sender?.is_doctrine_assistant) err(`Beat ${b.id}: the doctrine assistant never initiates email`);
   }
@@ -148,6 +150,7 @@ export function crossValidate(pkg: ScenarioPackage, dir?: string): ValidationIss
   for (const d of pkg.documents) {
     checkRef("character", d.from, `Document ${d.id}`);
     if (dir && !fs.existsSync(path.join(dir, "documents", d.source))) err(`Document ${d.id} source file missing: documents/${d.source}`);
+    else if (dir) for (const k of factTokens(fs.readFileSync(path.join(dir, "documents", d.source), "utf8"))) checkRef("fact", k, `Document ${d.id} {{${k}}}`);
   }
   // Every assignment must open somewhere: a beat that opens it.
   for (const a of pkg.assignments) {

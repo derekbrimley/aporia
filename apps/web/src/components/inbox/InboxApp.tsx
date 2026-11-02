@@ -130,6 +130,14 @@ export function InboxApp({ userName }: { userName: string }) {
     return emptyCompose(t, view?.addressBook, last?.from, last?.to ?? [], last?.cc ?? []);
   }
   function startReply() { if (thread && !drafts[thread.id]) putDraft(replyTo(thread)); }
+  /** Reply or Reply all to one message: readdresses the thread's draft and keeps anything already written. */
+  function replyToMessage(m: InboxView["messages"][number], all: boolean) {
+    if (!thread) return;
+    const base = emptyCompose(thread, view?.addressBook, m.from, m.to, all ? m.cc : []);
+    const addressed = all ? base : { ...base, cc: [] };
+    const old = drafts[thread.id];
+    putDraft(old ? { ...old, to: addressed.to, cc: addressed.cc } : addressed);
+  }
   /** Forwarding opens it as the new email; an unsent new email is only replaced if the associate agrees. */
   function startForward(m: InboxView["messages"][number]) {
     if (hasText(drafts[NEW]) && !window.confirm("Replace your unsent new email with this forward?")) return;
@@ -189,7 +197,7 @@ export function InboxApp({ userName }: { userName: string }) {
               <button key={r.key} type="button" role="listitem" className="thread-item" aria-current={current} onClick={() => { setSelected(r.threadId); setSelectedRow(sent ? r.key : null); }}>
                 <span className="flex items-center justify-between gap-2 w-full"><span className={`flex items-center gap-2 text-[15px] min-w-0 ${r.unread ? "font-bold" : "font-medium"}`} title={group ? r.people.map(name).join(", ") : undefined}>{r.unread > 0 && <span className="unread-dot" aria-label="Unread" />}<span className="truncate">{who}</span></span>{outgoing || group ? <span className="text-[12.5px] text-ink-muted whitespace-nowrap">{fmt(r.at)}</span> : <span className={`role-chip ${r.unread ? "role-chip-accent" : ""}`}>{role(r.message.from)}</span>}</span>
                 <span className="display text-[16px] leading-[1.35]">{r.subject}</span>
-                <span className="snippet">{!sent && hasText(drafts[r.threadId]) && <span className="text-plum-700">Draft · </span>}{(r.message.body.trim() || (r.message.forwardedMessageId ? "Forwarded message" : "")).replace(/\s+/g, " ").slice(0, 90)}</span>
+                <span className="snippet">{!sent && view.writing?.[r.threadId]?.[0] && <span className="text-plum-700">{name(view.writing[r.threadId]![0]!.from).split(" ")[0]} is writing… · </span>}{!sent && hasText(drafts[r.threadId]) && <span className="text-plum-700">Draft · </span>}{(r.message.body.trim() || (r.message.forwardedMessageId ? "Forwarded message" : "")).replace(/\s+/g, " ").slice(0, 90)}</span>
               </button>
             );
           })}
@@ -213,12 +221,15 @@ export function InboxApp({ userName }: { userName: string }) {
             {messages.map((m) => (
               <article key={m.id} className="flex flex-col gap-3.5 border-b border-oat-400" style={{ padding: "20px 32px" }} aria-label={`Message from ${name(m.from)}`}>
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex flex-col gap-0.5 text-[13.5px] text-ink-muted">
-                    <div className="flex items-center gap-2"><span className="text-[14.5px] font-semibold text-ink whitespace-nowrap">{m.from === "associate" ? "You" : name(m.from)}</span><span className="role-chip">{role(m.from)}</span><span className="text-[12.5px]">{fmt(m.at)}</span></div>
+                  <div className="flex flex-col gap-0.5 text-[13.5px] text-ink-muted min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5"><span className="text-[14.5px] font-semibold text-ink whitespace-nowrap">{m.from === "associate" ? "You" : name(m.from)}</span><span className="role-chip">{role(m.from)}</span><span className="text-[12.5px] whitespace-nowrap">{fmt(m.at)}</span></div>
                     <div>To {m.to.map(name).join(", ")}{m.cc.length > 0 && <> · Cc {m.cc.map(name).join(", ")}</>}</div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    {!view.readOnly && !m.private && <button type="button" className="btn btn-ghost btn-sm" onClick={() => startForward(m)}><Icon.forward />Forward</button>}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* Icon buttons, so the row still fits when the document panel narrows the thread. */}
+                    {!view.readOnly && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply" title="Reply" onClick={() => replyToMessage(m, false)}><Icon.reply /></button>}
+                    {!view.readOnly && m.to.length + m.cc.length > 1 && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply all" title="Reply all" onClick={() => replyToMessage(m, true)}><Icon.replyAll /></button>}
+                    {!view.readOnly && !m.private && <button type="button" className="btn btn-ghost btn-sm" aria-label="Forward" title="Forward" onClick={() => startForward(m)}><Icon.forward /></button>}
                     {m.from !== "associate" && <FlagButton targetType="message" targetId={m.id} enabled={view.testerFlagsEnabled} />}
                   </div>
                 </div>
@@ -227,6 +238,11 @@ export function InboxApp({ userName }: { userName: string }) {
                 {m.rationale && <div className="quote"><div className="flex items-center gap-1.5 text-[12px] text-ink-muted"><Icon.lock />Your reasoning · Not part of the email</div><div className="text-[14px] leading-[1.5]">{m.rationale}</div></div>}
                 {m.attachments.length > 0 && <div className="flex flex-wrap gap-2">{m.attachments.map((d) => <button key={d} type="button" className="btn btn-sm" onClick={() => openDoc(d, 0)}><span className="flex text-plum-600"><Icon.file /></span>{view.documents.find((x) => x.id === d)?.shortTitle ?? d}</button>)}</div>}
               </article>
+            ))}
+            {(view.writing?.[thread.id] ?? []).map((w) => (
+              <div key={w.from} className="flex items-center gap-2 text-[13.5px] text-ink-muted" style={{ padding: "14px 32px" }} role="status" aria-live="polite">
+                <span className="typing-dots" aria-hidden="true"><span /><span /><span /></span>{name(w.from).split(" ")[0]} is writing…
+              </div>
             ))}
             {!compose && !view.readOnly && <div className="border-t border-oat-400 mt-auto" style={{ padding: "16px 32px 24px" }}><button type="button" className="btn btn-primary" onClick={startReply}><Icon.reply />Reply</button></div>}
           </>

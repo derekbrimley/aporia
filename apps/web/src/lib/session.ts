@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { ENGINE_VERSION } from "@rematter/engine";
+import { dateAnchor, forSession } from "@rematter/scenario";
 import { appendEvent, ensureSession, getDb, getPool, getSessionState, recordActivity, schema } from "@rematter/db";
 import type { CurrentUser } from "./auth.js";
 import { getScenario } from "./scenario.js";
@@ -38,5 +39,8 @@ export async function sessionForUser(user: CurrentUser) {
   if (!s) return null;
   const cohort = (await db.select().from(schema.cohorts).where(eq(schema.cohorts.id, s.cohortId)))[0]!;
   const loaded = getScenario(s.scenarioId, s.scenarioVersion);
-  return { session: s, cohort, pkg: loaded.pkg, documents: loaded.documents, state: await getSessionState(s.id, loaded.pkg) };
+  const state = await getSessionState(s.id, loaded.pkg);
+  // Deal dates follow the day this session started, in documents and everywhere else.
+  const { pkg, documents } = forSession(loaded.pkg, loaded.documents, dateAnchor(state));
+  return { session: s, cohort, pkg, documents, state };
 }

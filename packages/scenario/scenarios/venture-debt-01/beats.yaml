@@ -73,7 +73,7 @@
   body: |
     Team, we received the attached term sheet from Halden Bank. Before we respond, what do you think? I've read it, but I'm not sure what I should be looking for.
 
-    We haven't signed anything yet. The Bank would like an answer within two weeks, and our Series C is targeting a mid-November close, so timing matters to us.
+    We haven't signed anything yet. The Bank would like an answer within two weeks, and our Series C is targeting a close around {{dates.target_series_close}}, so timing matters to us.
 
     Priya
 
@@ -106,7 +106,7 @@
   body: |
     Please find attached drafts of the loan documents for the Halden Bank facility: the Loan and Security Agreement, the Disclosure Schedule, the Perfection Certificate, the form of Compliance Certificate and a first draft of the Closing Checklist.
 
-    The Bank is targeting a closing on or about November 20. We look forward to your comments.
+    The Bank is targeting a closing on or about {{dates.target_loan_close}}. We look forward to your comments.
 
     Jordan
 
@@ -240,7 +240,7 @@
   brief: >
     Priya has just noticed in the closing checklist that the Bank needs landlord
     waivers. Nobody has spoken to Ridgeline Industrial Partners about one. She
-    asks whether this could push the November 20 closing and why it is coming up
+    asks whether this could push the {{dates.target_loan_close}} closing and why it is coming up
     only now. Anxious but polite. Under 90 words.
 
 - id: B-M6-cash-plan-thanks
@@ -322,5 +322,5 @@
     Marcus notes that landlord waivers for both sites are still outstanding on
     the checklist, that Ridgeline has not responded, and that the Bank will not
     close without them or a post-closing covenant. He asks the associate what
-    they propose, and what they will tell Priya about the November 20 date.
+    they propose, and what they will tell Priya about the {{dates.target_loan_close}} closing date.
     Under 90 words.

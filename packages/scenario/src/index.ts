@@ -5,3 +5,4 @@ export * from "./facts.js";
 export * from "./documents.js";
 export * from "./helpers.js";
 export * from "./paths.js";
+export * from "./dates.js";

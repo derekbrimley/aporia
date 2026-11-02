@@ -114,7 +114,10 @@ function tokensText(tokens: Token[]): string {
   return tokens
     .map((t) => ("text" in t && typeof (t as { text?: string }).text === "string" ? (t as { text: string }).text : (t as { raw?: string }).raw ?? ""))
     .join("\n")
-    .replace(/[*_`#>]/g, "")
+    // Strip Markdown marks, but leave {{fact.key}} tokens whole for dates.ts to fill per session.
+    .split(/(\{\{[^}]*\}\})/)
+    .map((part, i) => (i % 2 ? part : part.replace(/[*_`#>]/g, "")))
+    .join("")
     .trim();
 }
 

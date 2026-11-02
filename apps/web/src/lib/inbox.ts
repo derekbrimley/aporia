@@ -1,4 +1,4 @@
-import type { SessionState } from "@rematter/engine";
+import { writingByThread, type SessionState } from "@rematter/engine";
 import { ScenarioIndex, type ScenarioPackage } from "@rematter/scenario";
 import { getPool } from "@rematter/db";
 
@@ -17,6 +17,8 @@ export interface InboxView {
   documents: { id: string; title: string; shortTitle: string; kind: string; from: string }[];
   milestones: { id: string; title: string }[];
   testerFlagsEnabled: boolean; readOnly: boolean;
+  /** Characters with an email on its way to each thread, soonest first ("Marcus is writing…"). */
+  writing: Record<string, { from: string; dueAt: string }[]>;
 }
 
 export function addressBook(pkg: ScenarioPackage): AddressBookEntry[] {
@@ -40,5 +42,6 @@ export async function buildInboxView(sessionId: string, state: SessionState, pkg
     documents: state.documentsReleased.map((d) => idx.document(d)).map((d) => ({ id: d.id, title: d.title, shortTitle: d.short_title, kind: d.kind, from: d.from })),
     milestones: idx.milestonesInOrder.map((m) => ({ id: m.id, title: m.title })),
     testerFlagsEnabled: opts.testerFlagsEnabled, readOnly: state.status === "completed",
+    writing: writingByThread(state),
   };
 }

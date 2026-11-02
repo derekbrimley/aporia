@@ -1,6 +1,6 @@
 # Summary of Terms
 
-*Venture debt facility, presented by Halden Bank. September 8, 2026. Confidential. Non-binding except as stated in Section 14.*
+*Venture debt facility, presented by Halden Bank. {{dates.term_sheet}}. Confidential. Non-binding except as stated in Section 14.*
 
 ## 1. Borrower
 

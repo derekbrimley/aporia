@@ -1,7 +1,7 @@
 import type pg from "pg";
 import type { EngineEvent, Job, SessionState } from "@rematter/engine";
 import type { BuiltDocument, Facts, ScenarioPackage } from "@rematter/scenario";
-import { ScenarioIndex } from "@rematter/scenario";
+import { ScenarioIndex, dateAnchor, forSession } from "@rematter/scenario";
 import type { LlmProvider } from "../llm/provider.js";
 import { Names } from "../context.js";
 
@@ -61,8 +61,10 @@ export interface JobOutcome {
   held?: HeldRecord;
 }
 
+/** Every job sees the scenario as its session does: dates follow the session's start (see scenario dates.ts). */
 export function makeContext(base: Omit<JobContext, "idx" | "names">): JobContext {
-  return { ...base, idx: new ScenarioIndex(base.pkg), names: new Names(base.pkg, base.state.associateFirstName) };
+  const { pkg, documents } = forSession(base.pkg, base.documents, dateAnchor(base.state));
+  return { ...base, pkg, documents, idx: new ScenarioIndex(pkg), names: new Names(pkg, base.state.associateFirstName) };
 }
 
 export type { Facts };
