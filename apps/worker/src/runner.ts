@@ -87,7 +87,33 @@ export function createTaskList(provider?: LlmProvider): TaskList {
   };
 }
 
+/**
+ * A job stays locked by whichever worker took it until that worker finishes it. When a worker dies
+ * mid-job (a Railway redeploy kills the old container while it waits on a model call),
+ * graphile-worker only reclaims the lock after four hours, and because each session's jobs run in
+ * one serial queue, that session stalls until then. No job runs anywhere near this long (a model
+ * call plus up to two regenerations is well under two minutes), so a lock older than this is
+ * from a worker that is gone.
+ */
+export const STALE_LOCK_MINUTES = 10;
+
+/** Releases jobs (and their session queues) held by workers that died mid-job. Returns how many workers it unlocked. */
+export async function unlockStaleJobs(minutes = STALE_LOCK_MINUTES): Promise<number> {
+  const pool = getPool();
+  const stale = (await pool.query<{ locked_by: string }>(
+    `select distinct locked_by from graphile_worker.jobs where locked_by is not null and locked_at < now() - make_interval(mins => $1)`,
+    [minutes],
+  )).rows.map((r) => r.locked_by);
+  if (!stale.length) return 0;
+  await pool.query(`select graphile_worker.force_unlock_workers($1::text[])`, [stale]);
+  console.log(JSON.stringify({ level: "warn", event: "stale_job_locks_released", workers: stale, olderThanMinutes: minutes }));
+  return stale.length;
+}
+
 export async function startWorker(opts: { connectionString: string; concurrency?: number; provider?: LlmProvider } ): Promise<Runner> {
+  await unlockStaleJobs();
+  const sweep = setInterval(() => void unlockStaleJobs().catch((e) => captureException(e, { phase: "unlock_stale_jobs" })), 60_000);
+  sweep.unref();
   return run({ connectionString: opts.connectionString, concurrency: opts.concurrency ?? 4, noHandleSignals: false, pollInterval: 500, taskList: createTaskList(opts.provider) });
 }
 
