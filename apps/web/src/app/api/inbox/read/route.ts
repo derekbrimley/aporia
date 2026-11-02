@@ -8,6 +8,12 @@ export async function POST(req: Request) {
   const s = await sessionForUser(u);
   if (!s) return Response.json({ error: "no session" }, { status: 404 });
   const { messageIds } = (await req.json()) as { messageIds: string[] };
-  await getPool().query(`update messages set read_at = coalesce(read_at, now()) where session_id = $1 and id = any($2::uuid[])`, [s.session.id, messageIds]);
+  // Only this session's own messages; the first read wins.
+  await getPool().query(
+    `insert into message_reads (session_id, message_id, org_id)
+     select session_id, id, org_id from messages where session_id = $1 and id = any($2::uuid[])
+     on conflict (session_id, message_id) do nothing`,
+    [s.session.id, messageIds],
+  );
   return Response.json({ ok: true });
 }

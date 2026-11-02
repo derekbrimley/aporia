@@ -25,7 +25,7 @@ export function addressBook(pkg: ScenarioPackage): AddressBookEntry[] {
 
 export async function buildInboxView(sessionId: string, state: SessionState, pkg: ScenarioPackage, opts: { associateEmail: string; testerFlagsEnabled: boolean }): Promise<InboxView> {
   const idx = new ScenarioIndex(pkg);
-  const reads = await getPool().query<{ id: string; read_at: Date | null }>(`select id, read_at from messages where session_id = $1`, [sessionId]);
+  const reads = await getPool().query<{ id: string; read_at: Date | null }>(`select message_id as id, read_at from message_reads where session_id = $1`, [sessionId]);
   const readAt = new Map(reads.rows.map((r) => [r.id, r.read_at?.toISOString() ?? null]));
   const messages: InboxMessage[] = state.messageOrder.map((id) => {
     const m = state.messages[id]!;

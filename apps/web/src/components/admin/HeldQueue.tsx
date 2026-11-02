@@ -17,7 +17,7 @@ export function HeldQueue({ held }: { held: { id: string; sessionId: string; job
           <div className="display text-[17px]">{h.proposedDelivery.payload.subject}</div>
           <pre className="text-[12.5px] whitespace-pre-wrap bg-plum-50 rounded-[14px] p-3 m-0">Violations: {JSON.stringify(h.violations, null, 1)}</pre>
           <textarea className="text-area" style={{ minHeight: 160 }} value={bodies[h.id] ?? h.proposedDelivery.payload.body} onChange={(e) => setBodies({ ...bodies, [h.id]: e.target.value })} />
-          <div className="flex gap-2 justify-end"><button type="button" className="btn" onClick={() => act(h.id, "discard")}>Discard</button><button type="button" className="btn btn-primary" onClick={() => act(h.id, "release")}>Release to associate</button></div>
+          <div className="flex gap-2 justify-end"><button type="button" className="btn" onClick={() => act(h.id, "discard")} title={h.jobKey.startsWith("beat:") ? "Scripted emails can't be skipped: the worker writes a new one." : undefined}>{h.jobKey.startsWith("beat:") ? "Discard and rewrite" : "Discard"}</button><button type="button" className="btn btn-primary" onClick={() => act(h.id, "release")}>Release to associate</button></div>
         </article>
       ))}
     </div>

@@ -5,7 +5,7 @@
  * rebuilt at any time by replaying the events.
  */
 
-export const ENGINE_VERSION = "0.3.0";
+export const ENGINE_VERSION = "0.4.0";
 
 export type Intent = "deliverable" | "question" | "logistics" | "acknowledgment";
 export type IssueStatus = "raised" | "partial" | "missed";
@@ -99,7 +99,13 @@ export type MessageReleasedEvent = Base<"message_released", { jobKey: string }>;
 export type DocumentOpenedEvent = Base<"document_opened", { documentId: string }>;
 export type DocumentsComparedEvent = Base<"documents_compared", { documentIds: [string, string] }>;
 export type JobCompletedEvent = Base<"job_completed", { jobKey: string; kind: JobKind }>;
-export type JobFailedEvent = Base<"job_failed", { jobKey: string; kind: JobKind; error: string; attempts: number }>;
+export type JobFailedEvent = Base<"job_failed", {
+  jobKey: string; kind: JobKind; error: string; attempts: number;
+  /** The job that gave up, so the engine can plan it again later. Absent on events from before engine 0.4. */
+  job?: Job | null;
+}>;
+/** An admin threw away a held email. A held scripted beat is written again rather than lost. */
+export type MessageDiscardedEvent = Base<"message_discarded", { jobKey: string; job?: Job | null }>;
 export type FlagRaisedEvent = Base<"flag_raised", { targetType: "message" | "document"; targetId: string; note: string }>;
 
 export type EngineEvent =
@@ -111,6 +117,7 @@ export type EngineEvent =
   | MessageDeliveredEvent
   | MessageHeldEvent
   | MessageReleasedEvent
+  | MessageDiscardedEvent
   | DocumentOpenedEvent
   | DocumentsComparedEvent
   | JobCompletedEvent
@@ -230,7 +237,7 @@ export interface SessionState {
   decisions: Record<string, { position: string; rationale: string | null; messageId: string }>;
   consequences: Record<string, ConsequenceState>;
   beats: Record<string, "enqueued" | "delivered">;
-  jobs: Record<string, "enqueued" | "completed" | "failed" | "held">;
+  jobs: Record<string, "enqueued" | "completed" | "failed" | "held" | "discarded">;
   threads: Record<string, ThreadState>;
   threadIdByKey: Record<string, string>;
   messages: Record<string, MessageState>;

@@ -403,3 +403,81 @@ function toTermSheet(): Harness {
   expect(h.state.assignments.A2?.status).toBe("open");
   return h;
 }
+
+describe("engine: state-machine edges", () => {
+  it("queues a beat that follows another only once the earlier one has arrived", () => {
+    const h = new Harness();
+    h.apply({ type: "session_started", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: "0.1.0", associateFirstName: "Sam" } });
+    h.drain();
+    h.send("orientation", ["senior_associate"], "Ready.", { intent: "acknowledgment" });
+    h.drain();
+    h.send("orientation", ["senior_associate"], "My answers...", { intent: "question" });
+    // Run jobs one at a time until the handoff is queued: the term sheet (after: handoff) must wait for it.
+    for (let i = 0; i < 20 && !h.jobs.some((j) => j.key === "beat:B-M1-handoff"); i++) h.run(h.jobs.shift()!);
+    expect(h.state.milestones.M2?.enteredAt).not.toBeNull();
+    expect(h.state.beats["B-M1-handoff"]).toBe("enqueued");
+    expect(h.state.beats["B-M2-term-sheet"]).toBeUndefined();
+    while (h.jobs.length && h.state.beats["B-M1-handoff"] !== "delivered") h.run(h.jobs.shift()!);
+    expect(h.state.beats["B-M2-term-sheet"]).toBe("enqueued");
+  });
+
+  it("records only the first of two deliverables in flight for the same assignment", () => {
+    const h = toTermSheet();
+    const a2 = idx.assignment("A2");
+    const first = h.send("term-sheet", ["client_contact", "senior_associate"], "My comments on the term sheet.", { intent: "deliverable" });
+    const second = h.send("term-sheet", ["client_contact", "senior_associate"], "One correction to my comments.", { intent: "deliverable" });
+    expect(h.jobs.map((j) => j.key)).toEqual([`assess:${first.messageId}`, `assess:${second.messageId}`]);
+    h.raise = new Set();
+    h.run(h.jobs.shift()!); // first assessment: everything missed, completes A2
+    const issuesAfterFirst = { ...h.state.issues };
+    const consequencesAfterFirst = { ...h.state.consequences };
+    h.raise = new Set(a2.issues.map((i) => i.id));
+    const r = h.apply({ type: "assessment_recorded", payload: { messageId: second.messageId, assignmentId: "A2", issues: Object.fromEntries(a2.issues.map((i) => [i.id, "raised"])), decisions: {} } });
+    h.jobs = h.jobs.filter((j) => j.key !== `assess:${second.messageId}`);
+    expect(r.effects.some((e) => e.type === "warning")).toBe(true);
+    expect(h.state.issues).toEqual(issuesAfterFirst);
+    expect(h.state.consequences).toEqual(consequencesAfterFirst);
+    expect(h.state.assignments.A2).toMatchObject({ status: "complete", deliverableMessageId: first.messageId });
+    expect(h.state.messages[second.messageId]?.assignmentId).toBeNull();
+    // One reflection, about the first email; the correction gets an ordinary reply.
+    expect(h.jobs.filter((j) => j.kind === "reflection").map((j) => j.key)).toEqual([`reflect:${first.messageId}`]);
+    expect(h.jobs.some((j) => j.kind === "character_reply" && j.key.startsWith(`reply:${second.messageId}`))).toBe(true);
+  });
+
+  it("plans a failed job again, twice at most, and rewrites a discarded beat", () => {
+    const h = new Harness();
+    h.apply({ type: "session_started", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: "0.1.0", associateFirstName: "Sam" } });
+    const welcome = h.jobs.shift()!;
+    expect(welcome.key).toBe("beat:B-M1-welcome");
+    const fail = (job: Job) => h.apply({ type: "job_failed", payload: { jobKey: job.key, kind: job.kind, error: "boom", attempts: 4, job } });
+
+    fail(welcome);
+    const retry = h.jobs.shift()!;
+    expect(retry).toMatchObject({ key: "beat:B-M1-welcome#2", kind: "beat", payload: { kind: "beat", beatId: "B-M1-welcome" } });
+    h.apply({ type: "message_discarded", payload: { jobKey: retry.key, job: retry } });
+    const rewrite = h.jobs.shift()!;
+    expect(rewrite).toMatchObject({ key: "beat:B-M1-welcome#3", delaySeconds: 0 });
+    const last = fail(rewrite);
+    expect(h.jobs).toEqual([]);
+    expect(last.effects.some((e) => e.type === "warning")).toBe(true);
+    expect(h.state.jobs).toMatchObject({ "beat:B-M1-welcome": "failed", "beat:B-M1-welcome#2": "discarded", "beat:B-M1-welcome#3": "failed" });
+
+    // A legacy failure without the job, and discarding a held reply, plan nothing.
+    const h2 = toTermSheet();
+    const { messageId } = h2.send("term-sheet", ["client_contact"], "Quick question?", { intent: "question" });
+    const reply = h2.jobs.shift()!;
+    h2.apply({ type: "message_discarded", payload: { jobKey: reply.key, job: reply } });
+    h2.apply({ type: "job_failed", payload: { jobKey: `classify:${messageId}`, kind: "classify_intent", error: "boom", attempts: 4 } });
+    expect(h2.jobs).toEqual([]);
+  });
+
+  it("a delivered retry completes the beat it stands in for", () => {
+    const h = new Harness();
+    h.apply({ type: "session_started", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: "0.1.0", associateFirstName: "Sam" } });
+    const welcome = h.jobs.shift()!;
+    h.apply({ type: "job_failed", payload: { jobKey: welcome.key, kind: welcome.kind, error: "boom", attempts: 4, job: welcome } });
+    h.drain();
+    expect(h.state.beats["B-M1-welcome"]).toBe("delivered");
+    expect(h.state.jobs["beat:B-M1-welcome#2"]).toBe("completed");
+  });
+});

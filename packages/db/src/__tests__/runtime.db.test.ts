@@ -55,7 +55,11 @@ describe("event log runtime", () => {
     await getPool().query(`delete from session_snapshots where session_id = $1`, [sessionId]);
     const replayed = await getSessionState(sessionId, pkg);
     expect(replayed).toEqual(before);
+    await getPool().query(`insert into message_reads (session_id, message_id, org_id) select session_id, id, org_id from messages where id = $1`, [MSG]);
     const rebuilt = await rebuildProjections(sessionId, pkg);
+    // Read receipts aren't projections: a rebuild leaves them alone.
+    const reads = await getPool().query(`select count(*)::int as n from message_reads where session_id = $1 and message_id = $2`, [sessionId, MSG]);
+    expect(reads.rows[0].n).toBe(1);
     expect(rebuilt).toEqual(before);
     const msgs = await getPool().query(`select count(*)::int as n from messages where session_id = $1`, [sessionId]);
     expect(msgs.rows[0].n).toBe(1);
