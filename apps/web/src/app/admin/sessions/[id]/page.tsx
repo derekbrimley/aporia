@@ -1,5 +1,6 @@
 import { requireUser, audit } from "@/lib/auth";
 import { sessionDetail } from "@/lib/admin";
+import { cohortsForSource } from "@/lib/checkpoints";
 import { Shell } from "@/components/admin/Shell";
 import { SessionViewer } from "@/components/admin/SessionViewer";
 
@@ -11,9 +12,10 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
   const d = await sessionDetail(id);
   if (!d) return <Shell user={u} title="Session not found"><p>No session with that id.</p></Shell>;
   await audit(u, "session.view", id);
+  const cohorts = await cohortsForSource(id);
   return (
     <Shell user={u} title={`Session ${id.slice(0, 8)}`}>
-      <SessionViewer id={id} detail={JSON.parse(JSON.stringify(d))} />
+      <SessionViewer id={id} detail={JSON.parse(JSON.stringify(d))} cohorts={cohorts} />
     </Shell>
   );
 }

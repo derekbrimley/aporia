@@ -204,6 +204,7 @@ export function InboxApp({ userName }: { userName: string }) {
           {!rows.length && <p className="text-ink-muted text-sm px-3">{folder === "inbox" && !view.messages.length ? "Your first email is on its way. It will appear here in a moment." : "Nothing here yet."}</p>}
         </div>
         <div style={{ padding: "0 0 20px" }}>
+          {view.checkpoints && view.checkpoints.length > 0 && <CheckpointPicker checkpoints={view.checkpoints} />}
           <button type="button" className="btn w-full" style={{ height: 48, justifyContent: "flex-start" }} onClick={() => setLibrary(true)} disabled={!view.documents.length}><span className="flex text-plum-600"><Icon.library /></span><span className="flex-1 text-left">Document library</span>{view.documents.length > 0 && <span className="text-ink-muted text-[13px]">{view.documents.length}</span>}</button>
           <form action="/api/auth/sign-out" method="post" className="mt-2 px-1"><button className="btn btn-ghost btn-sm text-ink-muted">Sign out, {userName}</button></form>
         </div>
@@ -269,5 +270,33 @@ export function InboxApp({ userName }: { userName: string }) {
         </div>
       )}
     </main>
+  );
+}
+
+/**
+ * Test checkpoints (only in a cohort with a source run): starts a fresh session at a milestone of
+ * that run. The current session is archived, not deleted.
+ */
+function CheckpointPicker({ checkpoints }: { checkpoints: { eventCount: number; label: string }[] }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  async function go(eventCount: number, label: string) {
+    if (!window.confirm(`Start over at "${label}"? Your current progress in this session is set aside.`)) return;
+    setBusy(true);
+    setErr(null);
+    const r = await fetch("/api/inbox/checkpoint", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventCount }) });
+    if (r.ok) { window.location.reload(); return; }
+    setErr(((await r.json().catch(() => ({}))) as { error?: string }).error ?? "Couldn't load that checkpoint.");
+    setBusy(false);
+  }
+  return (
+    <label className="block mb-2 px-1 text-[12.5px] text-ink-muted">
+      Test checkpoint
+      <select className="text-input mt-1 w-full" value="" disabled={busy} onChange={(e) => { const cp = checkpoints.find((c) => String(c.eventCount) === e.target.value); if (cp) void go(cp.eventCount, cp.label); }}>
+        <option value="">{busy ? "Loading…" : "Jump to a milestone…"}</option>
+        {checkpoints.map((c) => <option key={`${c.eventCount}-${c.label}`} value={c.eventCount}>{c.label}</option>)}
+      </select>
+      {err && <span className="block mt-1 text-[12.5px]" role="alert">{err}</span>}
+    </label>
   );
 }

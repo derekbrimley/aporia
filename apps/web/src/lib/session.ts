@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { ENGINE_VERSION } from "@rematter/engine";
 import { dateAnchor, forSession } from "@rematter/scenario";
 import { appendEvent, ensureSession, getDb, getPool, getSessionState, recordActivity, schema } from "@rematter/db";
@@ -35,7 +35,7 @@ export async function bootstrapSession(user: CurrentUser) {
 
 export async function sessionForUser(user: CurrentUser) {
   const db = getDb();
-  const s = (await db.select().from(schema.sessions).where(and(eq(schema.sessions.userId, user.id), eq(schema.sessions.orgId, user.orgId))))[0];
+  const s = (await db.select().from(schema.sessions).where(and(eq(schema.sessions.userId, user.id), eq(schema.sessions.orgId, user.orgId), isNull(schema.sessions.archivedAt))))[0];
   if (!s) return null;
   const cohort = (await db.select().from(schema.cohorts).where(eq(schema.cohorts.id, s.cohortId)))[0]!;
   const loaded = getScenario(s.scenarioId, s.scenarioVersion);

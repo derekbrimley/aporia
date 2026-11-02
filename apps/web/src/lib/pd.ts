@@ -9,7 +9,7 @@ export async function roster(orgId: string, cohortId?: string): Promise<RosterRo
             case when s.id is null then 'invited' else s.status end as status,
             s.current_milestone as "currentMilestone", s.last_activity_at as "lastActiveAt", coalesce(s.active_seconds, 0) / 60 as "activeMinutes", u.invited_at as "invitedAt"
        from cohort_members cm join cohorts c on c.id = cm.cohort_id join users u on u.id = cm.user_id
-       left join sessions s on s.user_id = u.id and s.cohort_id = c.id
+       left join sessions s on s.user_id = u.id and s.cohort_id = c.id and s.archived_at is null
       where c.org_id = $1 and u.removed_at is null and ($2::uuid is null or c.id = $2::uuid)
       order by c.name, u.name`,
     [orgId, cohortId ?? null],

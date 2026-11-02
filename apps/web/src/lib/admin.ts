@@ -1,9 +1,9 @@
-import { getPool, listEvents, getSessionState, rebuildProjections } from "@rematter/db";
+import { getPool, listEvents, getSessionState, rebuildProjections, sessionCheckpoints } from "@rematter/db";
 import { getScenario } from "./scenario.js";
 
 export async function listSessions() {
   const r = await getPool().query(
-    `select s.id, s.status, s.current_milestone as "currentMilestone", s.started_at as "startedAt", s.last_activity_at as "lastActivityAt", s.completed_at as "completedAt", s.test_mode as "testMode",
+    `select s.id, s.status, s.current_milestone as "currentMilestone", s.started_at as "startedAt", s.last_activity_at as "lastActivityAt", s.completed_at as "completedAt", s.test_mode as "testMode", s.archived_at as "archivedAt",
             o.name as org, c.name as cohort, u.name as "userName", u.email as "userEmail", s.scenario_id as "scenarioId", s.scenario_version as "scenarioVersion",
             (select count(*) from events e where e.session_id = s.id)::int as events,
             (select count(*) from held_emails h where h.session_id = s.id and h.status = 'held')::int as held
@@ -17,12 +17,13 @@ export async function sessionDetail(sessionId: string) {
   const s = (await getPool().query<{ scenario_id: string; scenario_version: string; org_id: string }>(`select scenario_id, scenario_version, org_id from sessions where id = $1`, [sessionId])).rows[0];
   if (!s) return null;
   const { pkg } = getScenario(s.scenario_id, s.scenario_version);
-  const [state, events, generations] = await Promise.all([
+  const [state, events, generations, checkpoints] = await Promise.all([
     getSessionState(sessionId, pkg),
     listEvents(sessionId),
     getPool().query(`select id, job_key as "jobKey", role, model, provider, prompt_version as "promptVersion", input_refs as "inputRefs", system_prompt as "systemPrompt", user_prompt as "userPrompt", output, parsed_output as "parsedOutput", input_tokens as "inputTokens", output_tokens as "outputTokens", cache_read_tokens as "cacheReadTokens", latency_ms as "latencyMs", attempt, checker_result as "checkerResult", created_at as "createdAt" from generations where session_id = $1 order by created_at asc`, [sessionId]),
+    sessionCheckpoints(sessionId, pkg),
   ]);
-  return { state, events, generations: generations.rows, pkg: { id: pkg.meta.id, version: pkg.meta.version, characters: pkg.characters.map((c) => ({ id: c.id, name: c.name, role_label: c.role_label })) } };
+  return { state, events, generations: generations.rows, checkpoints, pkg: { id: pkg.meta.id, version: pkg.meta.version, characters: pkg.characters.map((c) => ({ id: c.id, name: c.name, role_label: c.role_label })) } };
 }
 
 export async function replaySession(sessionId: string) {
