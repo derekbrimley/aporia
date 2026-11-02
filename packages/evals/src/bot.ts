@@ -3,7 +3,7 @@ import { appendEvent, getPool, getSessionState } from "@rematter/db";
 import { openAssignments, type MessageState, type SessionState } from "@rematter/engine";
 import { botAssociatePrompt } from "@rematter/prompts";
 import { ScenarioIndex, type Assignment, type ScenarioPackage } from "@rematter/scenario";
-import { Names, drainJobs, pendingJobCount, threadForPrompt, type LlmProvider } from "@rematter/worker";
+import { Names, drainJobs, pendingJobCount, threadForPrompt, unlockStaleJobs, type LlmProvider } from "@rematter/worker";
 import { z } from "zod";
 import type { PathFile } from "./path.js";
 import { rng } from "./rng.js";
@@ -98,6 +98,8 @@ export class BotAssociate {
         idle = 0;
         if (!acted && fresh.length === 0) {
           round--;
+          // A worker that died holding one of this session's jobs would otherwise block it for hours.
+          await unlockStaleJobs();
           await new Promise((r) => setTimeout(r, WAIT_MS));
         }
       }
