@@ -78,8 +78,13 @@ export class BotAssociate {
       await drainJobs({ connectionString: this.connectionString, provider: this.provider });
       state = await getSessionState(this.sessionId, this.pkg);
       if (state.status === "completed") {
-        // Let the debrief land.
+        // Let the debrief land. With a real model it can take a while, or another worker may hold it.
         await drainJobs({ connectionString: this.connectionString, provider: this.provider });
+        while ((await pendingJobCount(this.sessionId)) > 0 && Date.now() < deadline) {
+          await unlockStaleJobs();
+          await new Promise((r) => setTimeout(r, WAIT_MS));
+          await drainJobs({ connectionString: this.connectionString, provider: this.provider });
+        }
         return getSessionState(this.sessionId, this.pkg);
       }
       const fresh = state.messageOrder.map((id) => state.messages[id]!).filter((m) => m.from !== "associate" && !this.seen.has(m.id));
