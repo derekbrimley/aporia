@@ -41,9 +41,13 @@ export async function createMagicLink(email: string): Promise<{ url: string; del
 /** Exchanges a magic-link token for a signed-in browser session. */
 export async function consumeMagicLink(token: string): Promise<CurrentUser | null> {
   const db = getDb();
-  const link = (await db.select().from(schema.magicLinks).where(and(eq(schema.magicLinks.tokenHash, hash(token)), isNull(schema.magicLinks.usedAt), gt(schema.magicLinks.expiresAt, new Date()))))[0];
+  // One statement, so two requests racing on the same link can't both sign in.
+  const [link] = await db
+    .update(schema.magicLinks)
+    .set({ usedAt: new Date() })
+    .where(and(eq(schema.magicLinks.tokenHash, hash(token)), isNull(schema.magicLinks.usedAt), gt(schema.magicLinks.expiresAt, new Date())))
+    .returning({ userId: schema.magicLinks.userId });
   if (!link) return null;
-  await db.update(schema.magicLinks).set({ usedAt: new Date() }).where(eq(schema.magicLinks.id, link.id));
   return signIn(link.userId);
 }
 

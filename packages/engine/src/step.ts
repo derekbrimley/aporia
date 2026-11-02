@@ -12,6 +12,10 @@ const NUDGE_DELAY_SECONDS = 20 * 60;
 const MAX_NUDGES_PER_ASSIGNMENT = 2;
 /** Word count above which an email the classifier did not call a deliverable is worth a probe assessment. */
 const SUBSTANTIVE_WORDS = 60;
+/** A job that gave up (or a held beat that was discarded) is planned again at most this many times. */
+const MAX_REPLANS = 2;
+/** How long to wait before trying a failed job again: failures are usually an outage, not the content. */
+const REPLAN_DELAY_SECONDS = 10 * 60;
 
 /**
  * The simulation engine. Pure: no network, no randomness, no clock other than event.at.
@@ -47,6 +51,9 @@ export function step(prev: SessionState, event: EngineEvent, pkg: ScenarioPackag
     case "message_released":
       // The release itself appends a message_delivered event; nothing to do here.
       break;
+    case "message_discarded":
+      ctx.onDiscarded(event.payload.jobKey, event.payload.job ?? null);
+      break;
     case "document_opened":
       if (!ctx.state.documentsOpened.includes(event.payload.documentId)) ctx.state.documentsOpened.push(event.payload.documentId);
       ctx.touch();
@@ -58,7 +65,7 @@ export function step(prev: SessionState, event: EngineEvent, pkg: ScenarioPackag
       ctx.state.jobs[event.payload.jobKey] = "completed";
       break;
     case "job_failed":
-      ctx.state.jobs[event.payload.jobKey] = "failed";
+      ctx.onJobFailed(event.payload.jobKey, event.payload.job ?? null);
       break;
     case "flag_raised":
       break;
@@ -108,6 +115,30 @@ class Ctx {
       this.enqueue({ key: `recap:${this.state.eventCount}`, kind: "recap", delaySeconds: 0, payload: { kind: "recap", resumedAt: this.at, gapDays } });
       this.state.lastRecapAt = this.at;
     }
+  }
+
+  // ---------------------------------------------------------------- jobs that did not deliver
+  /**
+   * A job the worker gave up on. Without a new plan the world would wait on it forever: a beat that
+   * never arrives never opens its assignment, and an email never classified never gets a reply.
+   */
+  onJobFailed(jobKey: string, job: Job | null) {
+    this.state.jobs[jobKey] = "failed";
+    if (!job || job.kind === "nudge") return; // nudges are optional; legacy events carry no job
+    this.replan(job, this.opts.zeroDelays ? 0 : REPLAN_DELAY_SECONDS);
+  }
+
+  /** Discarding a held reply leaves the email unanswered, as the admin chose; a scripted beat is written again. */
+  onDiscarded(jobKey: string, job: Job | null) {
+    this.state.jobs[jobKey] = "discarded";
+    if (job?.kind === "beat") this.replan(job, 0);
+  }
+
+  private replan(job: Job, delaySeconds: number) {
+    const base = job.key.split("#")[0]!;
+    const attempts = Object.keys(this.state.jobs).filter((k) => k === base || k.startsWith(`${base}#`)).length;
+    if (attempts > MAX_REPLANS) { this.warn(`${base} gave up after ${attempts} tries`); return; }
+    this.enqueue({ ...job, key: `${base}#${attempts + 1}`, delaySeconds });
   }
 
   // ---------------------------------------------------------------- email from the associate
@@ -183,8 +214,8 @@ class Ctx {
     if (intent === "deliverable" && !answersReflection) {
       const assignment = this.resolveAssignmentForDeliverable(msg);
       if (assignment && (assignment.issues.length > 0 || assignment.decision_points.length > 0)) {
+        // The deliverable is recorded when its assessment lands, so a second email in flight can't claim it.
         msg.assignmentId = assignment.id;
-        this.state.assignments[assignment.id]!.deliverableMessageId = msg.id;
         this.enqueue({ key: `assess:${msg.id}`, kind: "assess", delaySeconds: 0, payload: { kind: "assess", messageId: msg.id, assignmentId: assignment.id } });
         return;
       }
@@ -274,6 +305,17 @@ class Ctx {
     const msg = s.messages[messageId];
     const shadowMode = (p.shadow ?? false) || this.opts.assessorShadowMode === true;
 
+    // A second deliverable can be in flight when the first completes the assignment. Its assessment
+    // must not rewrite results that already seeded consequences: answer it as ordinary mail instead.
+    if (!p.probe && s.assignments[assignmentId]?.status !== "open") {
+      this.warn(`assessment for ${assignmentId}, which is no longer open; not recorded`);
+      if (msg) {
+        if (msg.assignmentId === assignmentId) msg.assignmentId = null;
+        this.replyOrNudge(msg);
+      }
+      return;
+    }
+
     if (p.probe) {
       // Not the work after all: answer it as the question it was classified as.
       if (!msg || s.assignments[assignmentId]?.status !== "open" || !isWorkProduct(asg, issues, decisions)) {
@@ -284,7 +326,6 @@ class Ctx {
       const thread = s.threads[msg.threadId]!;
       thread.lastIntent = "deliverable";
       if (!thread.assignmentIds.includes(assignmentId)) thread.assignmentIds.push(assignmentId);
-      s.assignments[assignmentId]!.deliverableMessageId = msg.id;
     }
 
     // Every issue on the assignment gets a status; anything the assessor did not mention is missed.
@@ -293,7 +334,10 @@ class Ctx {
       const pos = decisions[d.id];
       if (pos && d.positions.some((p) => p.id === pos)) s.decisions[d.id] = { position: pos, rationale: msg?.rationale ?? null, messageId };
     }
-    if (msg) msg.assignmentId = assignmentId;
+    if (msg) {
+      msg.assignmentId = assignmentId;
+      s.assignments[assignmentId]!.deliverableMessageId = msg.id;
+    }
 
     if (!shadowMode) {
       for (const c of this.idx.pkg.consequences) {
@@ -430,7 +474,9 @@ class Ctx {
     const out: Beat[] = [];
     for (const b of this.idx.pkg.beats) {
       if (this.state.beats[b.id]) continue;
-      if (!b.after.every((a) => this.state.beats[a])) continue;
+      // "after" means after the earlier beat has arrived, not merely been queued: queued beats run
+      // in run_at order, so a short-delay follow-up would otherwise land before what it follows.
+      if (!b.after.every((a) => this.state.beats[a] === "delivered")) continue;
       if (!evaluate(b.trigger, this.state)) continue;
       this.state.beats[b.id] = "enqueued";
       const sender = this.idx.character(b.sender);

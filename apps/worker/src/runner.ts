@@ -74,7 +74,7 @@ export function createTaskList(provider?: LlmProvider): TaskList {
           alert("job_failed", { sessionId: payload.sessionId, jobKey: payload.job.key, kind: payload.job.kind, error: (e as Error).message, attempts: attempt });
           try {
             const row = (await getPool().query<{ scenario_id: string; scenario_version: string }>(`select scenario_id, scenario_version from sessions where id = $1`, [payload.sessionId])).rows[0];
-            if (row) await appendEvent(payload.sessionId, { type: "job_failed", payload: { jobKey: payload.job.key, kind: payload.job.kind, error: (e as Error).message, attempts: attempt } }, "worker", getScenario(row.scenario_id, row.scenario_version).pkg, { idempotencyKey: `${payload.sessionId}:failed:${payload.job.key}` });
+            if (row) await appendEvent(payload.sessionId, { type: "job_failed", payload: { jobKey: payload.job.key, kind: payload.job.kind, error: (e as Error).message, attempts: attempt, job: payload.job } }, "worker", getScenario(row.scenario_id, row.scenario_version).pkg, { idempotencyKey: `${payload.sessionId}:failed:${payload.job.key}` });
           } catch (inner) {
             captureException(inner, { sessionId: payload.sessionId, jobKey: payload.job.key, phase: "record_failure" });
           }

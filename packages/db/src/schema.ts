@@ -157,6 +157,21 @@ export const messages = pgTable(
   (t) => [index("messages_session_idx").on(t.sessionId, t.deliveredAt), index("messages_thread_idx").on(t.threadId, t.seq)],
 );
 
+/**
+ * When the associate opened each email. Not a projection: the event log can't rebuild it, so
+ * rebuilding projections leaves it alone. (`messages.read_at` is no longer read or written.)
+ */
+export const messageReads = pgTable(
+  "message_reads",
+  {
+    sessionId: uuid("session_id").notNull().references(() => sessions.id, { onDelete: "cascade" }),
+    messageId: uuid("message_id").notNull(),
+    orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.sessionId, t.messageId] })],
+);
+
 export const decisions = pgTable(
   "decisions",
   {
