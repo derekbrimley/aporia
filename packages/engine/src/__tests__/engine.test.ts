@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID, ScenarioIndex } from "@rematter/scenario";
-import { initialState, replay, step, likelyDeliverable, workText, type EngineEvent, type Effect, type Job, type SessionState } from "../index.js";
+import { initialState, replay, step, likelyDeliverable, workText, writingByThread, type EngineEvent, type Effect, type Job, type SessionState } from "../index.js";
 
 const { pkg } = loadScenario(scenarioDir(DEFAULT_SCENARIO_ID));
 const idx = new ScenarioIndex(pkg);
@@ -538,5 +538,17 @@ describe("engine: a draft sent only to the senior", () => {
     h.drain();
     expect(h.state.assignments["A2"]!.status).toBe("complete");
     expect(h.state.beats["B-M3-doc-set"]).toBe("delivered");
+  });
+});
+
+describe("engine: who is writing", () => {
+  it("shows a planned reply on its thread until it arrives, and never a nudge", () => {
+    const h = new Harness();
+    h.apply({ type: "session_started", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: "0.1.0", associateFirstName: "Sam" } });
+    h.drain();
+    const { threadId } = h.send("orientation", ["senior_associate"], "Ready.", { intent: "acknowledgment" });
+    expect(writingByThread(h.state)[threadId]).toEqual([{ from: "senior_associate", dueAt: expect.any(String) }]);
+    h.drain();
+    expect(writingByThread(h.state)[threadId]).toBeUndefined();
   });
 });

@@ -2,7 +2,7 @@ import { ScenarioIndex, type Assignment, type Beat, type Character, type Scenari
 import { evaluate } from "./conditions.js";
 import { cloneState } from "./state.js";
 import type {
-  AssessmentRecordedEvent, AssignmentState, Effect, EmailSentEvent, EngineEvent, Intent, IssueStatus, Job, MessageState, SessionState, StepOptions, StepResult,
+  AssessmentRecordedEvent, AssignmentState, Effect, EmailSentEvent, EngineEvent, Intent, IssueStatus, Job, MailPlan, MessageState, SessionState, StepOptions, StepResult,
   ThreadState,
 } from "./types.js";
 
@@ -535,7 +535,27 @@ class Ctx {
   private enqueue(job: Job) {
     if (this.state.jobs[job.key]) return; // idempotent
     this.state.jobs[job.key] = "enqueued";
+    const plan = this.mailPlan(job);
+    if (plan) (this.state.mailPlans ??= {})[job.key] = plan;
     this.effects.push({ type: "enqueue_job", job });
+  }
+
+  /** Where a job's email will land, for the inbox's "is writing" line. Nudges are left out: the worker may drop them. */
+  private mailPlan(job: Job): MailPlan | null {
+    const p = job.payload;
+    const dueAt = new Date(Date.parse(this.at) + job.delaySeconds * 1000).toISOString();
+    switch (p.kind) {
+      case "character_reply": return { from: p.characterId, threadId: p.threadId, threadKey: null, dueAt };
+      case "reflection": return p.sideThreadKey
+        ? { from: p.characterId, threadId: this.state.threadIdByKey[p.sideThreadKey] ?? null, threadKey: p.sideThreadKey, dueAt }
+        : { from: p.characterId, threadId: p.threadId, threadKey: null, dueAt };
+      case "beat": {
+        const b = this.idx.pkg.beats.find((x) => x.id === p.beatId);
+        return b ? { from: b.sender, threadId: this.state.threadIdByKey[b.thread_key] ?? null, threadKey: b.thread_key, dueAt } : null;
+      }
+      case "doctrine_answer": return { from: this.idx.doctrineAssistant.id, threadId: p.threadId, threadKey: null, dueAt };
+      default: return null;
+    }
   }
 
   /** Deterministic delay inside the character's window, keyed by the job so replays agree. */
@@ -633,4 +653,18 @@ export function isWorkProduct(asg: Assignment, issues: Record<string, IssueStatu
 
 export function openAssignments(state: SessionState): string[] {
   return Object.entries(state.assignments).filter(([, s]) => s.status === "open").map(([id]) => id);
+}
+
+/** Who is writing to each thread right now: planned emails still queued, soonest first. */
+export function writingByThread(state: SessionState): Record<string, { from: string; dueAt: string }[]> {
+  const out: Record<string, { from: string; dueAt: string }[]> = {};
+  for (const [key, plan] of Object.entries(state.mailPlans ?? {})) {
+    if (state.jobs[key] !== "enqueued") continue;
+    const threadId = plan.threadId ?? (plan.threadKey ? state.threadIdByKey[plan.threadKey] : undefined);
+    if (!threadId || !state.threads[threadId]) continue;
+    const list = (out[threadId] ??= []);
+    if (!list.some((w) => w.from === plan.from)) list.push({ from: plan.from, dueAt: plan.dueAt });
+  }
+  for (const list of Object.values(out)) list.sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+  return out;
 }

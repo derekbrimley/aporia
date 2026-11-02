@@ -88,3 +88,11 @@ textarea { resize: none; }
 .table-card { padding: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 @media (max-width: 767px) { .admin-table { min-width: 720px; } }
 @media print { body { background: #fff; } .no-print { display: none !important; } }
+
+/* "Marcus is writing…" */
+.typing-dots { display: inline-flex; gap: 3px; }
+.typing-dots span { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.35; animation: typing-dot 1.2s infinite ease-in-out; }
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing-dot { 0%, 80%, 100% { opacity: 0.35; } 40% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .typing-dots span { animation: none; } }

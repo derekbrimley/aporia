@@ -4,7 +4,7 @@ import { sessionForUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-/** Server-sent events: new messages and state changes, polled from the projection every 2 seconds. */
+/** Server-sent events: new messages and state changes (including a reply being planned, for "is writing"), polled every 2 seconds. */
 export async function GET(req: Request) {
   const u = await apiUser(["associate"]);
   if (u instanceof Response) return u;
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
       const tick = async () => {
         if (closed) return;
         try {
-          const r = await getPool().query<{ seq: number }>(`select coalesce(max(seq), 0)::int as seq from events where session_id = $1 and type in ('message_delivered','email_sent','job_failed','message_held')`, [sessionId]);
+          const r = await getPool().query<{ seq: number }>(`select coalesce(max(seq), 0)::int as seq from events where session_id = $1 and type in ('message_delivered','email_sent','job_failed','message_held','intent_classified','assessment_recorded')`, [sessionId]);
           const seq = r.rows[0]!.seq;
           if (seq > lastSeq) { lastSeq = seq; send("inbox", { seq }); } else send("ping", { seq });
         } catch (e) { send("error", { message: (e as Error).message }); }

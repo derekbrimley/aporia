@@ -71,7 +71,11 @@ export const FactValueSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("money"), value: z.number(), currency: z.string().default("USD"), display: z.string().optional(), note: z.string().optional() }),
   z.object({ type: z.literal("percent"), value: z.number(), display: z.string().optional(), note: z.string().optional() }),
   z.object({ type: z.literal("number"), value: z.number(), unit: z.string().optional(), display: z.string().optional(), note: z.string().optional() }),
-  z.object({ type: z.literal("date"), value: z.string().date(), display: z.string().optional(), note: z.string().optional() }),
+  z.object({
+    type: z.literal("date"), value: z.string().date(), display: z.string().optional(), note: z.string().optional(),
+    /** Days from the session's start; `value` is then only the fallback when there is no session. See dates.ts. */
+    offset_days: z.number().int().optional(),
+  }),
   z.object({ type: z.literal("text"), value: z.string(), note: z.string().optional() }),
   z.object({ type: z.literal("party"), value: z.string(), aliases: z.array(z.string()).default([]), note: z.string().optional() }),
   z.object({ type: z.literal("defined_term"), value: z.string(), definition: z.string(), note: z.string().optional() }),

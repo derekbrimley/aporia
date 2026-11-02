@@ -1,6 +1,6 @@
 # Closing Checklist
 
-*Halden Bank / Northlake Compute, Inc. $100,000,000 venture debt facility. Corwin & Pratt LLP draft. Target closing: November 20, 2026.*
+*Halden Bank / Northlake Compute, Inc. $100,000,000 venture debt facility. Corwin & Pratt LLP draft. Target closing: {{dates.target_loan_close}}.*
 
 ## 1. Loan documents
 
