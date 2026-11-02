@@ -29,7 +29,7 @@ export function SignInForm({ workos }: { workos: boolean }) {
       {workos && (
         // Carries the typed email to WorkOS as a login hint, so the next page doesn't ask for it again.
         <a className="btn" href={`/api/auth/workos/start${email.trim() ? `?login_hint=${encodeURIComponent(email.trim())}` : ""}`}>
-          Sign in with password or SSO
+          Sign in with password
         </a>
       )}
     </form>

@@ -2,7 +2,7 @@
 
 ## 1. Summary
 
-re:matter is invite-only. A person signs in by asking for a sign-in link at `/sign-in`, clicking it in their email, and pressing **Continue to re:matter** on the page it opens. If WorkOS is configured, they can instead sign in through WorkOS with a password or their firm's SSO. Either way, the app matches them to an invited user by email, then sends them to their role's home. The sign-in cookie lasts 14 days, and signing out ends it on that browser.
+re:matter is invite-only. A person signs in by asking for a sign-in link at `/sign-in`, clicking it in their email, and pressing **Continue to re:matter** on the page it opens. If WorkOS is configured, they can instead sign in with a password through WorkOS. Either way, the app matches them to an invited user by email, then sends them to their role's home. The sign-in cookie lasts 14 days, and signing out ends it on that browser.
 
 The sign-in page never says whether an address is invited. Every request gets the same "on its way" message.
 
@@ -22,7 +22,7 @@ The sign-in page never says whether an address is invited. Every request gets th
 - If the browser is already signed in, `/sign-in` redirects straight to the user's home. They never see the form.
 - Any protected page opened without a valid sign-in sends the user to `/sign-in`. They don't come back to the page they asked for afterwards, because sign-in always lands on the role's home.
 - If the URL has `?error=...`, a message appears above the form (see the modifiers in section 4).
-- The **Sign in with password or SSO** button only appears when WorkOS is configured.
+- The **Sign in with password** button only appears when WorkOS is configured.
 
 ### Leaving without asking for a link
 
@@ -74,7 +74,7 @@ stateDiagram-v2
 | Address isn't invited, or the user was removed | No link is created and no email is sent. The page still says "on its way." |
 | Address typed in mixed case or with spaces | It still matches the invited user. |
 | No email provider configured | The link is written to the server log, and in development it's also shown as a button on the page. |
-| WorkOS configured | **Sign in with password or SSO** appears under the form. If the email field is filled in, the WorkOS page opens with that email already entered. |
+| WorkOS configured | **Sign in with password** appears under the form. If the email field is filled in, the WorkOS page opens with that email already entered. |
 | SSO succeeds for an invited, verified email | Same landing as a link sign-in. The user's WorkOS ID is saved. |
 | SSO for an uninvited, unverified or failed account | Lands on `/sign-in` with "That account has not been invited to a cohort." |
 | SSO callback with a wrong or missing state | Lands on `/sign-in` with "Sign-in could not be completed. Try again." |
