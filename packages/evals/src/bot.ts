@@ -8,6 +8,9 @@ import { z } from "zod";
 import type { PathFile } from "./path.js";
 import { rng } from "./rng.js";
 
+/** How long to wait between checks while the session's next job is retrying or held by another worker. */
+const WAIT_MS = 1000;
+
 const BotOutput = z.object({ body: z.string() });
 
 export interface BotRunLog {
@@ -38,6 +41,7 @@ export class BotAssociate {
     private readonly provider: LlmProvider,
     private readonly connectionString: string,
     seed = 1,
+    private readonly timeoutMs = Number(process.env.PLAYTHROUGH_TIMEOUT_MINUTES ?? 30) * 60_000,
   ) {
     this.random = rng(seed);
     const idx = new ScenarioIndex(pkg);
@@ -65,7 +69,12 @@ export class BotAssociate {
       this.step("session_started", "");
     }
     let idle = 0;
+    // Waiting on a job that can't run here yet doesn't use up a round: a retry scheduled after a
+    // failed model call (graphile-worker backs off), or a job another worker holds (a deployed
+    // worker listening on the same database picks up the session's jobs too).
+    const deadline = Date.now() + this.timeoutMs;
     for (let round = 0; round < maxRounds; round++) {
+      if (Date.now() > deadline) break;
       await drainJobs({ connectionString: this.connectionString, provider: this.provider });
       state = await getSessionState(this.sessionId, this.pkg);
       if (state.status === "completed") {
@@ -80,14 +89,21 @@ export class BotAssociate {
       for (const m of fresh) {
         if (await this.react(state, idx, m)) { acted = true; state = await getSessionState(this.sessionId, this.pkg); }
       }
-      if (!acted && (await pendingJobCount(this.sessionId)) === 0) {
+      const pending = acted ? 0 : await pendingJobCount(this.sessionId);
+      if (!acted && pending === 0) {
         // Nothing arrived and nothing is queued: try to move an open assignment forward, else give up.
         const moved = await this.nudge(state, idx);
         if (!moved && ++idle >= 2) { this.log.stuck = true; this.step("stuck", `open: ${openAssignments(state).join(",") || "none"}; milestone ${state.currentMilestone}`); return state; }
-      } else idle = 0;
+      } else {
+        idle = 0;
+        if (!acted && fresh.length === 0) {
+          round--;
+          await new Promise((r) => setTimeout(r, WAIT_MS));
+        }
+      }
     }
     this.log.stuck = true;
-    this.step("stuck", "max rounds");
+    this.step("stuck", Date.now() > deadline ? `timed out after ${Math.round(this.timeoutMs / 60000)} min; milestone ${state.currentMilestone}` : "max rounds");
     return state;
   }
 
