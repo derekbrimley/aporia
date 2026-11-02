@@ -481,3 +481,62 @@ describe("engine: state-machine edges", () => {
     expect(h.state.jobs["beat:B-M1-welcome#2"]).toBe("completed");
   });
 });
+
+describe("engine: replies a scripted beat already answers", () => {
+  const start = (h: Harness) => {
+    h.apply({ type: "session_started", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: "0.1.0", associateFirstName: "Sam" } });
+    h.drain();
+  };
+  const keysSince = (h: Harness, from: number) => h.effects.slice(from).filter((e) => e.type === "enqueue_job").map((e) => (e as { job: Job }).job.key);
+
+  it("sends no generic reply when the classifier reads an email after it set off a beat", () => {
+    const h = new Harness();
+    start(h);
+    let before = h.effects.length;
+    h.send("orientation", ["senior_associate"], "Ready, send the questions?"); // classified later as a question
+    h.drain();
+    expect(keysSince(h, before).filter((k) => k.startsWith("reply:"))).toEqual([]);
+    expect(h.state.beats["B-M1-self-check"]).toBe("delivered");
+    before = h.effects.length;
+    h.send("orientation", ["senior_associate"], "My answers to your three questions...");
+    h.drain();
+    expect(keysSince(h, before).filter((k) => k.startsWith("reply:"))).toEqual([]);
+    expect(h.state.beats["B-M1-handoff"]).toBe("delivered");
+  });
+});
+
+describe("engine: a draft sent only to the senior", () => {
+  const toTermSheet = (h: Harness) => {
+    h.apply({ type: "session_started", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: "0.1.0", associateFirstName: "Sam" } });
+    h.drain();
+    h.send("orientation", ["senior_associate"], "Ready.", { intent: "acknowledgment" });
+    h.drain();
+    h.send("orientation", ["senior_associate"], "answers", { intent: "question" });
+    h.drain();
+  };
+  const draft = Array.from({ length: 70 }, (_, i) => `point${i}`).join(" ");
+
+  it("is not the deliverable: the term sheet stays open and the documents do not go out", () => {
+    const h = new Harness();
+    toTermSheet(h);
+    const before = h.effects.length;
+    h.send("term-sheet", ["senior_associate"], draft, { intent: "deliverable" });
+    const reply = h.effects.slice(before).find((e) => e.type === "enqueue_job" && e.job.kind === "character_reply") as { job: Job } | undefined;
+    h.drain();
+    expect(h.state.assignments["A2"]!.status).toBe("open");
+    expect(h.state.currentMilestone).toBe("M2");
+    expect(h.state.beats["B-M3-doc-set"]).toBeUndefined();
+    expect(reply?.job.payload).toMatchObject({ characterId: "senior_associate", draftFor: { assignmentId: "A2", deliverTo: "client_contact" } });
+  });
+
+  it("counts once it goes to the client", () => {
+    const h = new Harness();
+    toTermSheet(h);
+    h.send("term-sheet", ["senior_associate"], draft, { intent: "deliverable" });
+    h.drain();
+    h.send("term-sheet", ["client_contact", "senior_associate"], draft, { intent: "deliverable" });
+    h.drain();
+    expect(h.state.assignments["A2"]!.status).toBe("complete");
+    expect(h.state.beats["B-M3-doc-set"]).toBe("delivered");
+  });
+});

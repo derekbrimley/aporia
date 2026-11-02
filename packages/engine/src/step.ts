@@ -35,6 +35,10 @@ export function step(prev: SessionState, event: EngineEvent, pkg: ScenarioPackag
       break;
     case "email_sent":
       ctx.onEmailSent(event);
+      // A beat this email sets off on its own thread (the self-check, the handoff) is its answer.
+      // The intent arrives later, so remember it here rather than re-checking triggers then.
+      ctx.settle();
+      ctx.markAnsweredByBeat(event.payload.messageId);
       break;
     case "intent_classified":
       ctx.onIntentClassified(event.payload.messageId, event.payload.intent);
@@ -92,8 +96,17 @@ class Ctx {
     private at: string,
   ) {}
 
+  /** Beats enqueued during this step, across every settle pass. */
+  private beatsThisStep: Beat[] = [];
+
   touch() {
     this.state.lastActivityAt = this.at;
+  }
+
+  markAnsweredByBeat(messageId: string) {
+    const msg = this.state.messages[messageId];
+    const thread = msg ? this.state.threads[msg.threadId] : undefined;
+    if (msg && thread && this.beatsThisStep.some((b) => b.thread_key === thread.key)) msg.answeredByBeat = true;
   }
 
   // ---------------------------------------------------------------- session
@@ -220,7 +233,7 @@ class Ctx {
         return;
       }
     }
-    if (beatsTriggeredHere.length > 0) return; // a scripted beat answers this email
+    if (beatsTriggeredHere.length > 0 || msg.answeredByBeat) return; // a scripted beat answers this email
     // Real colleagues don't reply to "thanks"; if the deliverable is still open, someone checks in later.
     if (intent === "acknowledgment") { this.planNudge(msg); return; }
 
@@ -238,11 +251,12 @@ class Ctx {
   private replyOrNudge(msg: MessageState) {
     const responder = this.pickResponder(msg);
     if (!responder) { this.planNudge(msg); return; }
+    const draft = draftForReview(this.state, this.idx, msg, responder.id);
     this.enqueue({
       key: `reply:${msg.id}:${responder.id}`,
       kind: "character_reply",
       delaySeconds: this.delayFor(responder, `reply:${msg.id}`),
-      payload: { kind: "character_reply", messageId: msg.id, characterId: responder.id, threadId: msg.threadId },
+      payload: { kind: "character_reply", messageId: msg.id, characterId: responder.id, threadId: msg.threadId, draftFor: draft ? { assignmentId: draft.id, deliverTo: deliverTo(draft) } : null },
     });
   }
 
@@ -487,6 +501,7 @@ class Ctx {
         payload: { kind: "beat", beatId: b.id },
       });
       out.push(b);
+      this.beatsThisStep.push(b);
     }
     return out;
   }
@@ -560,20 +575,41 @@ export function messagesOnThread(state: SessionState, threadId: string): Message
   return (state.threads[threadId]?.messageIds ?? []).map((id) => state.messages[id]!);
 }
 
-/** The open deliverable assignment on this thread, else the open one whose expected recipients were addressed. */
+/** The person a deliverable is for: the first expected recipient (Priya for the term sheet comments). */
+export function deliverTo(a: Assignment): string {
+  return a.expected_recipients[0]!;
+}
+
+/**
+ * The open deliverable assignment this email delivers: on this thread first, else the open one in
+ * play. Either way the work only counts once it is addressed to the person it is for. Sending it to
+ * the senior alone is asking for a review, not delivering it.
+ */
 export function deliverableAssignmentFor(state: SessionState, idx: ScenarioIndex, threadId: string | null, recipients: string[]): Assignment | undefined {
+  const rec = new Set(recipients);
+  return openDeliverables(state, idx, threadId).find((a) => rec.has(deliverTo(a)));
+}
+
+/** Open deliverable assignments, this thread's first, then the current milestone's, then the rest. */
+function openDeliverables(state: SessionState, idx: ScenarioIndex, threadId: string | null): Assignment[] {
   const open = (aid: string) => state.assignments[aid]?.status === "open";
   const thread = threadId ? state.threads[threadId] : undefined;
-  const onThread = (thread?.assignmentIds ?? []).filter(open).map((a) => idx.assignment(a)).find((a) => a.completion.kind === "deliverable");
-  if (onThread) return onThread;
-  const rec = new Set(recipients);
   const current = state.currentMilestone ? idx.milestone(state.currentMilestone).assignments : [];
-  for (const aid of [...current, ...Object.keys(state.assignments)]) {
-    if (!open(aid)) continue;
-    const a = idx.assignment(aid);
-    if (a.completion.kind === "deliverable" && a.expected_recipients.some((r) => rec.has(r))) return a;
-  }
-  return undefined;
+  const ids = [...new Set([...(thread?.assignmentIds ?? []), ...current, ...Object.keys(state.assignments)])];
+  return ids.filter(open).map((a) => idx.assignment(a)).filter((a) => a.completion.kind === "deliverable");
+}
+
+/**
+ * The assignment a substantive email sent only to people other than its recipient (a draft to Marcus
+ * before it goes to Priya) is probably the work for. The reply then reads it as a draft for review.
+ */
+export function draftForReview(state: SessionState, idx: ScenarioIndex, msg: MessageState, responderId: string): Assignment | undefined {
+  if (msg.from !== "associate" || workText(state, msg).trim().split(/\s+/).length < SUBSTANTIVE_WORDS) return undefined;
+  const rec = new Set([...msg.to, ...msg.cc]);
+  const thread = state.threads[msg.threadId];
+  return openDeliverables(state, idx, msg.threadId).find(
+    (a) => !rec.has(deliverTo(a)) && a.expected_recipients.includes(responderId) && (thread?.assignmentIds.includes(a.id) ?? false),
+  );
 }
 
 /**

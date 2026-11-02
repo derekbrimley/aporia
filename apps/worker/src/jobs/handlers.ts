@@ -14,7 +14,7 @@ export async function handleJob(ctx: JobContext): Promise<JobOutcome> {
   switch (p.kind) {
     case "classify_intent": return classifyIntent(ctx, p.messageId);
     case "assess": return assess(ctx, p.messageId, p.assignmentId, p.probe ?? false);
-    case "character_reply": return characterReply(ctx, p.messageId, p.characterId, p.threadId);
+    case "character_reply": return characterReply(ctx, p.messageId, p.characterId, p.threadId, p.draftFor ?? null);
     case "beat": return beat(ctx, p.beatId);
     case "reflection": return reflection(ctx, p);
     case "doctrine_answer": return doctrine(ctx, p.messageId, p.threadId);
@@ -73,7 +73,7 @@ async function assess(ctx: JobContext, messageId: string, assignmentId: string, 
 }
 
 // ---------------------------------------------------------------- character reply
-async function characterReply(ctx: JobContext, messageId: string, characterId: string, threadId: string): Promise<JobOutcome> {
+async function characterReply(ctx: JobContext, messageId: string, characterId: string, threadId: string, draftFor: { assignmentId: string; deliverTo: string } | null): Promise<JobOutcome> {
   const c = ctx.idx.character(characterId);
   const msg = ctx.state.messages[messageId];
   const thread = ctx.state.threads[threadId];
@@ -86,7 +86,7 @@ async function characterReply(ctx: JobContext, messageId: string, characterId: s
   return generateAndDeliver(ctx, { from: c, to, cc, threadId, threadKey: thread.key, subject: thread.subject, attachments: [], kind: "reply", inReplyTo: messageId }, {
     role: "character_writer",
     build: (feedback) => {
-      const p = characterWriterPrompt({ character: c, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), otherThreads: otherThreadsFor(ctx.state, c.id, threadId, ctx.names), mode: { kind: "reply", toMessageBody: msg.body }, negotiation, feedback, storyDate: storyDate(ctx.now) });
+      const p = characterWriterPrompt({ character: c, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), otherThreads: otherThreadsFor(ctx.state, c.id, threadId, ctx.names), mode: { kind: "reply", toMessageBody: msg.body, draftFor: draftFor ? { deliverable: ctx.idx.assignment(draftFor.assignmentId).deliverable, deliverToName: ctx.names.name(draftFor.deliverTo) } : undefined }, negotiation, feedback, storyDate: storyDate(ctx.now) });
       return { ...p, mockContext: { mode: "reply", associateFirstName: ctx.state.associateFirstName, characterFirstName: c.first_name, signoff: signoff(c), replyHint: c.id === "client_contact" ? "That's helpful, though I'm not sure I follow all of it." : undefined } };
     },
     parse: (res) => ({ body: res.text }),

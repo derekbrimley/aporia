@@ -1,8 +1,8 @@
 # Bug triage
 
-This file lists everything in `docs/product/` that looks wrong, merged by root cause. B-01 to B-08 come from the sign-in pilot and were checked in the running app where possible. B-10 to B-19 come from the 2026-11-02 state machine audit of `cfea6fe`. They're pinned to code but haven't been re-verified as product docs yet, so they become verified as their feature docs get written.
+This file lists everything in `docs/product/` that looks wrong, merged by root cause. B-01 to B-08 come from the sign-in pilot and were checked in the running app where possible. B-10 to B-19 come from the 2026-11-02 state machine audit of `cfea6fe`. They're pinned to code but haven't been re-verified as product docs yet, so they become verified as their feature docs get written. B-20 to B-24 come from Derek's own testing on 2026-11-02.
 
-**Summary.** #11 (merged 2026-11-02, `506e147`) fixed the top five problems: link scanners using up sign-in links (B-01, plus B-02), out-of-order beats (B-10), late assessments overwriting results (B-11), stalled deals (B-12) and replay wiping read state (B-13). Nothing open is high severity now. The most visible remaining issue for testers is B-03, where the sign-in form freezes on a failed request. After that come the worker and held-email timing issues (B-14, B-15). Everything else is recoverable or cosmetic.
+**Summary.** #11 (merged 2026-11-02, `506e147`) fixed the top five problems: link scanners using up sign-in links (B-01, plus B-02), out-of-order beats (B-10), late assessments overwriting results (B-11), stalled deals (B-12) and replay wiping read state (B-13). Nothing open is high severity now. The most visible remaining issue for testers is B-03, where the sign-in form freezes on a failed request. After that come the worker and held-email timing issues (B-14, B-15). Everything else is recoverable or cosmetic. Derek's testing turned up B-20 to B-24. This PR fixes the two engine bugs among them (B-20, B-21); the inbox and date items need product calls first.
 
 | ID | Title | Severity | Area | Decision | Status |
 |---|---|---|---|---|---|
@@ -10,6 +10,11 @@ This file lists everything in `docs/product/` that looks wrong, merged by root c
 | B-10 | "After" beats wait for queued, not delivered | high | simulation | fix | fixed in #11 |
 | B-11 | A second deliverable overwrites a completed assessment | high | assessment | fix | fixed in #11 |
 | B-12 | A failed job or discarded held email stalls the deal | high | simulation | fix | fixed in #11 |
+| B-21 | A draft sent only to Marcus counts as the deliverable | high | simulation | fix | fixed in this PR |
+| B-20 | Marcus sends a scripted email and a generic reply together | medium | simulation | fix | fixed in this PR |
+| B-22 | Reply always answers the latest message on the thread | medium | inbox | fix | open |
+| B-23 | No sign of when a reply will arrive | medium | inbox | product call | open |
+| B-24 | Scenario dates are fixed to September to November 2026 | medium | scenario | product call | open |
 | B-03 | The sign-in form freezes when the request fails | medium | sign-in | fix | open |
 | B-02 | Using a link isn't atomic | medium | sign-in | fix | fixed in #11 |
 | B-13 | Replay marks every email unread | medium | admin | fix | fixed in #11 |
@@ -122,3 +127,13 @@ The full write-up with scenarios is in the audit doc: https://claude.ai/artifact
   - Send checks for "completed" before taking the lock.
   - Cohort dates aren't enforced.
   - Deleting the draft isn't tied to the send.
+
+## From Derek's testing (2026-11-02)
+
+Derek reported six problems from his own runs. The database wasn't reachable, so B-20 and B-21 were reproduced in the engine on `d0e0583` instead of read from his sessions.
+
+- **B-20 (fixed in this PR) Marcus sends a scripted email and a generic reply together** (`packages/engine/src/step.ts`, `routeByIntent`). Derek saw two Marcus emails in a row, both asking follow-up questions. When an orientation reply sets off a beat (the self-check questions, the handoff), the beat is queued while the email is being sent, before the classifier has read it. When the intent arrives, `routeByIntent` checked again for beats triggered by this email, found none because the beat was already queued, and asked Marcus for a generic reply as well. The unit tests passed the intent at send time, which hid the bug. Fix: the email is marked `answeredByBeat` when it is sent, and no generic reply follows.
+- **B-21 (fixed in this PR) A draft sent only to Marcus counts as the deliverable** (`deliverableAssignmentFor`). On an assignment's own thread, any substantive email counted as the work, whoever it was addressed to. A draft of the term sheet comments sent only to Marcus was assessed and completed A2. That entered M3, so Marcus's reflection praised a "note to Priya" Priya never received, and Jordan's documents arrived before anything went back to Priya. Fix: work counts only when it is addressed to the assignment's first `expected_recipients` entry (Priya for A2). A substantive email to the senior alone gets a reply that reads it as a draft for review and tells the associate to send it on.
+- **B-22 Reply always answers the latest message on the thread** (`apps/web/src/components/inbox/InboxApp.tsx`, `replyTo`). Priya wrote to Derek, Marcus and Elena, then Marcus replied to Derek alone. The single Reply button addresses the latest non-associate message, so Derek could reach Priya's group only by editing To and Cc by hand. Proposed: Reply and Reply all on every message.
+- **B-23 No sign of when a reply will arrive.** Reply delays run from 30 seconds (Marcus) to 30 minutes (Jordan), with nothing in the inbox to show anything is coming. Proposed: show "Marcus is writing…" on the thread while a reply job is queued, and shorten Jordan's window for testers.
+- **B-24 Scenario dates are fixed to September to November 2026** (`facts.yaml` `dates.*`, document headers). The fiction's "today" is the real date (`storyDate`), so a term sheet dated September 8 arrives in November and a "mid-November" Series C close is days away or already past. Proposed: store dates as offsets from session start and fill them into documents, prompts and the fact checker per session.
