@@ -37,6 +37,11 @@ export type SessionStartedEvent = Base<"session_started", {
   scenarioVersion: string;
   engineVersion: string;
   associateFirstName: string;
+  /**
+   * The day deal dates count from, when it isn't the day the session started. Set on a session
+   * loaded from a test checkpoint, whose emails were written against the source run's dates.
+   */
+  dateAnchor?: string;
 }>;
 export type SessionResumedEvent = Base<"session_resumed", { gapDays: number }>;
 export type EmailSentEvent = Base<"email_sent", {
@@ -234,6 +239,8 @@ export interface SessionState {
   associateFirstName: string;
   status: "not_started" | "in_progress" | "completed";
   startedAt: string | null;
+  /** Overrides `startedAt` as the day deal dates count from (see scenario `dateAnchor`). */
+  dateAnchor?: string | null;
   lastActivityAt: string | null;
   completedAt: string | null;
   currentMilestone: string | null;

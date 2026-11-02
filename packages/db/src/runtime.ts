@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type pg from "pg";
 import { initialState, replay, step, type Effect, type EngineEvent, type Job, type SessionState, type StepOptions } from "@rematter/engine";
 import type { ScenarioPackage } from "@rematter/scenario";
@@ -179,7 +179,7 @@ export async function rebuildProjections(sessionId: string, pkg: ScenarioPackage
 
 /** Finds or creates the associate's session in a cohort. Does not start it. */
 export async function ensureSession(db: Db, args: { orgId: string; userId: string; cohortId: string; scenarioId: string; scenarioVersion: string; engineVersion: string; testMode?: boolean }): Promise<SessionRow> {
-  const existing = await db.select().from(t.sessions).where(and(eq(t.sessions.userId, args.userId), eq(t.sessions.cohortId, args.cohortId))).limit(1);
+  const existing = await db.select().from(t.sessions).where(and(eq(t.sessions.userId, args.userId), eq(t.sessions.cohortId, args.cohortId), isNull(t.sessions.archivedAt))).limit(1);
   if (existing[0]) return existing[0];
   const [row] = await db.insert(t.sessions).values({
     orgId: args.orgId, userId: args.userId, cohortId: args.cohortId, scenarioId: args.scenarioId, scenarioVersion: args.scenarioVersion,

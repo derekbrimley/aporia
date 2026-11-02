@@ -21,11 +21,13 @@ interface SessionJobPayload {
 export async function runSessionJob(payload: SessionJobPayload, opts: { provider?: LlmProvider; attempt?: number; maxAttempts?: number } = {}): Promise<JobOutcome> {
   const pool = getPool();
   const provider = await getProvider(opts.provider);
-  const row = (await pool.query<{ id: string; org_id: string; test_mode: boolean; scenario_id: string; scenario_version: string; assessor_shadow_mode: boolean; status: string }>(
-    `select s.id, s.org_id, s.test_mode, s.scenario_id, s.scenario_version, s.status, c.assessor_shadow_mode from sessions s join cohorts c on c.id = s.cohort_id where s.id = $1`,
+  const row = (await pool.query<{ id: string; org_id: string; test_mode: boolean; scenario_id: string; scenario_version: string; assessor_shadow_mode: boolean; status: string; archived_at: Date | null }>(
+    `select s.id, s.org_id, s.test_mode, s.scenario_id, s.scenario_version, s.status, s.archived_at, c.assessor_shadow_mode from sessions s join cohorts c on c.id = s.cohort_id where s.id = $1`,
     [payload.sessionId],
   )).rows[0];
   if (!row) throw new Error(`session ${payload.sessionId} not found`);
+  // A test checkpoint load replaced this session; its leftover jobs do nothing.
+  if (row.archived_at) return { events: [], generations: [] };
   const { pkg, documents } = getScenario(row.scenario_id, row.scenario_version);
   const client = await pool.connect();
   let state;

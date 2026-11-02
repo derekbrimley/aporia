@@ -19,6 +19,8 @@ export interface InboxView {
   testerFlagsEnabled: boolean; readOnly: boolean;
   /** Characters with an email on its way to each thread, soonest first ("Marcus is writing…"). */
   writing: Record<string, { from: string; dueAt: string }[]>;
+  /** Test checkpoints the associate can load, when their cohort has a source run (set by /api/inbox). */
+  checkpoints?: { eventCount: number; label: string; milestoneId: string | null }[] | null;
 }
 
 export function addressBook(pkg: ScenarioPackage): AddressBookEntry[] {

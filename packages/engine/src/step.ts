@@ -28,7 +28,7 @@ export function step(prev: SessionState, event: EngineEvent, pkg: ScenarioPackag
 
   switch (event.type) {
     case "session_started":
-      ctx.onSessionStarted(event.payload.associateFirstName);
+      ctx.onSessionStarted(event.payload.associateFirstName, event.payload.dateAnchor);
       break;
     case "session_resumed":
       ctx.onSessionResumed(event.payload.gapDays);
@@ -110,11 +110,12 @@ class Ctx {
   }
 
   // ---------------------------------------------------------------- session
-  onSessionStarted(firstName: string) {
+  onSessionStarted(firstName: string, dateAnchor?: string) {
     const s = this.state;
     if (s.status !== "not_started") return;
     s.status = "in_progress";
     s.startedAt = this.at;
+    if (dateAnchor) s.dateAnchor = dateAnchor;
     s.associateFirstName = firstName;
     this.touch();
     this.enterMilestone(this.idx.firstMilestone.id);

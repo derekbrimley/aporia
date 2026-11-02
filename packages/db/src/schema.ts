@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { pgTable, uuid, text, integer, bigint, boolean, timestamp, jsonb, primaryKey, uniqueIndex, index, date } from "drizzle-orm/pg-core";
 
 /**
@@ -46,6 +47,11 @@ export const cohorts = pgTable("cohorts", {
   testerFlagsEnabled: boolean("tester_flags_enabled").notNull().default(true),
   /** Assessor shadow mode: consequences wait for human confirmation. */
   assessorShadowMode: boolean("assessor_shadow_mode").notNull().default(false),
+  /**
+   * Test checkpoints: a finished session whose milestones this cohort's associates can load from
+   * the inbox. Null turns the feature off. Set it from the admin session viewer.
+   */
+  checkpointSourceSessionId: uuid("checkpoint_source_session_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -79,9 +85,11 @@ export const sessions = pgTable(
     completedAt: timestamp("completed_at", { withTimezone: true }),
     /** Seconds of activity, accumulated from activity events (gaps over 15 minutes are not counted). */
     activeSeconds: integer("active_seconds").notNull().default(0),
+    /** Set when a test checkpoint load replaced this session. Archived sessions are kept but never loaded. */
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("sessions_user_cohort_idx").on(t.userId, t.cohortId)],
+  (t) => [uniqueIndex("sessions_user_cohort_idx").on(t.userId, t.cohortId).where(sql`${t.archivedAt} is null`)],
 );
 
 export const events = pgTable(
