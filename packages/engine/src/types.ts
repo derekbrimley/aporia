@@ -5,7 +5,7 @@
  * rebuilt at any time by replaying the events.
  */
 
-export const ENGINE_VERSION = "0.4.0";
+export const ENGINE_VERSION = "0.5.0";
 
 export type Intent = "deliverable" | "question" | "logistics" | "acknowledgment";
 export type IssueStatus = "raised" | "partial" | "missed";
@@ -141,7 +141,11 @@ export type JobKind =
 export type JobPayload =
   | { kind: "classify_intent"; messageId: string }
   | { kind: "assess"; messageId: string; assignmentId: string; probe?: boolean }
-  | { kind: "character_reply"; messageId: string; characterId: string; threadId: string }
+  | {
+      kind: "character_reply"; messageId: string; characterId: string; threadId: string;
+      /** The associate sent their work for an assignment to this character only, before it reached the person it is for. */
+      draftFor?: { assignmentId: string; deliverTo: string } | null;
+    }
   | {
       kind: "reflection"; messageId: string; assignmentId: string; characterId: string; threadId: string;
       reasoningQuality?: ReasoningQuality;
@@ -209,6 +213,8 @@ export interface MessageState {
   quotedRefs: { documentId: string; ref: string; text: string }[];
   /** Associate forwards: the message forwarded. Absent on snapshots from before forwarding existed. */
   forwardedMessageId?: string | null;
+  /** Associate emails that set off a scripted beat on their own thread: the beat is the answer, so no generic reply follows. */
+  answeredByBeat?: boolean;
 }
 
 export interface AssignmentState {
