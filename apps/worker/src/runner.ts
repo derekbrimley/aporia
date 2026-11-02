@@ -98,6 +98,6 @@ export async function drainJobs(opts: { connectionString: string; provider?: Llm
 
 /** Count of jobs still queued for a session (any run_at). */
 export async function pendingJobCount(sessionId: string): Promise<number> {
-  const r = await getPool().query<{ n: number }>(`select count(*)::int as n from graphile_worker.jobs where queue_name = $1`, [`session:${sessionId}`]);
+  const r = await getPool().query<{ n: number }>(`select count(*)::int as n from graphile_worker.jobs where queue_name = $1 and attempts < max_attempts`, [`session:${sessionId}`]);
   return r.rows[0]!.n;
 }
