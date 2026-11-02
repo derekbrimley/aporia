@@ -2,7 +2,7 @@
 
 ## 1. Summary
 
-re:matter is invite-only. A person signs in by asking for a sign-in link at `/sign-in` and clicking it in their email. If WorkOS is configured, they can also use their firm's SSO. Either way, the app matches them to an invited user by email, then sends them to their role's home. The sign-in cookie lasts 14 days, and signing out ends it on that browser.
+re:matter is invite-only. A person signs in by asking for a sign-in link at `/sign-in`, clicking it in their email, and pressing **Continue to re:matter** on the page it opens. If WorkOS is configured, they can also use their firm's SSO. Either way, the app matches them to an invited user by email, then sends them to their role's home. The sign-in cookie lasts 14 days, and signing out ends it on that browser.
 
 The sign-in page never says whether an address is invited. Every request gets the same "on its way" message.
 
@@ -11,8 +11,9 @@ The sign-in page never says whether an address is invited. Every request gets th
 1. An invited associate opens `/sign-in`. They see the product name, one line about the simulation, a **Work email** field, and a **Send me a sign-in link** button.
 2. They type their email and press the button. The form is replaced with: "If that address is on a cohort, a sign-in link is on its way. It is valid for 20 minutes."
 3. An email arrives with the subject "Sign in to re:matter", containing the link.
-4. They click the link. Their browser is signed in and lands on the inbox at `/`.
-5. Two weeks later the cookie expires, and the next page they open sends them back to `/sign-in`.
+4. They click the link. A page opens with the product name and one button, **Continue to re:matter**.
+5. They press it. Their browser is signed in and lands on the inbox at `/`.
+6. Two weeks later the cookie expires, and the next page they open sends them back to `/sign-in`.
 
 ## 3. The interaction, event by event
 
@@ -40,10 +41,13 @@ Nothing is stored. The page holds no state beyond what was typed.
 - Asking again creates another link. Earlier links stay valid, so several can be live at once.
 - The "on its way" message has no way back to the form. To ask again, the user reloads the page.
 
-### Clicking the link
+### Clicking the link and continuing
 
-- A valid, unused, unexpired link is marked used, the browser is signed in for 14 days, and the user lands on their home. Associates go to `/`, PD admins to `/pd`, internal raters to `/rater`, and internal admins to `/admin`.
-- A used, expired, unknown or missing link lands on `/sign-in` with "That link has expired or was already used. Request a new one."
+- Clicking the link doesn't sign in by itself. It opens a confirm page (`/sign-in/confirm`) with one button: **Continue to re:matter**. This page looks the same whether or not the link is still good, and opening it any number of times doesn't use the link up.
+- Pressing **Continue** uses up the link. If the link was valid, unused and unexpired, the browser is signed in for 14 days and the user lands on their home: associates go to `/`, PD admins to `/pd`, internal raters to `/rater`, and internal admins to `/admin`.
+- If the link was already used, expired or unknown, pressing **Continue** lands on `/sign-in` with "That link has expired or was already used. Request a new one."
+- A link whose token is missing goes straight to `/sign-in` with the "expired" message. Opening `/sign-in/confirm` directly with no token shows "That sign-in link is incomplete. Request a new one."
+- A browser that's already signed in still sees the confirm page. It isn't redirected home.
 
 ```mermaid
 stateDiagram-v2
@@ -53,14 +57,15 @@ stateDiagram-v2
     FormShown --> Requesting: press "Send me a sign-in link"
     Requesting --> LinkOut: response arrives ("on its way")
     Requesting --> Stuck: request fails (button stays disabled, see B-03)
-    LinkOut --> SignedIn: click unused link within 20 min
-    LinkOut --> FormShownWithError: click used/expired link
+    LinkOut --> Confirm: click link (nothing used up yet)
+    Confirm --> SignedIn: press Continue, link unused and within 20 min
+    Confirm --> FormShownWithError: press Continue, link used or expired
     FormShownWithError --> Requesting: ask again
     SignedIn --> Home
     Home --> SignedOut: sign out, cookie expires, or user removed
 ```
 
-> **Technical note:** links and signed-in browsers are rows in `magic_links` and `auth_sessions`. Only an HMAC of each token is stored, never the token itself (`apps/web/src/lib/auth.ts:15-17`). The cookie is `rematter_session`: httpOnly, `SameSite=Lax`, and `Secure` in production.
+> **Technical note:** the emailed link is a GET to `/api/auth/callback`, which only redirects to the confirm page. The button POSTs to the same route, and that POST spends the token in one guarded `UPDATE … WHERE used_at IS NULL … RETURNING` (`apps/web/src/lib/auth.ts:42-52`). Links and signed-in browsers are rows in `magic_links` and `auth_sessions`. Only an HMAC of each token is stored, never the token itself (`apps/web/src/lib/auth.ts:15-17`). The cookie is `rematter_session`: httpOnly, `SameSite=Lax`, and `Secure` in production.
 
 ## 4. Modifiers
 
@@ -79,16 +84,16 @@ stateDiagram-v2
 ## 5. Cancel and interrupt
 
 1. **Explicit abort.** There's no cancel button. Leaving the page abandons the request, but if the request already reached the server, the link was still created and emailed.
-2. **The user doing something else mid-way.** Asking again while a link is out creates a second valid link. Clicking any of them works once. Opening a link meant for user B in a browser signed in as user A switches the browser to user B with no warning.
-3. **Clean "complete" events.** Clicking the link uses it up. Signing out (**Sign out** posts to `/api/auth/sign-out`) deletes that browser's sign-in and returns to `/sign-in`. Other browsers stay signed in. Opening `/api/auth/sign-out` directly in the address bar returns 405 and does nothing.
+2. **The user doing something else mid-way.** Asking again while a link is out creates a second valid link. Each one works once. Pressing **Continue** on a link meant for user B, in a browser signed in as user A, switches the browser to user B with no warning.
+3. **Clean "complete" events.** Pressing **Continue** uses up the link. Clicking the link and then closing the confirm page leaves it unused, so it can still be used within its 20 minutes. Signing out (**Sign out** posts to `/api/auth/sign-out`) deletes that browser's sign-in and returns to `/sign-in`. Other browsers stay signed in. Opening `/api/auth/sign-out` directly in the address bar returns 405 and does nothing.
 4. **The environment failing.**
    - If the link request fails (network down, server error), the button stays disabled and nothing is shown. The user has to reload. **B-03**
    - If the email provider rejects the send, the error is only logged, and the page still says the link is on its way. **B-07**
-   - Corporate email scanners (Outlook Safe Links, Mimecast, Proofpoint) open links on delivery. That uses up the link, so the person's own click says "expired." **B-01**
+   - Corporate email scanners (Outlook Safe Links, Mimecast, Proofpoint) open links on delivery. They only reach the confirm page and don't press the button, so the link is still good when the person clicks it. (This was **B-01**, fixed in #11.)
 5. **The page or process going away.** Closing the tab after the link is requested doesn't matter, because the link is in the email. The sign-in cookie survives browser restarts until it expires.
 6. **Something else changing the target.**
    - If an admin removes the user, every browser they're signed in on is signed out at its next request.
-   - A link that was emailed before the removal still gets used up when clicked, and the user sees "expired" instead of being told they no longer have access. **B-04**
+   - A link that was emailed before the removal still gets used up when they press **Continue**, and the user sees "expired" instead of being told they no longer have access. **B-04**
    - Re-inviting a removed user lets them sign in again with a new link.
 7. **The input channel changing.** Requesting the link on a laptop and opening the email on a phone works: the phone gets signed in, and the laptop doesn't. The two are unrelated.
 
@@ -109,7 +114,7 @@ stateDiagram-v2
 - The "on its way" copy says "if that address is on a cohort". But PD admins, admins and raters aren't in cohorts and do get links, and an associate without a cohort also gets one. **B-06**
 - The SSO "not invited" message also appears when the WorkOS exchange fails or the email isn't verified. **B-08**
 - Expired links and expired signed-in browsers are never cleaned up. They stay in the database.
-- Two clicks on the same link at the same moment could both sign in, because "is it unused?" and "mark it used" are two separate steps. In five concurrent tries locally, only one won. **B-02**
+- Pressing **Continue** for the same link from several browsers at once signs in exactly one of them. The rest get "expired." (This was **B-02**, fixed in #11.)
 
 ## 8. Open questions and verification
 
@@ -119,4 +124,4 @@ Open questions:
 - Should asking for a new link void the earlier ones?
 - Should a removed user be told that their access ended?
 
-Verified locally against `cfea6fe` on 2026-11-02 (mock LLM, no Postmark, no WorkOS), using [verification/sign-in.md](../verification/sign-in.md). SSO success and real email delivery weren't run, because they need WorkOS and Postmark credentials.
+First verified locally against `cfea6fe`, then re-verified against `506e147` (after #11 added the confirm page) on 2026-11-02 (mock LLM, no Postmark, no WorkOS), using [verification/sign-in.md](../verification/sign-in.md). SSO success and real email delivery weren't run, because they need WorkOS and Postmark credentials.
