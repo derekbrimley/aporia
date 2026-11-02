@@ -25,13 +25,13 @@ export function SignInForm({ workos }: { workos: boolean }) {
         <label htmlFor="email" className="text-sm font-semibold">Work email</label>
         <input id="email" type="email" required autoComplete="email" className="text-input" placeholder="you@firm.com" value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
-      <button type="submit" className="btn btn-primary" style={{ height: 48, fontSize: 16 }} disabled={state.busy}>Send me a sign-in link</button>
       {workos && (
         // Carries the typed email to WorkOS as a login hint, so the next page doesn't ask for it again.
-        <a className="btn" href={`/api/auth/workos/start${email.trim() ? `?login_hint=${encodeURIComponent(email.trim())}` : ""}`}>
+        <a className="btn btn-primary" style={{ height: 48, fontSize: 16 }} href={`/api/auth/workos/start${email.trim() ? `?login_hint=${encodeURIComponent(email.trim())}` : ""}`}>
           Sign in with password
         </a>
       )}
+      <button type="submit" className={workos ? "btn" : "btn btn-primary"} style={workos ? undefined : { height: 48, fontSize: 16 }} disabled={state.busy}>Send me a sign-in link</button>
     </form>
   );
 }

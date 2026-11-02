@@ -74,7 +74,7 @@ stateDiagram-v2
 | Address isn't invited, or the user was removed | No link is created and no email is sent. The page still says "on its way." |
 | Address typed in mixed case or with spaces | It still matches the invited user. |
 | No email provider configured | The link is written to the server log, and in development it's also shown as a button on the page. |
-| WorkOS configured | **Sign in with password** appears under the form. If the email field is filled in, the WorkOS page opens with that email already entered. |
+| WorkOS configured | **Sign in with password** appears under the email field as the main button, with **Send me a sign-in link** below it. If the email field is filled in, the WorkOS page opens with that email already entered. |
 | SSO succeeds for an invited, verified email | Same landing as a link sign-in. The user's WorkOS ID is saved. |
 | SSO for an uninvited, unverified or failed account | Lands on `/sign-in` with "That account has not been invited to a cohort." |
 | SSO callback with a wrong or missing state | Lands on `/sign-in` with "Sign-in could not be completed. Try again." |
