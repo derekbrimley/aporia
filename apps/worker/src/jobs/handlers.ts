@@ -24,8 +24,13 @@ export async function handleJob(ctx: JobContext): Promise<JobOutcome> {
   }
 }
 
-function signoff(c: { first_name: string; id: string }): string {
-  return c.id === "partner" ? "E." : c.id === "practice_support" ? "Dana, Practice Support" : c.first_name;
+function signoff(c: { first_name: string; signoff?: string }): string {
+  return c.signoff ?? c.first_name;
+}
+
+/** The deal around the associate, for prompts that name the firm or the other side. */
+function dealFor(ctx: JobContext) {
+  return { firm: ctx.pkg.meta.associate.firm, side: ctx.pkg.meta.side, counterpartyName: ctx.pkg.meta.counterparty_name };
 }
 
 function factsDisplay(facts: Facts): string[] {
@@ -80,13 +85,13 @@ async function characterReply(ctx: JobContext, messageId: string, characterId: s
   if (!msg || !thread) throw new Error(`character_reply: unknown message or thread`);
   const facts = sliceFactsFor(c, ctx.pkg.facts);
   const hints = answerKeyHints(ctx, threadId);
-  const negotiation = c.id === "lenders_counsel" ? ctx.pkg.negotiation : undefined;
+  const negotiation = c.negotiates ? ctx.pkg.negotiation : undefined;
   const to = [msg.from === "associate" ? "associate" : msg.from];
   const cc = [...msg.to, ...msg.cc].filter((x) => x !== c.id && x !== "associate" && !ctx.idx.character(x).is_doctrine_assistant);
   return generateAndDeliver(ctx, { from: c, to, cc, threadId, threadKey: thread.key, subject: thread.subject, attachments: [], kind: "reply", inReplyTo: messageId }, {
     role: "character_writer",
     build: (feedback) => {
-      const p = characterWriterPrompt({ character: c, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), otherThreads: otherThreadsFor(ctx.state, c.id, threadId, ctx.names), mode: { kind: "reply", toMessageBody: msg.body, draftFor: draftFor ? { deliverable: ctx.idx.assignment(draftFor.assignmentId).deliverable, deliverToName: ctx.names.name(draftFor.deliverTo) } : undefined }, negotiation, feedback, storyDate: storyDate(ctx.now) });
+      const p = characterWriterPrompt({ deal: dealFor(ctx), character: c, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), otherThreads: otherThreadsFor(ctx.state, c.id, threadId, ctx.names), mode: { kind: "reply", toMessageBody: msg.body, draftFor: draftFor ? { deliverable: ctx.idx.assignment(draftFor.assignmentId).deliverable, deliverToName: ctx.names.name(draftFor.deliverTo) } : undefined }, negotiation, feedback, storyDate: storyDate(ctx.now) });
       return { ...p, mockContext: { mode: "reply", associateFirstName: ctx.state.associateFirstName, characterFirstName: c.first_name, signoff: signoff(c), replyHint: c.id === "client_contact" ? "That's helpful, though I'm not sure I follow all of it." : undefined } };
     },
     parse: (res) => ({ body: res.text }),
@@ -112,7 +117,7 @@ async function beat(ctx: JobContext, beatId: string): Promise<JobOutcome> {
   return generateAndDeliver(ctx, spec, {
     role: "character_writer",
     build: (feedback) => {
-      const p = characterWriterPrompt({ character: sender, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: sender.id }), otherThreads: otherThreadsFor(ctx.state, sender.id, threadId, ctx.names), mode: { kind: b.is_interruption ? "interruption" : "beat", beat: b, mustIncludeFacts: must }, negotiation: sender.id === "lenders_counsel" ? ctx.pkg.negotiation : undefined, feedback, storyDate: storyDate(ctx.now) });
+      const p = characterWriterPrompt({ deal: dealFor(ctx), character: sender, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: sender.id }), otherThreads: otherThreadsFor(ctx.state, sender.id, threadId, ctx.names), mode: { kind: b.is_interruption ? "interruption" : "beat", beat: b, mustIncludeFacts: must }, negotiation: sender.negotiates ? ctx.pkg.negotiation : undefined, feedback, storyDate: storyDate(ctx.now) });
       return { ...p, mockContext: { mode: "beat", brief: b.brief, associateFirstName: ctx.state.associateFirstName, characterFirstName: sender.first_name, signoff: signoff(sender), mustIncludeDisplay: factsDisplay(must) } };
     },
     parse: (res) => ({ body: res.text }),
@@ -207,7 +212,7 @@ async function recap(ctx: JobContext, gapDays: number): Promise<JobOutcome> {
     role: "recap_debrief",
     build: (feedback) => {
       const p = recapPrompt({ character: c, facts: sliceFactsFor(c, ctx.pkg.facts), associateFirstName: ctx.state.associateFirstName, gapDays, milestone: m, openItems: open, recentSubjects: recent, storyDate: storyDate(ctx.now) });
-      return { ...p, user: feedback.length ? `${p.user}\n\nFix: ${feedback.join("; ")}` : p.user, mockContext: { kind: "recap", associateFirstName: ctx.state.associateFirstName, recapHint: m.recap_hint } };
+      return { ...p, user: feedback.length ? `${p.user}\n\nFix: ${feedback.join("; ")}` : p.user, mockContext: { kind: "recap", associateFirstName: ctx.state.associateFirstName, recapHint: m.recap_hint, signoff: signoff(c) } };
     },
     parse: (res) => ({ body: res.text }),
     check: "full",
@@ -263,7 +268,7 @@ async function debrief(ctx: JobContext): Promise<JobOutcome> {
     return { title: dp?.title ?? dpId, position: dp?.positions.find((p) => p.id === d.position)?.label ?? d.position, rationale: d.rationale };
   });
   const threadId = threadIdForKey(ctx, "debrief");
-  return generateAndDeliver(ctx, { from: c, to: ["associate"], cc: ["senior_associate"], threadId, threadKey: "debrief", subject: "Northlake: closing debrief", attachments: [], kind: "debrief" }, {
+  return generateAndDeliver(ctx, { from: c, to: ["associate"], cc: ["senior_associate"], threadId, threadKey: "debrief", subject: ctx.pkg.meta.debrief_subject, attachments: [], kind: "debrief" }, {
     role: "recap_debrief",
     build: (feedback) => {
       const p = debriefPrompt({ character: c, facts: sliceFactsFor(c, ctx.pkg.facts), associateFirstName: ctx.state.associateFirstName, fired, notFiredPositive: [], decisions, storyDate: storyDate(ctx.now) });

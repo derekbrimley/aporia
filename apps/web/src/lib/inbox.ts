@@ -14,7 +14,11 @@ export interface InboxThread { id: string; key: string | null; subject: string; 
 export interface InboxView {
   sessionId: string; status: string; currentMilestone: string | null; associateFirstName: string; associateEmail: string;
   addressBook: AddressBookEntry[]; threads: InboxThread[]; messages: InboxMessage[];
-  documents: { id: string; title: string; shortTitle: string; kind: string; from: string }[];
+  documents: { id: string; title: string; shortTitle: string; kind: string; from: string; folder: string | null }[];
+  /** Label for this matter at the top of the inbox (e.g. "Halden · Borrower"). */
+  matterLabel: string;
+  /** How many matters the associate is in; more than one shows the switcher (set by /api/inbox). */
+  matterCount?: number;
   milestones: { id: string; title: string }[];
   testerFlagsEnabled: boolean; readOnly: boolean;
   /** Characters with an email on its way to each thread, soonest first ("Marcus is writing…"). */
@@ -41,7 +45,8 @@ export async function buildInboxView(sessionId: string, state: SessionState, pkg
   return {
     sessionId, status: state.status, currentMilestone: state.currentMilestone, associateFirstName: state.associateFirstName, associateEmail: opts.associateEmail,
     addressBook: addressBook(pkg), threads, messages,
-    documents: state.documentsReleased.map((d) => idx.document(d)).map((d) => ({ id: d.id, title: d.title, shortTitle: d.short_title, kind: d.kind, from: d.from })),
+    documents: state.documentsReleased.map((d) => idx.document(d)).map((d) => ({ id: d.id, title: d.title, shortTitle: d.short_title, kind: d.kind, from: d.from, folder: d.folder ?? null })),
+    matterLabel: pkg.meta.matter_label,
     milestones: idx.milestonesInOrder.map((m) => ({ id: m.id, title: m.title })),
     testerFlagsEnabled: opts.testerFlagsEnabled, readOnly: state.status === "completed",
     writing: writingByThread(state),

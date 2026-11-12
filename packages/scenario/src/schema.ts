@@ -6,34 +6,17 @@ import { z } from "zod";
  * changes at runtime; every session is pinned to one scenario version.
  */
 
-export const COMPETENCIES = [
-  "ucc_article_9",
-  "loan_structure_payments",
-  "conditions_precedent_closing",
-  "reps_warranties",
-  "covenants",
-  "events_of_default_remedies",
-  "venture_lending_concepts",
-  "regulatory_compliance",
-] as const;
-export const CompetencySchema = z.enum(COMPETENCIES);
+/**
+ * Competencies are declared per scenario (`competencies` in scenario.yaml) and referenced by id;
+ * the validator checks every reference against that list.
+ */
+export const CompetencySchema = z.string().regex(/^[a-z][a-z0-9_]*$/, { message: "Competency id must be snake_case" });
 export type Competency = z.infer<typeof CompetencySchema>;
-
-export const COMPETENCY_LABELS: Record<Competency, string> = {
-  ucc_article_9: "UCC Article 9 and security interests",
-  loan_structure_payments: "Loan structure and payment mechanics",
-  conditions_precedent_closing: "Conditions precedent and closing mechanics",
-  reps_warranties: "Reps and warranties",
-  covenants: "Affirmative and negative covenants",
-  events_of_default_remedies: "Events of default and remedies",
-  venture_lending_concepts: "Venture lending and growth-stage borrower concepts",
-  regulatory_compliance: "Regulatory and compliance",
-};
 
 const idPattern = (re: RegExp, what: string) =>
   z.string().regex(re, { message: `${what} id does not match the required pattern ${re}` });
 
-export const MilestoneIdSchema = idPattern(/^M[1-8]$/, "Milestone");
+export const MilestoneIdSchema = idPattern(/^M\d{1,2}$/, "Milestone");
 export const AssignmentIdSchema = idPattern(/^A\d{1,2}$/, "Assignment");
 export const IssueIdSchema = idPattern(/^A\d{1,2}\.I\d{1,2}$/, "Issue");
 export const DecisionPointIdSchema = idPattern(/^A\d{1,2}\.D\d{1,2}$/, "Decision point");
@@ -51,7 +34,20 @@ export const ScenarioMetaSchema = z.object({
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
   title: z.string().min(1),
   practice_area: z.string().default("lending"),
-  side: z.enum(["borrower", "lender"]).default("borrower"),
+  /** The client the associate's firm represents, in the deal's words (e.g. "borrower", "buyer"). */
+  side: z.string().min(1).default("borrower"),
+  /** One phrase for prompts: what kind of deal this is (e.g. "a venture debt financing"). */
+  deal_type: z.string().min(1),
+  /** Short label shown at the top of the inbox sidebar and on the matter picker (e.g. "Halden · Borrower"). */
+  matter_label: z.string().min(1),
+  /** One sentence describing the simulation for the matter picker. */
+  summary: z.string().min(1),
+  /** Name the other side's counsel uses for its client in prompts (e.g. "the Bank"). */
+  counterparty_name: z.string().min(1),
+  /** Subject line of the partner's closing debrief email. */
+  debrief_subject: z.string().min(1),
+  /** Competencies this scenario teaches: id -> label. Assignments and issues reference the ids. */
+  competencies: z.record(CompetencySchema, z.string().min(1)),
   /** Content status. Nothing marked `draft` should be shown to a paying cohort. */
   status: z.enum(["draft", "attorney_reviewed", "signed_off"]).default("draft"),
   attorney_signoff_date: z.string().date().nullable().default(null),
@@ -94,8 +90,15 @@ export const CharacterSchema = z.object({
   title: z.string().min(1),
   organization: z.string().min(1),
   email: z.string().email(),
-  /** Which side of the table this character sits on; drives cc etiquette. */
-  side: z.enum(["borrower_counsel", "client", "lender", "practice_support"]),
+  /**
+   * Which side of the table this character sits on; drives cc etiquette. `own_firm` is the
+   * associate's firm; anyone else is outside it (a reflection on mail to them goes on a side thread).
+   */
+  side: z.enum(["own_firm", "client", "counterparty", "third_party", "practice_support"]),
+  /** How the character signs emails (e.g. "E."); defaults to their first name. */
+  signoff: z.string().optional(),
+  /** If true, this character may quote the positions in negotiation.yaml. */
+  negotiates: z.boolean().default(false),
   voice: z.string().min(1),
   teaching_or_negotiating_style: z.string().optional(),
   wants: z.string().optional(),
@@ -164,7 +167,7 @@ export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
 // ---------------------------------------------------------------- milestones.yaml
 export const MilestoneSchema = z.object({
   id: MilestoneIdSchema,
-  order: z.number().int().min(1).max(8),
+  order: z.number().int().min(1),
   title: z.string().min(1),
   summary: z.string().min(1),
   entry: ConditionSchema,
@@ -244,10 +247,11 @@ export const DeltaSchema = z.object({
   provision: z.string().min(1),
   document: DocumentIdSchema,
   section_ref: z.string().optional(),
-  term_sheet_says: z.string().min(1),
+  /** What the baseline deal document (term sheet, LOI) says. */
+  baseline_says: z.string().min(1),
   document_says: z.string().min(1),
   delta_type: z.enum(["standard", "aggressive", "new_provision", "omission", "clarification"]),
-  lender_flexibility: z.enum(["low", "medium", "high"]),
+  counterparty_flexibility: z.enum(["low", "medium", "high"]),
   competencies: z.array(CompetencySchema).default([]),
   surfaces_in: MilestoneIdSchema,
   strong_associate_does: z.string().min(1),
@@ -299,10 +303,10 @@ export const NegotiationPointSchema = z.object({
   id: z.string().regex(/^N\d{2}$/),
   title: z.string().min(1),
   delta: DeltaIdSchema.optional(),
-  /** Attorney-written positions. The lender's counsel character quotes these; it never improvises them. */
-  lender_opening: z.string().min(1),
-  lender_fallback: z.string().min(1),
-  lender_walk_away: z.string().min(1),
+  /** Attorney-written positions. The negotiating character quotes these; it never improvises them. */
+  opening: z.string().min(1),
+  fallback: z.string().min(1),
+  walk_away: z.string().min(1),
   flexibility: z.enum(["low", "medium", "high"]),
   /** Deterministic rule the engine uses to decide where the point lands. */
   resolution: z.enum(["opening", "fallback", "walk_away"]).default("fallback"),
@@ -346,7 +350,13 @@ export const DocumentRegisterEntrySchema = z.object({
   id: DocumentIdSchema,
   title: z.string().min(1),
   short_title: z.string().min(1),
-  kind: z.enum(["term_sheet", "loan_agreement", "schedule", "certificate", "checklist", "ai_draft", "other"]),
+  kind: z.enum([
+    "term_sheet", "letter_of_intent", "loan_agreement", "credit_agreement", "merger_agreement", "guaranty",
+    "schedule", "certificate", "checklist", "consent", "memo", "contract", "corporate_record", "regulatory",
+    "ai_draft", "other",
+  ]),
+  /** Folder in the document library (e.g. "Data room / Customer contracts"). Ungrouped when absent. */
+  folder: z.string().optional(),
   /** Source file, relative to documents/. Markdown today; .docx via pandoc when attorney-approved files exist. */
   source: z.string().min(1),
   /** The character who sends it into the deal. */

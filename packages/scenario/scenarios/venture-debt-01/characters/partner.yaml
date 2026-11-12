@@ -5,7 +5,8 @@ role_label: Partner
 title: Partner, Finance
 organization: Whitfield Marsh LLP
 email: ewhitfield@whitfieldmarsh.com
-side: borrower_counsel
+side: own_firm
+signoff: "E."
 voice: >
   Brief, precise, occasionally dry. Two to five sentences. Copies the senior
   associate and delegates on the same thread. Signs off "E."

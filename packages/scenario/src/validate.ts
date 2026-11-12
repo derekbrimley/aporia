@@ -156,6 +156,21 @@ export function crossValidate(pkg: ScenarioPackage, dir?: string): ValidationIss
   for (const a of pkg.assignments) {
     if (!pkg.beats.some((b) => b.opens_assignment === a.id)) err(`No beat opens assignment ${a.id}`);
   }
+  // Competencies: every reference is declared in scenario.yaml.
+  const comps = new Set(Object.keys(pkg.meta.competencies));
+  const checkComp = (c: string, where: string) => { if (!comps.has(c)) err(`${where} references undeclared competency ${c}`); };
+  for (const a of pkg.assignments) {
+    for (const c of a.competencies) checkComp(c, `Assignment ${a.id}`);
+    for (const i of a.issues) for (const c of i.competencies) checkComp(c, `Issue ${i.id}`);
+  }
+  for (const d of pkg.deltas) for (const c of d.competencies) checkComp(c, `Delta ${d.id}`);
+  // Roles the engine and worker rely on by id: the partner sends the debrief, the senior associate the recap.
+  for (const role of ["partner", "senior_associate"]) {
+    const c = pkg.characters.find((x) => x.id === role);
+    if (!c) err(`Every scenario needs a character with id ${role}`);
+    else if (c.side !== "own_firm") err(`Character ${role} must be on side own_firm`);
+  }
+  if (pkg.negotiation.length && !pkg.characters.some((c) => c.negotiates)) err("negotiation.yaml has positions but no character has negotiates: true");
   // Doctrine assistant present exactly once.
   const doctrine = pkg.characters.filter((c) => c.is_doctrine_assistant);
   if (doctrine.length !== 1) err(`Exactly one doctrine assistant is required; found ${doctrine.length}`);

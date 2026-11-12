@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { env } from "@/lib/env";
 
-export const metadata: Metadata = { title: env.productName, description: "A simulated venture debt financing for junior transactional associates." };
+export const metadata: Metadata = { title: env.productName, description: "Simulated deals for junior transactional associates." };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
