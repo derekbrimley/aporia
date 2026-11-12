@@ -1,0 +1,427 @@
+# Assignments with ID'd issues (A#.I#) and decision points (A#.D#).
+# Tiers: expected (a competent first-year raises it), strong, expert.
+# `keywords` are used only by the mock assessor and the bot associate in tests.
+# DRAFT: the issue list is the answer key and needs Austin's review before anything else.
+
+- id: A1
+  milestone: M1
+  title: Orientation self-check
+  deliverable: Reply to Daniel's self-check questions in your own words. Nothing is scored.
+  assigned_by: senior_associate
+  feedback_from: senior_associate
+  thread_key: orientation
+  expected_recipients: [senior_associate]
+  competencies: [deal_structure, distressed_finance]
+  completion: { kind: replies, thread_key: orientation, count: 2 }
+  approx_minutes: 15
+  socratic_angles:
+    - Why a secured lender would agree to write off half of what it is owed.
+    - What a reverse triangular merger keeps in place that an asset purchase would not.
+
+# ---------------------------------------------------------------- M2
+- id: A2
+  milestone: M2
+  title: LOI and BigBank terms
+  deliverable: A note to Grace, copying Daniel and Ruth, on what Beta has agreed to in the letter of intent and BigBank's term sheet and what it should worry about before signing a definitive agreement.
+  assigned_by: client_contact
+  feedback_from: senior_associate
+  thread_key: loi
+  expected_recipients: [client_contact, senior_associate]
+  competencies: [deal_structure, corporate_approvals, distressed_finance, merger_agreement]
+  completion: { kind: deliverable }
+  approx_minutes: 60
+  issues:
+    - id: A2.I1
+      tier: expected
+      title: The merger does not leave Acme's liabilities behind
+      description: >-
+        In a reverse triangular merger Acme survives with all of its liabilities, including the FDA warning letter, the product liability suits and the trade payables. Beta avoids assuming them at the parent level, but it owns the company that keeps them, so they are Beta's problem economically.
+      raised_looks_like: Explains to Grace that the structure keeps Acme's contracts and permits in place precisely because Acme survives, and that its liabilities survive with it; Beta's protection is the corporate separateness of a subsidiary, not a shedding of liabilities.
+      partial_looks_like: Says the structure avoids assuming liabilities without explaining that they remain inside Acme.
+      competencies: [deal_structure]
+      keywords: [liabilities, survive, remain with Acme, subsidiary, warning letter, product liability, trade payables]
+    - id: A2.I2
+      tier: expected
+      title: Beta's guaranty is real money
+      description: Beta pays no merger consideration, but it guarantees the remaining $40,000,000 owed to BigBank. The guaranty is recourse to Beta if Acme cannot pay, so the true cost of the deal includes it.
+      raised_looks_like: Points out that Section 3 of BigBank's term sheet makes Beta a guarantor of the remaining $40,000,000 and that this, plus funding Acme's operations and remediation, is the real price.
+      partial_looks_like: Mentions the guaranty without connecting it to Beta's exposure.
+      competencies: [distressed_finance, deal_structure]
+      keywords: [guaranty, guarantee, 40,000,000, recourse, exposure, real cost]
+    - id: A2.I3
+      tier: expected
+      title: Change-of-control clauses can still bite
+      description: A reverse triangular merger is usually not an assignment by Acme, which is why it keeps contracts in place, but contracts with change-of-control triggers or anti-assignment language that reaches mergers still require consent or give termination rights.
+      raised_looks_like: Says the structure preserves most contracts but that diligence must look for change-of-control and "by merger or operation of law" provisions in the contracts that matter, such as supply and customer agreements.
+      partial_looks_like: Mentions consents generally without explaining why the structure does not avoid them all.
+      competencies: [deal_structure, due_diligence]
+      keywords: [change of control, anti-assignment, consent, operation of law, assignment, contracts]
+    - id: A2.I4
+      tier: strong
+      title: Stockholder approval for zero consideration
+      description: >-
+        Cancelling every share for nothing still needs a stockholder vote under DGCL Section 251, plus the Series B class vote the charter requires, and non-consenting holders get appraisal rights under Section 262. With an insolvent company the board's duties run to creditors as well, so the approval path needs to be locked down at signing.
+      raised_looks_like: Flags that the LOI says only "stockholder approval", asks how it will be obtained (written consent at signing, support agreements, any class vote), and notes appraisal rights for holders who do not consent.
+      partial_looks_like: Notes stockholder approval is needed without asking how or by whom.
+      competencies: [corporate_approvals]
+      keywords: [stockholder approval, written consent, appraisal, 262, class vote, support agreement, fiduciary]
+    - id: A2.I5
+      tier: strong
+      title: The forbearance clock drives the timetable
+      description: BigBank's forbearance ends on its expiration date, and earlier if a definitive agreement is not signed by the target signing date. If it lapses, BigBank can foreclose and the deal is gone. Diligence and negotiation have to fit inside that window.
+      raised_looks_like: Points to Section 6 of BigBank's term sheet and explains that the signing deadline and forbearance expiry set the timetable, and that exclusivity does not protect Beta if BigBank forecloses.
+      partial_looks_like: Mentions the forbearance without connecting it to the signing deadline.
+      competencies: [distressed_finance]
+      keywords: [forbearance, expire, expiration, timeline, foreclose, signing deadline, exclusivity]
+    - id: A2.I6
+      tier: expert
+      title: Tax consequences of the forgiveness
+      description: The $40,000,000 forgiveness is cancellation-of-debt income to Acme, excludable to the extent Acme is insolvent but at the cost of reducing tax attributes, and Acme's NOLs will be limited after the ownership change under Section 382. A note to bring in the tax team is the right response.
+      raised_looks_like: Flags cancellation-of-debt income and the effect on Acme's NOLs as an issue for Beta's tax advisers.
+      competencies: [tax_employment]
+      keywords: [cancellation of debt, COD, tax, Section 108, NOL, 382]
+  decision_points:
+    - id: A2.D1
+      title: How Beta protects itself against unknown liabilities
+      trigger: The note recommends how Beta should protect itself against Acme liabilities it does not know about.
+      question: What should Beta rely on to protect itself against unknown Acme liabilities?
+      rationale_prompt: Why this protection, and who would actually pay if something goes wrong after closing?
+      positions:
+        - id: P1
+          label: Seller indemnity and escrow
+          description: Ask Acme's stockholders for an indemnity backed by an escrow or holdback.
+        - id: P2
+          label: Representation and warranty insurance
+          description: Buy a buyer-side R&W insurance policy and rely on it for breaches of Acme's representations.
+        - id: P3
+          label: Diligence, conditions and the BigBank deal
+          description: Rely on thorough diligence and closing conditions, and price known risks into what Beta asks of BigBank.
+  socratic_angles:
+    - Who Beta could look to after closing if Acme's representations turn out to be wrong.
+    - Why BigBank would rather forgive $40,000,000 than foreclose.
+    - What Beta gets from Acme surviving that it would not get from buying Acme's assets.
+  common_misses:
+    - Treating "no liabilities assumed" as if the liabilities disappear.
+    - Assuming zero consideration means zero cost.
+
+# ---------------------------------------------------------------- M3
+- id: A3
+  milestone: M3
+  title: Data room triage and first request list
+  deliverable: A short note to Daniel saying what you will review first and why, with a first list of documents to request from Acme.
+  assigned_by: senior_associate
+  feedback_from: senior_associate
+  thread_key: triage
+  expected_recipients: [senior_associate]
+  competencies: [due_diligence, regulatory_fda]
+  completion: { kind: deliverable }
+  approx_minutes: 45
+  issues:
+    - id: A3.I1
+      tier: expected
+      title: Start with what could stop or reshape the deal
+      description: The FDA warning letter, the forbearance agreement and the contracts the products depend on (Halvorsen supply, Unity purchasing) are where a deal-breaker would be. Corporate housekeeping can wait.
+      raised_looks_like: Ranks the FDA file, the forbearance agreement and the critical supply and customer contracts first, with a reason for each.
+      partial_looks_like: Lists documents to review without a reason for the order.
+      competencies: [due_diligence, regulatory_fda]
+      keywords: [warning letter, FDA, forbearance, Halvorsen, Unity, first, priority]
+    - id: A3.I2
+      tier: expected
+      title: Capitalization and charter for the approval path
+      description: The capitalization summary and the charter tell Beta whose signatures it needs to approve a zero-consideration merger, including any class vote.
+      raised_looks_like: Puts the capitalization table and certificate of incorporation early, to confirm who must approve the merger.
+      competencies: [corporate_approvals, due_diligence]
+      keywords: [capitalization, charter, certificate of incorporation, Series B, stockholder, approve]
+    - id: A3.I3
+      tier: strong
+      title: What the data room is missing
+      description: The index has the warning letter but not Acme's responses to FDA or later FDA correspondence, no insurance policies (the product liability insurer has reserved rights), and no employment agreements for key employees.
+      raised_looks_like: Requests Acme's FDA responses and correspondence since the warning letter, the insurance policies and reservation-of-rights letter, and key employee agreements.
+      partial_looks_like: Requests one of the three.
+      competencies: [due_diligence, regulatory_fda]
+      keywords: [missing, request, FDA response, correspondence, insurance, reservation of rights, employment agreement]
+    - id: A3.I4
+      tier: expert
+      title: Acme's cash runway against the timetable
+      description: An insolvent target may run out of cash before closing. A 13-week cash flow forecast tells Beta whether it needs an interim funding arrangement.
+      raised_looks_like: Asks for Acme's current cash forecast to test whether Acme can operate until closing.
+      competencies: [distressed_finance]
+      keywords: [cash forecast, 13-week, runway, liquidity, interim funding]
+  socratic_angles:
+    - How the associate decided what could wait.
+    - What they would do if Acme says a requested document does not exist.
+  common_misses:
+    - Reviewing the data room in index order.
+
+# ---------------------------------------------------------------- M4
+- id: A4
+  milestone: M4
+  title: Diligence memo on contracts, FDA and litigation
+  deliverable: A diligence memo to Daniel and Grace on Acme's material contracts, FDA status and litigation, saying what survives the merger, what needs a consent, and what could change the deal.
+  assigned_by: partner
+  feedback_from: senior_associate
+  thread_key: diligence-memo
+  expected_recipients: [senior_associate, client_contact]
+  competencies: [due_diligence, regulatory_fda, deal_structure]
+  completion: { kind: deliverable }
+  approx_minutes: 120
+  issues:
+    - id: A4.I1
+      tier: expected
+      title: Halvorsen can terminate on a change of control
+      description: Section 14.2 of the Halvorsen supply agreement lets Halvorsen terminate on 30 days' notice after a change of control of Acme. Halvorsen is the sole qualified source of the active ingredient for Acme's three largest products.
+      raised_looks_like: Flags Section 14.2 and recommends getting Halvorsen's waiver or consent before signing, or making it a closing condition, because the products depend on it.
+      partial_looks_like: Notes a change-of-control clause without saying why Halvorsen matters.
+      competencies: [due_diligence, deal_structure]
+      keywords: [Halvorsen, 14.2, change of control, terminate, sole supplier, waiver]
+    - id: A4.I2
+      tier: expected
+      title: The Unity agreement reaches mergers expressly
+      description: Section 11.1 of the Unity agreement prohibits assignment "whether by merger, operation of law, change of control or otherwise" without consent. The reverse triangular structure does not avoid it.
+      raised_looks_like: Flags Section 11.1 and says Unity's consent is needed despite the structure.
+      partial_looks_like: Notes an anti-assignment clause and assumes the structure avoids it.
+      competencies: [due_diligence, deal_structure]
+      keywords: [Unity, 11.1, merger, operation of law, consent, anti-assignment]
+    - id: A4.I3
+      tier: strong
+      title: Corvane can terminate because Beta is a competitor
+      description: Section 9.3 of the Corvane license allows termination on a change of control in favor of a competitor of Corvane. Beta sells a competing product, so two Acme products are at risk.
+      raised_looks_like: Flags Section 9.3, connects it to Beta's competing product, and says which products depend on the license.
+      partial_looks_like: Notes the change-of-control clause without connecting it to Beta.
+      competencies: [due_diligence]
+      keywords: [Corvane, 9.3, competitor, license, change of control]
+    - id: A4.I4
+      tier: expected
+      title: Landlord consent for the Durham facility
+      description: Section 15.2 of the lease deems a transfer of more than 50% of Acme's voting stock an assignment requiring the landlord's consent, not to be unreasonably withheld.
+      raised_looks_like: Flags Section 15.2 and the need for Triangle Research's consent to the merger.
+      competencies: [due_diligence]
+      keywords: [lease, landlord, 15.2, Triangle Research, consent, 50%]
+    - id: A4.I5
+      tier: expected
+      title: The warning letter stays with Acme
+      description: The FDA warning letter and the incomplete remediation stay with Acme after closing. Acme's $9,000,000 remediation estimate may be low, and an open warning letter can hold up FDA action on Acme's pending applications.
+      raised_looks_like: Explains that Beta inherits the warning letter through Acme, questions the remediation estimate, and notes the effect on the business until FDA closes it out.
+      partial_looks_like: Mentions the warning letter without saying what it means after closing.
+      competencies: [regulatory_fda]
+      keywords: [warning letter, remediation, 9,000,000, sterility, data integrity, close out]
+    - id: A4.I6
+      tier: strong
+      title: Product claims and a reserving insurer
+      description: The two product liability suits stay with Acme, and the insurer has reserved its rights, so coverage is uncertain.
+      raised_looks_like: Flags the suits and the reservation of rights as an exposure that stays with Acme.
+      competencies: [due_diligence]
+      keywords: [product liability, reservation of rights, insurer, 6,000,000, recall]
+    - id: A4.I7
+      tier: expert
+      title: Key employees and the packaging line
+      description: The head of quality and plant manager have change-of-control severance and are essential to remediation; Beta's plan to cut about 85 positions at Durham likely triggers WARN Act notice 60 days before layoffs.
+      raised_looks_like: Recommends retention arrangements for the two key employees and flags WARN notice timing for the planned packaging line closure.
+      partial_looks_like: Mentions one of the two.
+      competencies: [tax_employment]
+      keywords: [WARN, 60 days, key employees, retention, severance, layoff, packaging line]
+  socratic_angles:
+    - Which consents Beta could live without, and why.
+    - What Beta should ask for before signing versus before closing.
+  common_misses:
+    - Listing every contract with equal weight.
+    - Assuming the reverse triangular structure avoids every consent.
+
+# ---------------------------------------------------------------- M5
+- id: A5
+  milestone: M5
+  title: Verify the AI-drafted contracts summary
+  deliverable: A reply to Daniel saying which statements in the AI-drafted contracts summary are wrong or missing, checked against the data room documents.
+  assigned_by: senior_associate
+  feedback_from: senior_associate
+  thread_key: verification
+  expected_recipients: [senior_associate]
+  competencies: [due_diligence]
+  completion: { kind: deliverable }
+  approx_minutes: 45
+  issues:
+    - id: A5.I1
+      tier: expected
+      title: Summary says Unity's consent is not needed
+      description: The summary says the Unity anti-assignment clause does not apply to a reverse triangular merger. Section 11.1 expressly covers assignment by merger, operation of law or change of control.
+      raised_looks_like: Corrects the Unity entry, citing Section 11.1's merger and change-of-control language.
+      competencies: [due_diligence]
+      keywords: [Unity, 11.1, merger, wrong, consent required]
+    - id: A5.I2
+      tier: expected
+      title: Summary leaves out the Corvane license
+      description: The summary omits the Corvane license and its competitor change-of-control termination right in Section 9.3.
+      raised_looks_like: Notes that the Corvane license is missing from the summary and why it matters.
+      competencies: [due_diligence]
+      keywords: [Corvane, missing, omitted, 9.3, license]
+    - id: A5.I3
+      tier: strong
+      title: Summary misstates Halvorsen's notice period
+      description: The summary gives Halvorsen 90 days' notice to terminate; Section 14.2 gives 30.
+      raised_looks_like: Corrects the Halvorsen notice period to 30 days, citing Section 14.2.
+      competencies: [due_diligence]
+      keywords: [Halvorsen, 30 days, 90 days, notice, 14.2]
+    - id: A5.I4
+      tier: strong
+      title: Summary overstates the landlord's discretion
+      description: The summary says the landlord may withhold consent in its sole discretion; Section 15.2 says consent may not be unreasonably withheld.
+      raised_looks_like: Corrects the lease entry to "not to be unreasonably withheld", citing Section 15.2.
+      competencies: [due_diligence]
+      keywords: [landlord, sole discretion, unreasonably withheld, 15.2]
+  socratic_angles:
+    - How the associate decided which entries to check against the source first.
+    - What they would tell Grace if she had already read the summary.
+
+# ---------------------------------------------------------------- M6
+- id: A6
+  milestone: M6
+  title: Check Acme's disclosure schedules
+  deliverable: Comments to Daniel on Acme's disclosure schedules, saying where they are incomplete or inconsistent with what diligence found.
+  assigned_by: senior_associate
+  feedback_from: senior_associate
+  thread_key: schedules
+  expected_recipients: [senior_associate]
+  competencies: [merger_agreement, due_diligence]
+  completion: { kind: deliverable }
+  approx_minutes: 75
+  issues:
+    - id: A6.I1
+      tier: expected
+      title: Required consents schedule lists only the landlord
+      description: Schedule 3.4 lists only the Durham landlord. Halvorsen, Unity and Corvane are missing.
+      raised_looks_like: Asks for Halvorsen, Unity and Corvane to be added to Schedule 3.4.
+      partial_looks_like: Adds one or two of the three.
+      competencies: [merger_agreement, due_diligence]
+      keywords: [Schedule 3.4, consents, Halvorsen, Unity, Corvane, missing]
+    - id: A6.I2
+      tier: expected
+      title: Litigation schedule omits a suit
+      description: Schedule 3.10 lists one product liability suit; the data room litigation summary shows two.
+      raised_looks_like: Points out that Schedule 3.10 omits the second product liability suit.
+      competencies: [due_diligence]
+      keywords: [Schedule 3.10, litigation, second suit, omits, product liability]
+    - id: A6.I3
+      tier: strong
+      title: Regulatory schedule understates the warning letter
+      description: Schedule 3.13 describes remediation as "substantially complete"; the data room shows it is incomplete and the letter is open.
+      raised_looks_like: Challenges the "substantially complete" description in Schedule 3.13 against the FDA file.
+      competencies: [regulatory_fda, merger_agreement]
+      keywords: [Schedule 3.13, substantially complete, warning letter, open, remediation]
+    - id: A6.I4
+      tier: expert
+      title: Data room deemed disclosed
+      description: Acme's markup adds language deeming everything in the data room disclosed against every representation. That swallows the schedules.
+      raised_looks_like: Objects to the data-room-deemed-disclosed language in the preamble to Article 3.
+      competencies: [merger_agreement]
+      keywords: [deemed disclosed, data room, Article 3, preamble, general disclosure]
+  socratic_angles:
+    - Why the schedules matter when the representations will not survive closing.
+    - What Beta can do with an inaccurate schedule before signing.
+
+# ---------------------------------------------------------------- M7
+- id: A7
+  milestone: M7
+  title: Respond to Acme's markup
+  deliverable: An email to Simon stating Beta's positions on the open points in Acme's markup, with Daniel copied.
+  assigned_by: senior_associate
+  feedback_from: senior_associate
+  thread_key: negotiation
+  expected_recipients: [target_counsel, senior_associate]
+  competencies: [merger_agreement, corporate_approvals, regulatory_fda]
+  completion: { kind: deliverable }
+  approx_minutes: 60
+  issues:
+    - id: A7.I1
+      tier: expected
+      title: Keep a consents condition for Halvorsen and Unity
+      description: Acme deleted the third-party consents condition. Beta needs at least Halvorsen and Unity, without which the products it is buying cannot be made or sold.
+      raised_looks_like: Insists on a closing condition for the Halvorsen and Unity consents and explains why those two matter.
+      delta: D01
+      competencies: [merger_agreement]
+      keywords: [consent, condition, Halvorsen, Unity, 7.2]
+    - id: A7.I2
+      tier: expected
+      title: Written consent right after signing
+      description: Acme's markup lets it deliver stockholder consent within five business days with a fiduciary out. Beta needs the written consent, including the Series B class vote, immediately after signing.
+      raised_looks_like: Asks for the written consent, including the Series B class vote, within hours of signing and no fiduciary out once delivered.
+      delta: D02
+      competencies: [corporate_approvals]
+      keywords: [written consent, Series B, class vote, fiduciary out, after signing, 6.3]
+    - id: A7.I3
+      tier: strong
+      title: Information and consultation rights on FDA matters
+      description: Acme will not commit to spend on remediation, but it can give Beta every FDA communication and agree not to respond to FDA without Beta's review.
+      raised_looks_like: Trades the spending covenant for FDA information and consultation rights.
+      delta: D03
+      competencies: [regulatory_fda, merger_agreement]
+      keywords: [FDA, correspondence, consult, review, remediation, covenant, 6.5]
+    - id: A7.I4
+      tier: strong
+      title: No survival, so insure
+      description: With no consideration there is nothing to escrow and no one to indemnify Beta. Accept no survival but ask Acme to cooperate with a buyer-side R&W policy.
+      raised_looks_like: Accepts that representations will not survive and asks for cooperation with R&W insurance instead.
+      delta: D04
+      competencies: [merger_agreement]
+      keywords: [survival, indemnity, R&W insurance, representation and warranty insurance, cooperate, 9.1]
+  decision_points:
+    - id: A7.D1
+      title: Where Beta gives ground
+      trigger: The associate proposes a trade to Simon.
+      question: Which point should Beta give ground on to win the others?
+      rationale_prompt: Why this trade, and how does it serve what Grace told you Beta needs?
+      positions:
+        - id: P1
+          label: Drop the Corvane and landlord consents
+          description: Keep the Halvorsen and Unity consent conditions and drop Corvane and the landlord.
+        - id: P2
+          label: Drop the remediation spending covenant
+          description: Accept no spending commitment in exchange for FDA information and consultation rights.
+        - id: P3
+          label: Hold everything for now
+          description: Hold all points and ask Simon which matter most to Acme's board.
+  socratic_angles:
+    - What Acme's board is protecting with each position, and whether Beta can get the same protection another way.
+
+# ---------------------------------------------------------------- M8
+- id: A8
+  milestone: M8
+  title: Work the closing checklist to closing
+  deliverable: Status emails to Daniel and Nadia working each closing item, including BigBank's deliverables, to done or waived until the merger is effective.
+  assigned_by: senior_associate
+  feedback_from: senior_associate
+  thread_key: closing
+  expected_recipients: [senior_associate, lenders_counsel]
+  competencies: [closing_mechanics, distressed_finance]
+  completion: { kind: deliverable }
+  approx_minutes: 90
+  issues:
+    - id: A8.I1
+      tier: expected
+      title: BigBank's documents release together at the effective time
+      description: The forgiveness, lien releases, amended and restated credit agreement and Beta guaranty must be signed in advance and released together at the effective time, so nobody is bound unless everything closes.
+      raised_looks_like: Proposes holding the BigBank documents in escrow and releasing them simultaneously when the certificate of merger is filed.
+      competencies: [closing_mechanics, distressed_finance]
+      keywords: [forgiveness, lien release, UCC-3, guaranty, simultaneous, escrow, release]
+    - id: A8.I2
+      tier: expected
+      title: Filing the certificate of merger sets the effective time
+      description: The merger becomes effective when the certificate of merger is filed with the Delaware Secretary of State (or at a later time it specifies). Everything else is keyed to that moment.
+      raised_looks_like: Coordinates the filing of the certificate of merger and keys the other deliveries to the effective time.
+      competencies: [closing_mechanics]
+      keywords: [certificate of merger, Delaware, Secretary of State, effective time, filing]
+    - id: A8.I3
+      tier: strong
+      title: Appraisal notice to non-consenting holders
+      description: Holders who did not sign the written consent must get notice of appraisal rights under DGCL Section 262(d)(2), within 10 days after the effective time if not sent before.
+      raised_looks_like: Puts the Section 262 appraisal notice on the checklist with its deadline.
+      competencies: [corporate_approvals, closing_mechanics]
+      keywords: [262, appraisal notice, 10 days, non-consenting, notice]
+    - id: A8.I4
+      tier: strong
+      title: Consents obtained or waived
+      description: Each consent in the closing condition (Halvorsen, Unity) must be in hand or expressly waived by Beta before closing.
+      raised_looks_like: Reports the status of each required consent and asks Grace to decide on any waiver.
+      competencies: [closing_mechanics]
+      keywords: [consent, Halvorsen, Unity, waive, waiver, status]
+  socratic_angles:
+    - What happens if BigBank's documents are signed but the merger does not close that day.

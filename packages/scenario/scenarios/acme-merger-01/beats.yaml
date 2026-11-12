@@ -1,0 +1,386 @@
+# Every world-initiated email. `fixed` text is attorney-reviewed in a real
+# package; `generated` text comes from the character writer working from a brief.
+
+# ---------------------------------------------------------------- M1 Orientation
+- id: B-M1-welcome
+  title: Welcome from the senior associate
+  trigger: { session_started: true }
+  sender: senior_associate
+  to: [associate]
+  thread_key: orientation
+  subject: "Start here: getting oriented on Acme"
+  mode: fixed
+  opens_assignment: A1
+  delay_seconds: 0
+  body: |
+    Welcome to the team. I'm Daniel, the senior associate on this deal, and I'll be working with you through closing.
+
+    We represent the buyer, Beta Pharma. Grace Whitlock, Beta's VP of Corporate Development, is our day-to-day contact. Beta is acquiring Acme Pharmaceuticals, a generic oncology manufacturer that is insolvent after FDA problems and lost customers. Acme owes BigBank $80,000,000 under a secured credit facility. BigBank has agreed to forgive $40,000,000 at closing and keep the other $40,000,000 outstanding with a Beta guaranty. Acme's stockholders get nothing, because the company is under water.
+
+    The structure is a reverse triangular merger: Beta's new subsidiary, Beta Merger Sub, merges into Acme, and Acme survives as Beta's wholly owned subsidiary.
+
+    A few notes on how we work. Attachments open in the panel next to your inbox, so you can read a document while you write about it. Select text and choose Quote in reply to bring a passage into your email with its section reference. The document library groups the data room by folder once it opens. When a call matters, I'll ask why you made it. If you have a general legal question, email practice support. They can't see our deal, so ask about the concept and leave our facts out.
+
+    Nothing here moves until you do, so take the time you need. When you're ready, reply and I'll send a few questions so you can check where you stand. Nobody is grading them.
+
+    Daniel
+
+- id: B-M1-self-check
+  title: Self-check questions
+  trigger: { replies_on_thread: { thread_key: orientation, count: 1 } }
+  sender: senior_associate
+  to: [associate]
+  thread_key: orientation
+  mode: fixed
+  body: |
+    Good. Three questions, in your own words, no research needed. Reply when you've thought about them.
+
+    1. BigBank is owed $80,000,000 and has a lien on almost everything Acme owns. Why would it agree to forgive half of that?
+
+    2. Beta could have bought Acme's assets instead of merging with Acme. What does Beta get from Acme surviving the merger that it would not get from an asset purchase, and what does it give up?
+
+    3. Acme's stockholders will receive nothing. Whose approval do you think Beta still needs, and why?
+
+    There are no right answers here, just a starting point for us.
+
+    Daniel
+
+- id: B-M1-handoff
+  title: Handoff to the LOI
+  trigger: { assignment_complete: A1 }
+  sender: senior_associate
+  to: [associate]
+  thread_key: orientation
+  mode: generated
+  brief: >
+    Thank the associate briefly for their self-check answers without evaluating
+    them. Pick up one thing they said and ask a single follow-up question about
+    it. Then tell them Grace is about to send over the signed letter of intent
+    and BigBank's term sheet, and that they should read both and send her their
+    thoughts, copying you and Ruth. Keep it under 120 words.
+
+# ---------------------------------------------------------------- M2 LOI
+- id: B-M2-loi
+  title: Client sends the LOI and BigBank's term sheet
+  trigger: { milestone_entered: M2 }
+  sender: client_contact
+  to: [senior_associate, associate]
+  cc: [partner]
+  thread_key: loi
+  subject: "Acme LOI and BigBank terms: what have we agreed to?"
+  mode: fixed
+  opens_assignment: A2
+  attachments: [letter-of-intent, bigbank-term-sheet]
+  after: [B-M1-handoff]
+  body: |
+    Team, attached are the letter of intent we signed with Acme on {{dates.loi}} and the term sheet BigBank sent over for the debt side.
+
+    The business deal is simple from where I sit: we pay nothing for the stock, BigBank writes off $40,000,000, and we end up owning Acme with its products and plant. Before we go further, I'd like to know what I've actually agreed to and what I should be worried about. Our CEO will ask me both.
+
+    BigBank's people keep reminding me their forbearance has an end date, so timing matters.
+
+    Grace
+
+- id: B-M2-delegate
+  title: Senior associate delegates the LOI review
+  trigger: { beat_delivered: B-M2-loi }
+  sender: senior_associate
+  to: [associate]
+  thread_key: loi
+  mode: generated
+  after: [B-M2-loi]
+  brief: >
+    Reply on Grace's thread but only to the associate. Ask them to take the
+    first pass at the letter of intent and BigBank's term sheet and send Grace
+    their thoughts, copying you and Ruth. Remind them that Grace is not a lawyer
+    and wants to know what each point means for Beta. Do not list the issues
+    yourself. Under 90 words.
+
+# ---------------------------------------------------------------- M3 Data room
+- id: B-M3-data-room
+  title: Acme's counsel opens the data room
+  trigger: { milestone_entered: M3 }
+  sender: target_counsel
+  to: [associate, senior_associate]
+  thread_key: data-room
+  subject: "Acme / Beta: data room access"
+  mode: fixed
+  attachments: [data-room-index, dr-capitalization, dr-forbearance-agreement, dr-halvorsen-supply, dr-unity-gpo, dr-corvane-license, dr-durham-lease, dr-fda-warning-letter, dr-litigation-summary]
+  body: |
+    Good morning. The Acme data room is now open to your team. I attach the index and the documents posted so far. We will add materials as they are located, but I would ask for patience: Acme's legal and finance staff are very thin at the moment.
+
+    Given BigBank's timetable, Acme's board would like to sign by {{dates.target_signing}}. Please send any requests to me rather than to the company directly.
+
+    Simon
+
+- id: B-M3-triage-ask
+  title: Senior associate asks for a triage plan
+  trigger: { milestone_entered: M3 }
+  sender: senior_associate
+  to: [associate]
+  thread_key: triage
+  subject: "Data room: where to start"
+  mode: fixed
+  opens_assignment: A3
+  after: [B-M3-data-room]
+  body: |
+    Simon's data room is open. We won't have time to read everything carefully before signing, so before you dive in I'd like a short note from you, about 45 minutes of work:
+
+    1. What will you review first, and why that order?
+    2. What is missing that you would ask Acme for now?
+
+    Read the index the way you'd read a deal: what could stop this deal or change what Beta is willing to do? Start there and work outward.
+
+    Daniel
+
+- id: B-M3-anda-question
+  title: Client interrupts with an FDA question
+  trigger: { all: [{ assignment_open: A3 }, { document_opened: dr-fda-warning-letter }] }
+  sender: client_contact
+  to: [associate]
+  cc: [senior_associate]
+  thread_key: anda-question
+  subject: "Quick one from our CEO"
+  mode: generated
+  is_interruption: true
+  must_include_facts: [parties.target.anda_count]
+  brief: >
+    Grace's CEO just asked her whether Beta will need FDA approval to transfer
+    Acme's 11 ANDAs to Beta, and whether that could delay closing. She asks the
+    associate for a quick plain-English answer she can give him today and
+    apologizes for interrupting. Under 80 words.
+
+- id: B-M3-reprioritize
+  title: Senior associate reprioritizes
+  trigger: { beat_delivered: B-M3-anda-question }
+  sender: senior_associate
+  to: [associate]
+  cc: [client_contact]
+  thread_key: anda-question
+  mode: generated
+  after: [B-M3-anda-question]
+  brief: >
+    Daniel replies on Grace's thread telling the associate to answer Grace's
+    question first and come back to the triage note afterwards. He suggests
+    they think about which entity holds the ANDAs before and after the merger,
+    but does not give the answer. Under 60 words.
+
+# ---------------------------------------------------------------- M4 Diligence memo
+- id: B-M4-kickoff
+  title: Partner kicks off the diligence memo
+  trigger: { milestone_entered: M4 }
+  sender: partner
+  to: [senior_associate, associate]
+  thread_key: diligence-memo
+  subject: "Acme: diligence memo"
+  mode: generated
+  opens_assignment: A4
+  brief: >
+    Ruth asks Daniel to have the associate write the diligence memo on Acme's
+    material contracts, FDA status and litigation, something Grace can take to
+    Beta's CEO: what survives the merger, what needs a consent, and what could
+    change the deal. She wants it in time to shape the merger agreement. Two to
+    four sentences, signed "R."
+
+- id: B-M4-remediation-update
+  title: Client prices the remediation
+  trigger: { all: [{ milestone_entered: M4 }, { consequence_active: C04 }] }
+  sender: client_contact
+  to: [associate]
+  cc: [senior_associate]
+  thread_key: diligence-memo
+  mode: generated
+  after: [B-M4-kickoff]
+  must_include_facts: [regulatory.remediation_cost]
+  brief: >
+    Grace mentions that after the associate's note on the LOI, Beta's CEO asked
+    the quality team for a full remediation estimate before signing, since the
+    warning letter stays with Acme, because nobody at Beta trusts Acme's
+    $9,000,000 figure. She asks whether anything else in the memo should feed
+    that estimate. No praise beyond a plain thanks. Under 70 words.
+
+# ---------------------------------------------------------------- M5 Verification
+- id: B-M5-ai-draft
+  title: AI-drafted contracts summary to verify
+  trigger: { milestone_entered: M5 }
+  sender: senior_associate
+  to: [associate]
+  thread_key: verification
+  subject: "Contracts summary draft: please verify"
+  mode: fixed
+  opens_assignment: A5
+  attachments: [ai-draft-contracts-summary]
+  body: |
+    Attached is a summary of Acme's material contracts that our drafting tool produced from the data room. Grace has asked for something like it for her CEO. Before anything goes to her, please check every entry against the underlying contracts and tell me what is wrong, what is missing and what is overstated. Don't fix the document; just tell me what you found and where.
+
+    Daniel
+
+# ---------------------------------------------------------------- M6 Schedules
+- id: B-M6-markup
+  title: Acme's counsel sends the markup and schedules
+  trigger: { milestone_entered: M6 }
+  sender: target_counsel
+  to: [associate, senior_associate]
+  thread_key: markup
+  subject: "Acme / Beta: merger agreement markup and disclosure schedules"
+  mode: fixed
+  attachments: [merger-agreement, disclosure-schedules]
+  body: |
+    Attached are Acme's comments on your draft Agreement and Plan of Merger and the first draft of the Company Disclosure Schedules.
+
+    Our changes reflect the reality of Acme's position. The company has no cash and no time, and its board cannot agree to conditions or covenants that would leave Acme exposed if the deal fails. We have tried to keep the agreement simple so that it can be signed by {{dates.target_signing}}.
+
+    Happy to discuss.
+
+    Simon
+
+- id: B-M6-schedules-ask
+  title: Senior associate asks for schedule comments
+  trigger: { beat_delivered: B-M6-markup }
+  sender: senior_associate
+  to: [associate]
+  thread_key: schedules
+  subject: "Disclosure schedules: check against diligence"
+  mode: generated
+  opens_assignment: A6
+  after: [B-M6-markup]
+  brief: >
+    Daniel asks the associate to check Acme's disclosure schedules against what
+    diligence found and send him comments: what is missing, what is wrong, and
+    anything in the markup that changes how the schedules work. He will handle
+    the rest of the markup with them next. Under 90 words.
+
+- id: B-M6-unity-correction
+  title: The Unity error reached the client
+  trigger: { all: [{ milestone_entered: M6 }, { consequence_active: C05 }] }
+  sender: senior_associate
+  to: [associate]
+  thread_key: schedules
+  mode: generated
+  after: [B-M6-schedules-ask]
+  brief: >
+    Daniel tells the associate that Grace told Beta's CEO that no consent is
+    needed from Unity, which traces back to the contracts summary. He does not
+    say whether that is right. He asks the associate to look at the Unity
+    agreement again and tell him how they want to correct the record with Grace.
+    Calm, no blame. Under 80 words.
+
+# ---------------------------------------------------------------- M7 Negotiation
+- id: B-M7-open-points
+  title: Senior associate frames the open points
+  trigger: { milestone_entered: M7 }
+  sender: senior_associate
+  to: [associate]
+  thread_key: negotiation
+  subject: "Open points with Garrow & Finch"
+  mode: generated
+  opens_assignment: A7
+  brief: >
+    Daniel asks the associate to write to Simon with Beta's positions on the
+    open points in Acme's markup (the consents condition, the timing of the
+    stockholder written consent, the FDA remediation covenant, and survival and
+    indemnification), copying him. Positions and reasons, not redrafts. He does
+    not say what the positions should be. Under 90 words.
+
+- id: B-M7-class-vote
+  title: Series B holders are not signed up
+  trigger: { all: [{ milestone_entered: M7 }, { consequence_active: C01 }] }
+  sender: target_counsel
+  to: [associate]
+  cc: [senior_associate]
+  thread_key: negotiation
+  mode: generated
+  after: [B-M7-open-points]
+  must_include_facts: [cap.series_b_larchmont_pct]
+  brief: >
+    Simon writes ahead of the associate's positions to say, as a courtesy, that
+    Ostrander and Pinecrest have not yet agreed to sign the Series B class
+    consent that Acme's certificate of incorporation requires for a merger, and
+    that Larchmont holds only 48% of the Series B. He notes nobody raised this
+    at the letter of intent stage. Courteous, firm, under 80 words.
+
+- id: B-M7-no-escrow
+  title: Nothing to escrow
+  trigger: { all: [{ milestone_entered: M7 }, { consequence_active: C03 }] }
+  sender: target_counsel
+  to: [associate]
+  cc: [senior_associate]
+  thread_key: negotiation
+  mode: generated
+  after: [B-M7-open-points]
+  brief: >
+    Simon writes that Larchmont has heard from Grace that Beta expects an
+    indemnity backed by an escrow. He points out, politely, that Acme's
+    stockholders receive no consideration, so there is nothing to escrow and no
+    stockholder will give an indemnity, and asks Beta to drop the request so the
+    parties can focus on signing. Under 80 words.
+
+# ---------------------------------------------------------------- M8 Closing
+- id: B-M8-bigbank-deliverables
+  title: BigBank's counsel lists BigBank's closing deliverables
+  trigger: { milestone_entered: M8 }
+  sender: lenders_counsel
+  to: [associate, senior_associate]
+  thread_key: bigbank-closing
+  subject: "BigBank / Acme: closing deliverables"
+  mode: generated
+  must_include_facts: [debt.forgiven, debt.remaining, dates.target_closing]
+  brief: >
+    Nadia introduces herself as BigBank's counsel and lists, as a numbered
+    list, the documents BigBank will deliver and require at closing: the debt
+    forgiveness and release agreement for $40,000,000, UCC-3 amendments releasing
+    liens to the extent needed for the merger, the amended and restated credit
+    agreement for the remaining $40,000,000, and Beta's guaranty. She asks how
+    Beta's counsel proposes to coordinate signatures and release for the
+    {{dates.target_closing}} closing. Under 120 words.
+
+- id: B-M8-checklist
+  title: Senior associate hands over the closing checklist
+  trigger: { milestone_entered: M8 }
+  sender: senior_associate
+  to: [associate]
+  thread_key: closing
+  subject: "Acme closing checklist"
+  mode: generated
+  opens_assignment: A8
+  attachments: [closing-checklist]
+  after: [B-M8-bigbank-deliverables]
+  brief: >
+    Daniel attaches the closing checklist and asks the associate to run it to
+    closing: send him and Nadia status as items move, and work each item to done
+    or waived. He mentions that Nadia has just asked how BigBank's documents
+    will be coordinated, and leaves that to the associate. Under 90 words.
+
+- id: B-M8-halvorsen
+  title: Halvorsen is evaluating its rights
+  trigger: { all: [{ milestone_entered: M8 }, { consequence_active: C02 }] }
+  sender: client_contact
+  to: [associate]
+  cc: [senior_associate]
+  thread_key: closing
+  mode: generated
+  after: [B-M8-checklist]
+  must_include_facts: [contracts.halvorsen.party, dates.target_closing]
+  brief: >
+    Grace forwards news that Halvorsen's commercial director told Beta's supply
+    team they have heard about the deal and are "evaluating their rights" under
+    the supply agreement. Halvorsen supplies the ingredient for Acme's three
+    biggest products. She asks what that means, why it is coming up only now,
+    and whether it affects the {{dates.target_closing}} closing. Anxious but
+    polite. Under 90 words.
+
+- id: B-M8-layoff-plan
+  title: The CEO's layoff plan
+  trigger: { all: [{ milestone_entered: M8 }, { consequence_active: C06 }] }
+  sender: client_contact
+  to: [associate]
+  cc: [senior_associate]
+  thread_key: closing
+  mode: generated
+  after: [B-M8-checklist]
+  must_include_facts: [employees.affected]
+  brief: >
+    Grace says Beta's CEO wants to announce the closure of one Durham packaging
+    line on the closing day and let the roughly 85 affected employees go the
+    following week. She asks whether anything stands in the way. Matter of fact.
+    Under 70 words.

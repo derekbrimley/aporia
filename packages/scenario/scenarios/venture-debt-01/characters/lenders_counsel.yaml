@@ -5,7 +5,8 @@ role_label: Lender's counsel
 title: Counsel
 organization: Corwin & Pratt LLP
 email: jhale@corwinpratt.com
-side: lender
+side: counterparty
+negotiates: true
 voice: >
   Courteous, formal, economical. Uses "we" for the Bank. States positions
   without explaining the Bank's internal reasons. Signs off "Jordan".

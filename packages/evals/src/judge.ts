@@ -17,7 +17,7 @@ export async function judgeSession(sessionId: string, orgId: string, state: Sess
     const c = idx.character(m.from);
     const thread = threadForPrompt(state, m.threadId, names).filter((t) => t.body !== m.body);
     const hints = (state.threads[m.threadId]?.assignmentIds ?? []).flatMap((a) => idx.assignment(a).issues.map((i) => `${i.title}: ${i.raised_looks_like}`));
-    const p = judgePrompt({ characterCard: characterCard(c), thread: renderThread(thread), email: m.body, answerKeyHints: hints, isSocratic: m.kind === "reflection" });
+    const p = judgePrompt({ dealType: pkg.meta.deal_type, characterCard: characterCard(c), thread: renderThread(thread), email: m.body, answerKeyHints: hints, isSocratic: m.kind === "reflection" });
     const res = await provider.generateJson({ role: "eval_judge", system: p.system, user: p.user, promptVersion: p.version, sessionId }, JudgeOutputSchema);
     out.push({ messageId: m.id, from: m.from, kind: m.kind, rating: res.parsed });
     await getPool().query(

@@ -1,0 +1,67 @@
+# Seed -> payoff chains. Every seed points at an issue or decision-point ID.
+- id: C01
+  title: Series B class vote not locked down
+  seed: { issue: A2.I4, outcome: missed }
+  payoff_milestone: M7
+  raised_by: target_counsel
+  beat: B-M7-class-vote
+  how_it_appears: Simon mentions that Ostrander and Pinecrest have not agreed to sign the Series B class consent, which the charter requires, and that Larchmont alone cannot deliver it.
+  severity: major
+  recoverable: true
+  positive: false
+  debrief_candidate: true
+- id: C02
+  title: Halvorsen learns of the deal before it has waived
+  seed: { issue: A4.I1, outcome: missed }
+  payoff_milestone: M8
+  raised_by: client_contact
+  beat: B-M8-halvorsen
+  how_it_appears: Grace forwards word that Halvorsen has heard about the deal and is "evaluating its rights" under the supply agreement, days before closing.
+  severity: major
+  recoverable: true
+  positive: false
+  debrief_candidate: true
+- id: C03
+  title: Nothing to escrow
+  seed: { decision_point: A2.D1, outcome: P1 }
+  payoff_milestone: M7
+  raised_by: target_counsel
+  beat: B-M7-no-escrow
+  how_it_appears: Simon points out that Grace has told Larchmont Beta expects an indemnity and escrow, and that with no consideration there is nothing to escrow and no stockholder will indemnify.
+  severity: moderate
+  recoverable: true
+  positive: false
+  debrief_candidate: true
+- id: C04
+  title: Remediation priced because the liabilities stay
+  seed: { issue: A2.I1, outcome: raised }
+  payoff_milestone: M4
+  raised_by: client_contact
+  beat: B-M4-remediation-update
+  how_it_appears: Grace says that after the associate's note Beta's CEO asked the quality team for a full remediation estimate before signing, since the warning letter stays with Acme.
+  severity: minor
+  recoverable: true
+  positive: true
+  debrief_candidate: true
+- id: C05
+  title: The AI summary's Unity error reached the client
+  seed: { issue: A5.I1, outcome: missed }
+  payoff_milestone: M6
+  raised_by: senior_associate
+  beat: B-M6-unity-correction
+  how_it_appears: Daniel notes that Grace told Beta's CEO no Unity consent is needed, which traces back to the contracts summary, and asks the associate how they want to correct it.
+  severity: moderate
+  recoverable: true
+  positive: false
+  debrief_candidate: true
+- id: C06
+  title: Layoffs planned without WARN notice
+  seed: { issue: A4.I7, outcome: missed }
+  payoff_milestone: M8
+  raised_by: client_contact
+  beat: B-M8-layoff-plan
+  how_it_appears: Grace says the CEO plans to announce the packaging line closure at closing and let people go the following week, and asks whether anything stands in the way.
+  severity: moderate
+  recoverable: true
+  positive: false
+  debrief_candidate: true

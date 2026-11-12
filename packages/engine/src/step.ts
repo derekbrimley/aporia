@@ -376,7 +376,7 @@ class Ctx {
     // client or the other side gets its questions privately, on a side thread.
     const feedback = this.idx.character(asg.feedback_from);
     if (msg) {
-      const outsideFirm = [...msg.to, ...msg.cc].some((x) => this.idx.characters.has(x) && this.idx.character(x).side !== "borrower_counsel");
+      const outsideFirm = [...msg.to, ...msg.cc].some((x) => this.idx.characters.has(x) && this.idx.character(x).side !== "own_firm");
       this.enqueue({
         key: `reflect:${messageId}`,
         kind: "reflection",

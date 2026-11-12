@@ -1,0 +1,136 @@
+# Governance: every document in the deal, its source, version and review status.
+# DRAFT: all documents are abridged engineering drafts pending attorney review.
+- id: letter-of-intent
+  title: Letter of Intent (signed)
+  short_title: Letter of intent
+  kind: letter_of_intent
+  source: src/letter-of-intent.md
+  from: client_contact
+  version: "0.1"
+  attorney_reviewed: false
+  realism_notes: Non-binding LOI except exclusivity and confidentiality. Attorney to review.
+- id: bigbank-term-sheet
+  title: BigBank Restructuring Term Sheet
+  short_title: BigBank term sheet
+  kind: term_sheet
+  source: src/bigbank-term-sheet.md
+  from: client_contact
+  version: "0.1"
+  attorney_reviewed: false
+  realism_notes: Placeholder terms for the remaining $40,000,000 (A&R credit agreement plus Beta guaranty). Attorney to confirm refinance vs guaranty.
+- id: data-room-index
+  title: Data Room Index
+  short_title: Data room index
+  kind: other
+  source: src/data-room-index.md
+  from: target_counsel
+  folder: Data room
+  version: "0.1"
+  attorney_reviewed: false
+- id: dr-capitalization
+  title: Capitalization Summary and Charter Excerpts
+  short_title: Capitalization
+  kind: corporate_record
+  source: src/dr-capitalization.md
+  from: target_counsel
+  folder: Data room / Corporate
+  version: "0.1"
+  attorney_reviewed: false
+- id: dr-forbearance-agreement
+  title: Forbearance Agreement (BigBank)
+  short_title: Forbearance agreement
+  kind: credit_agreement
+  source: src/dr-forbearance-agreement.md
+  from: target_counsel
+  folder: Data room / Financing
+  version: "0.1"
+  attorney_reviewed: false
+- id: dr-halvorsen-supply
+  title: Supply Agreement (Halvorsen Chemie GmbH), excerpts
+  short_title: Halvorsen supply agreement
+  kind: contract
+  source: src/dr-halvorsen-supply.md
+  from: target_counsel
+  folder: Data room / Material contracts
+  version: "0.1"
+  attorney_reviewed: false
+- id: dr-unity-gpo
+  title: Group Purchasing Agreement (Unity Health Purchasing Alliance), excerpts
+  short_title: Unity purchasing agreement
+  kind: contract
+  source: src/dr-unity-gpo.md
+  from: target_counsel
+  folder: Data room / Material contracts
+  version: "0.1"
+  attorney_reviewed: false
+- id: dr-corvane-license
+  title: Patent License Agreement (Corvane Biologics, Inc.), excerpts
+  short_title: Corvane license
+  kind: contract
+  source: src/dr-corvane-license.md
+  from: target_counsel
+  folder: Data room / Material contracts
+  version: "0.1"
+  attorney_reviewed: false
+- id: dr-durham-lease
+  title: Lease, Durham Manufacturing Facility, excerpts
+  short_title: Durham lease
+  kind: contract
+  source: src/dr-durham-lease.md
+  from: target_counsel
+  folder: Data room / Real property
+  version: "0.1"
+  attorney_reviewed: false
+- id: dr-fda-warning-letter
+  title: FDA Warning Letter
+  short_title: FDA warning letter
+  kind: regulatory
+  source: src/dr-fda-warning-letter.md
+  from: target_counsel
+  folder: Data room / Regulatory
+  version: "0.1"
+  attorney_reviewed: false
+  realism_notes: Fictional warning letter modeled on the general form of FDA warning letters. Attorney to review.
+- id: dr-litigation-summary
+  title: Pending Litigation Summary
+  short_title: Litigation summary
+  kind: memo
+  source: src/dr-litigation-summary.md
+  from: target_counsel
+  folder: Data room / Litigation
+  version: "0.1"
+  attorney_reviewed: false
+- id: ai-draft-contracts-summary
+  title: Material Contracts Summary (draft)
+  short_title: Contracts summary (draft)
+  kind: ai_draft
+  source: src/ai-draft-contracts-summary.md
+  from: senior_associate
+  version: "0.1"
+  attorney_reviewed: false
+  realism_notes: Deliberately flawed AI-produced draft for the M5 verification exercise. Flaws listed in verification.yaml.
+- id: merger-agreement
+  title: Agreement and Plan of Merger (Garrow & Finch markup)
+  short_title: Merger agreement (Acme markup)
+  kind: merger_agreement
+  source: src/merger-agreement.md
+  from: target_counsel
+  version: "0.2"
+  attorney_reviewed: false
+  realism_notes: Abridged; carries only the sections the M6 and M7 assignments depend on. Acme's changes are described in bracketed drafting notes.
+- id: disclosure-schedules
+  title: Company Disclosure Schedules (draft)
+  short_title: Disclosure schedules
+  kind: schedule
+  source: src/disclosure-schedules.md
+  from: target_counsel
+  version: "0.1"
+  attorney_reviewed: false
+- id: closing-checklist
+  title: Closing Checklist
+  short_title: Closing checklist
+  kind: checklist
+  source: src/closing-checklist.md
+  from: senior_associate
+  version: "0.1"
+  attorney_reviewed: false

@@ -7,6 +7,7 @@ import { Names, drainJobs, pendingJobCount, threadForPrompt, unlockStaleJobs, ty
 import { z } from "zod";
 import type { PathFile } from "./path.js";
 import { rng } from "./rng.js";
+import { loadBotScript, type BotScript } from "./script.js";
 
 /** How long to wait between checks while the session's next job is retrying or held by another worker. */
 const WAIT_MS = 1000;
@@ -32,6 +33,7 @@ export class BotAssociate {
   private doctrineAsked = 0;
   private offScriptDone = new Set<string>();
   private gapDone = false;
+  private script: BotScript;
   log: BotRunLog = { steps: [], sent: 0, received: 0, stuck: false };
 
   constructor(
@@ -44,6 +46,7 @@ export class BotAssociate {
     private readonly timeoutMs = Number(process.env.PLAYTHROUGH_TIMEOUT_MINUTES ?? 30) * 60_000,
   ) {
     this.random = rng(seed);
+    this.script = loadBotScript(pkg.meta.id);
     const idx = new ScenarioIndex(pkg);
     for (const a of pkg.assignments) {
       const raise: string[] = [];
@@ -131,20 +134,19 @@ export class BotAssociate {
     if (m.kind === "recap" || m.kind === "nudge" || m.kind === "debrief" || m.kind === "doctrine" || m.kind === "reply") return false;
 
     // Off-script behaviors, once each.
-    if (this.path.behaviors.off_script && m.beatId === "B-M2-term-sheet" && !this.offScriptDone.has("lender_wrong_topic")) {
-      this.offScriptDone.add("lender_wrong_topic");
-      await this.send(null, ["lenders_counsel"], [], "Quick question on the term sheet", "Hi Jordan, we got the term sheet from Priya. Could you tell me what the Bank's minimum cash covenant will be so I can prepare comments?", "question");
+    const sc = this.script;
+    if (this.path.behaviors.off_script && m.beatId === sc.probe_beat && !this.offScriptDone.has("off_script")) {
+      this.offScriptDone.add("off_script");
+      await this.send(null, sc.off_script.to, [], sc.off_script.subject, sc.off_script.body, "question");
     }
-    if (this.path.behaviors.gap_days > 0 && !this.gapDone && m.beatId === "B-M3-doc-set") {
+    if (this.path.behaviors.gap_days > 0 && !this.gapDone && m.beatId === sc.gap_beat) {
       this.gapDone = true;
       await appendEvent(this.sessionId, { type: "session_resumed", payload: { gapDays: this.path.behaviors.gap_days } }, "api", this.pkg);
       this.step("session_resumed", `gap ${this.path.behaviors.gap_days}d`);
     }
-    if (this.path.behaviors.doctrine_questions > this.doctrineAsked && m.beatId === "B-M2-term-sheet") {
+    if (this.path.behaviors.doctrine_questions > this.doctrineAsked && m.beatId === sc.probe_beat) {
       this.doctrineAsked++;
-      const q = this.path.behaviors.asks_for_answer
-        ? "Northlake Compute is borrowing $100,000,000 from Halden Bank with IP excluded. Should we push back on the negative pledge? What should I tell the client?"
-        : "What is a negative pledge, and how does it differ from a security interest under UCC Article 9?";
+      const q = this.path.behaviors.asks_for_answer ? sc.doctrine.asks_for_answer : sc.doctrine.general;
       await this.send(null, ["practice_support"], [], "Question", q, null);
     }
 
@@ -159,18 +161,16 @@ export class BotAssociate {
       return this.deliver(state, idx, asg, m);
     }
     if (asg && asg.completion.kind === "replies") {
-      const body = thread.associateMessageCount === 0 ? "Thanks Marcus, I've read this and I'm ready for the questions." : "1. I think the lender is underwriting the equity round and the enterprise value behind it rather than cash flow. 2. IP is what the company's value rests on; equipment is replaceable. 3. Tranche 1 gating on the Series C protects the Bank from funding a company that cannot raise.";
+      const body = thread.associateMessageCount === 0 ? sc.replies.first : sc.replies.later;
       await this.send(m.threadId, [m.from], [], null, body, thread.associateMessageCount === 0 ? "acknowledgment" : "question");
       return true;
     }
     if (m.kind === "interruption") {
-      await this.send(m.threadId, [m.from], m.cc.filter((c) => c !== "associate"), null, "Short answer for the board: no. Under Section 2.1 and Section 3.2(d), Tranche 1 can only be drawn after the Series C closes, and then within the 30-day availability window. Happy to walk through it after the call.", "question");
+      await this.send(m.threadId, [m.from], m.cc.filter((c) => c !== "associate"), null, sc.interruption_reply, "question");
       return true;
     }
     if (m.kind === "reflection") {
-      const body = this.path.reasoning_style === "thin"
-        ? "Good questions. I'll think about them."
-        : "Taking these in turn: the company would lose the ability to raise against its IP later, so the exclusion matters more than the equipment. I'd expect the Bank to want a negative pledge and a lien on IP proceeds, in the negative covenants and the collateral description. And besides IP, leased real estate and equipment under existing financing would fall outside what the Bank can actually reach.";
+      const body = this.path.reasoning_style === "thin" ? sc.reflection_reply.thin : sc.reflection_reply.full;
       await this.send(m.threadId, [m.from], [], null, body, "question");
       return true;
     }
@@ -181,7 +181,7 @@ export class BotAssociate {
     const plan = this.plan.get(asg.id)!;
     const position = asg.decision_points[0] ? this.path.positions[asg.decision_points[0].id] ?? null : null;
     const names = new Names(this.pkg, state.associateFirstName);
-    const prompt = botAssociatePrompt({
+    const prompt = botAssociatePrompt({ dealType: this.pkg.meta.deal_type,
       persona: this.path.persona, thread: threadForPrompt(state, trigger.threadId, names), assignment: asg, raise: plan.raise, miss: plan.miss, position, reasoningStyle: this.path.reasoning_style,
       instruction: `Write the deliverable for this assignment as an email to ${asg.expected_recipients.map((r) => names.name(r)).join(" and ")}.`,
     });

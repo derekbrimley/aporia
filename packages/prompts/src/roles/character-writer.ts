@@ -1,7 +1,7 @@
 import type { Beat, Character, Facts, NegotiationPoint } from "../deps.js";
 import { CHARACTER_HARD_RULES, characterCard, factsBlock, renderThread, type ThreadMessageForPrompt } from "../common.js";
 
-export const CHARACTER_WRITER_VERSION = "character_writer@1.2.0";
+export const CHARACTER_WRITER_VERSION = "character_writer@1.3.0";
 
 export interface CharacterWriterInput {
   character: Character;
@@ -15,6 +15,8 @@ export interface CharacterWriterInput {
     | { kind: "beat"; beat: Beat; mustIncludeFacts: Facts }
     | { kind: "interruption"; beat: Beat; mustIncludeFacts: Facts };
   negotiation?: NegotiationPoint[];
+  /** The deal around the associate: their firm, which side it represents, and the other side's name. */
+  deal: { firm: string; side: string; counterpartyName: string };
   /** Violations from the fact checker on a previous attempt, for regeneration. */
   feedback?: string[];
   /** Today's date inside the fiction. */
@@ -33,9 +35,9 @@ function forwardsSomething(thread: ThreadMessageForPrompt[]): boolean {
 export function characterWriterPrompt(input: CharacterWriterInput) {
   const c = input.character;
   const negotiation = input.negotiation?.length
-    ? `\n\nNegotiation positions you may take on behalf of the Bank (quote or paraphrase; never go beyond them):\n${input.negotiation.map((n) => `- ${n.title}: opening: ${n.lender_opening} | fallback (only after the borrower gives a reason): ${n.lender_fallback} | walk-away: ${n.lender_walk_away}`).join("\n")}`
+    ? `\n\nNegotiation positions you may take on behalf of ${input.deal.counterpartyName} (quote or paraphrase; never go beyond them):\n${input.negotiation.map((n) => `- ${n.title}: opening: ${n.opening} | fallback (only after the ${input.deal.side} gives a reason): ${n.fallback} | walk-away: ${n.walk_away}`).join("\n")}`
     : "";
-  const system = `${characterCard(c)}\n\n${CHARACTER_HARD_RULES}\n\n${factsBlock(input.facts)}${negotiation}\n\nThe associate you write to is ${input.associateFirstName}, a junior associate at ${c.side === "borrower_counsel" ? "your firm" : "Whitfield Marsh LLP, borrower's counsel"}.`;
+  const system = `${characterCard(c)}\n\n${CHARACTER_HARD_RULES}\n\n${factsBlock(input.facts)}${negotiation}\n\nThe associate you write to is ${input.associateFirstName}, a junior associate at ${c.side === "own_firm" ? "your firm" : `${input.deal.firm}, ${input.deal.side}'s counsel`}.`;
 
   let task: string;
   if (input.mode.kind === "reply") {

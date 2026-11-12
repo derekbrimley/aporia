@@ -1,0 +1,50 @@
+# Where Acme's markup of the merger agreement departs from the signed letter of intent.
+# These are ordinary deal deltas, not traps.
+- id: D01
+  provision: Third-party consents condition
+  document: merger-agreement
+  section_ref: Section 7.2
+  baseline_says: Closing is conditioned on receipt of material third-party consents.
+  document_says: Acme's markup deletes the third-party consents condition entirely.
+  delta_type: omission
+  counterparty_flexibility: medium
+  competencies: [merger_agreement, due_diligence]
+  surfaces_in: M7
+  strong_associate_does: Keeps a condition for the consents the products depend on (Halvorsen and Unity) and explains why.
+  status: drafted
+- id: D02
+  provision: Stockholder written consent timing
+  document: merger-agreement
+  section_ref: Section 6.3
+  baseline_says: The transaction is subject to Acme stockholder approval.
+  document_says: Acme will deliver stockholder written consent within five business days after signing, and its board may change its recommendation if its fiduciary duties require.
+  delta_type: aggressive
+  counterparty_flexibility: medium
+  competencies: [corporate_approvals]
+  surfaces_in: M7
+  strong_associate_does: Asks for the written consent, including the Series B class vote, within hours of signing and no fiduciary out once it is delivered.
+  status: drafted
+- id: D03
+  provision: FDA remediation covenant
+  document: merger-agreement
+  section_ref: Section 6.5
+  baseline_says: Acme will operate in the ordinary course and continue its FDA remediation until closing.
+  document_says: Acme will use commercially reasonable efforts to continue remediation "to the extent of available cash", with no information or consultation rights for Beta.
+  delta_type: aggressive
+  counterparty_flexibility: medium
+  competencies: [regulatory_fda, merger_agreement]
+  surfaces_in: M7
+  strong_associate_does: Trades the spending commitment for full FDA information and consultation rights.
+  status: drafted
+- id: D04
+  provision: Survival and indemnification
+  document: merger-agreement
+  section_ref: Section 9.1
+  baseline_says: Indemnification to be agreed in the definitive agreement.
+  document_says: Representations and warranties do not survive closing and there is no indemnification.
+  delta_type: standard
+  counterparty_flexibility: low
+  competencies: [merger_agreement]
+  surfaces_in: M7
+  strong_associate_does: Accepts no survival, since there is no consideration to secure an indemnity, and asks for cooperation with a buyer-side R&W policy.
+  status: drafted

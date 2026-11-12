@@ -1,0 +1,80 @@
+- id: M1
+  order: 1
+  title: Orientation
+  summary: Email thread with the senior associate orienting the associate to the environment and the deal, ending in a self-check that never gates progress.
+  entry: { session_started: true }
+  exit: { assignment_complete: A1 }
+  assignments: [A1]
+  threads_open: [orientation]
+  recap_hint: You were getting oriented with Daniel. His self-check questions are waiting for a reply whenever you're ready.
+
+- id: M2
+  order: 2
+  title: Letter of intent and BigBank terms
+  summary: Grace sends the signed letter of intent and BigBank's restructuring term sheet and asks what Beta has agreed to and what it should worry about.
+  entry: { milestone_complete: M1 }
+  exit: { assignment_complete: A2 }
+  assignments: [A2]
+  threads_open: [loi]
+  recap_hint: Grace sent the signed LOI and BigBank's term sheet and asked what Beta has agreed to. Your note to her is the open item.
+
+- id: M3
+  order: 3
+  title: Data room triage
+  summary: Acme's counsel opens the data room. The senior associate asks for a plan of what to read first and a first diligence request list.
+  entry: { milestone_complete: M2 }
+  exit: { assignment_complete: A3 }
+  assignments: [A3]
+  threads_open: [data-room, triage]
+  possible_interruptions: [B-M3-anda-question]
+  recap_hint: Simon opened the data room. Daniel asked for your plan of what to review first and a first request list.
+
+- id: M4
+  order: 4
+  title: Diligence memo
+  summary: The associate reviews the material contracts, regulatory file and litigation, and reports what survives the merger and what could stop or change the deal.
+  entry: { milestone_complete: M3 }
+  exit: { assignment_complete: A4 }
+  assignments: [A4]
+  threads_open: [diligence-memo]
+  recap_hint: The diligence memo on Acme's contracts, FDA file and litigation is the open item.
+
+- id: M5
+  order: 5
+  title: AI-draft verification
+  summary: The associate checks an AI-produced summary of Acme's material contracts against the contracts themselves.
+  entry: { milestone_complete: M4 }
+  exit: { assignment_complete: A5 }
+  assignments: [A5]
+  threads_open: [verification]
+  recap_hint: Daniel sent an AI-produced contracts summary to verify against the data room documents.
+
+- id: M6
+  order: 6
+  title: Disclosure schedules
+  summary: Acme's counsel sends the disclosure schedules with its markup. The associate checks the schedules against what diligence found.
+  entry: { milestone_complete: M5 }
+  exit: { assignment_complete: A6 }
+  assignments: [A6]
+  threads_open: [markup, schedules]
+  recap_hint: Simon sent Acme's markup and disclosure schedules. Your comments on the schedules are the open item.
+
+- id: M7
+  order: 7
+  title: Merger agreement negotiation
+  summary: The associate responds to Acme's markup on the open points by email, taking positions rather than redrafting.
+  entry: { milestone_complete: M6 }
+  exit: { assignment_complete: A7 }
+  assignments: [A7]
+  threads_open: [negotiation]
+  recap_hint: The open points in Acme's markup are being negotiated with Simon by email.
+
+- id: M8
+  order: 8
+  title: Signing and closing
+  summary: The associate works the closing checklist, including BigBank's deliverables, until the merger is effective.
+  entry: { milestone_complete: M7 }
+  exit: { assignment_complete: A8 }
+  assignments: [A8]
+  threads_open: [closing]
+  recap_hint: The closing checklist, including BigBank's forgiveness and guaranty documents, is the last open item.

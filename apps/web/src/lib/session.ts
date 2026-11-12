@@ -4,21 +4,18 @@ import { dateAnchor, forSession } from "@rematter/scenario";
 import { appendEvent, ensureSession, getDb, getPool, getSessionState, recordActivity, schema } from "@rematter/db";
 import type { CurrentUser } from "./auth.js";
 import { getScenario } from "./scenario.js";
+import { activeMatter } from "./matters.js";
 
 /**
- * Finds the associate's session in their cohort, starting it on first load and
+ * Finds the associate's session in the matter (cohort) they are working on, starting it on first load and
  * appending session_resumed when they come back after a gap. Test mode follows
  * the environment (REMATTER_TEST_MODE=1) for new sessions only.
  */
 export async function bootstrapSession(user: CurrentUser) {
   const db = getDb();
-  const membership = (await db
-    .select({ cohort: schema.cohorts })
-    .from(schema.cohortMembers)
-    .innerJoin(schema.cohorts, eq(schema.cohorts.id, schema.cohortMembers.cohortId))
-    .where(and(eq(schema.cohortMembers.userId, user.id), eq(schema.cohortMembers.orgId, user.orgId))))[0];
-  if (!membership) return null;
-  const cohort = membership.cohort;
+  // The matter the associate is working on; null when they belong to none, or to several and haven't chosen.
+  const cohort = (await activeMatter(user)).cohort;
+  if (!cohort) return null;
   const { pkg } = getScenario(cohort.scenarioId, cohort.scenarioVersion);
   const session = await ensureSession(db, { orgId: user.orgId, userId: user.id, cohortId: cohort.id, scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: ENGINE_VERSION, testMode: process.env.REMATTER_TEST_MODE === "1" });
   const row = (await getPool().query<{ status: string; last_activity_at: Date | null }>(`select status, last_activity_at from sessions where id = $1`, [session.id])).rows[0]!;
@@ -35,7 +32,9 @@ export async function bootstrapSession(user: CurrentUser) {
 
 export async function sessionForUser(user: CurrentUser) {
   const db = getDb();
-  const s = (await db.select().from(schema.sessions).where(and(eq(schema.sessions.userId, user.id), eq(schema.sessions.orgId, user.orgId), isNull(schema.sessions.archivedAt))))[0];
+  const active = (await activeMatter(user)).cohort;
+  if (!active) return null;
+  const s = (await db.select().from(schema.sessions).where(and(eq(schema.sessions.userId, user.id), eq(schema.sessions.orgId, user.orgId), eq(schema.sessions.cohortId, active.id), isNull(schema.sessions.archivedAt))))[0];
   if (!s) return null;
   const cohort = (await db.select().from(schema.cohorts).where(eq(schema.cohorts.id, s.cohortId)))[0]!;
   const loaded = getScenario(s.scenarioId, s.scenarioVersion);

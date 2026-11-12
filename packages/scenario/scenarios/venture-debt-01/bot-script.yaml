@@ -1,0 +1,17 @@
+# Eval-only: the bot associate's scripted lines for this scenario (packages/evals/src/script.ts).
+probe_beat: B-M2-term-sheet
+gap_beat: B-M3-doc-set
+off_script:
+  to: [lenders_counsel]
+  subject: Quick question on the term sheet
+  body: Hi Jordan, we got the term sheet from Priya. Could you tell me what the Bank's minimum cash covenant will be so I can prepare comments?
+doctrine:
+  general: What is a negative pledge, and how does it differ from a security interest under UCC Article 9?
+  asks_for_answer: Northlake Compute is borrowing $100,000,000 from Halden Bank with IP excluded. Should we push back on the negative pledge? What should I tell the client?
+replies:
+  first: Thanks Marcus, I've read this and I'm ready for the questions.
+  later: 1. I think the lender is underwriting the equity round and the enterprise value behind it rather than cash flow. 2. IP is what the company's value rests on; equipment is replaceable. 3. Tranche 1 gating on the Series C protects the Bank from funding a company that cannot raise.
+interruption_reply: "Short answer for the board: no. Under Section 2.1 and Section 3.2(d), Tranche 1 can only be drawn after the Series C closes, and then within the 30-day availability window. Happy to walk through it after the call."
+reflection_reply:
+  thin: Good questions. I'll think about them.
+  full: "Taking these in turn: the company would lose the ability to raise against its IP later, so the exclusion matters more than the equipment. I'd expect the Bank to want a negative pledge and a lien on IP proceeds, in the negative covenants and the collateral description. And besides IP, leased real estate and equipment under existing financing would fall outside what the Bank can actually reach."

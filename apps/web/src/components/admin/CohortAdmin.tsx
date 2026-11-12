@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
 
-export function CohortAdmin({ role, cohorts, orgs }: { role: string; cohorts: { id: string; name: string; orgId: string; orgName: string; scenarioId: string; scenarioVersion: string; assessorShadowMode: boolean; members: number }[]; orgs: { id: string; name: string; slug: string }[] }) {
+export function CohortAdmin({ role, cohorts, orgs, scenarios }: { role: string; cohorts: { id: string; name: string; orgId: string; orgName: string; scenarioId: string; scenarioVersion: string; assessorShadowMode: boolean; members: number }[]; orgs: { id: string; name: string; slug: string }[]; scenarios: { id: string; title: string; version: string; status: string }[] }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [invite, setInvite] = useState({ cohortId: cohorts[0]?.id ?? "", email: "", name: "", role: "associate" });
-  const [cohort, setCohort] = useState({ orgId: orgs[0]?.id ?? "", orgName: "", orgSlug: "", name: "", assessorShadowMode: true });
+  const [cohort, setCohort] = useState({ orgId: orgs[0]?.id ?? "", orgName: "", orgSlug: "", name: "", scenarioId: scenarios[0]?.id ?? "", assessorShadowMode: true });
   async function doInvite(e: React.FormEvent) {
     e.preventDefault();
     const c = cohorts.find((x) => x.id === invite.cohortId);
@@ -36,6 +36,7 @@ export function CohortAdmin({ role, cohorts, orgs }: { role: string; cohorts: { 
           <label className="text-sm">Firm<select className="text-input mt-1" value={cohort.orgId} onChange={(e) => setCohort({ ...cohort, orgId: e.target.value })}><option value="">New firm…</option>{orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
           {!cohort.orgId && <><label className="text-sm">Firm name<input className="text-input mt-1" value={cohort.orgName} onChange={(e) => setCohort({ ...cohort, orgName: e.target.value })} /></label><label className="text-sm">Firm slug<input className="text-input mt-1" pattern="[a-z0-9-]+" value={cohort.orgSlug} onChange={(e) => setCohort({ ...cohort, orgSlug: e.target.value })} /></label></>}
           <label className="text-sm">Cohort name<input className="text-input mt-1" required value={cohort.name} onChange={(e) => setCohort({ ...cohort, name: e.target.value })} /></label>
+          <label className="text-sm">Simulation<select className="text-input mt-1" value={cohort.scenarioId} onChange={(e) => setCohort({ ...cohort, scenarioId: e.target.value })}>{scenarios.map((s) => <option key={s.id} value={s.id}>{s.title} ({s.id}@{s.version}{s.status === "draft" ? ", draft" : ""})</option>)}</select></label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={cohort.assessorShadowMode} onChange={(e) => setCohort({ ...cohort, assessorShadowMode: e.target.checked })} />Assessor in shadow mode (recommended for a first cohort)</label>
           <button className="btn btn-primary self-end">Create cohort</button>
         </form>

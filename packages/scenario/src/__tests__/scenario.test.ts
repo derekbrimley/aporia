@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { loadScenario, ScenarioIndex, sliceFactsFor, scenarioDir, DEFAULT_SCENARIO_ID, buildAllDocuments } from "../index.js";
+import { loadScenario, ScenarioIndex, sliceFactsFor, scenarioDir, DEFAULT_SCENARIO_ID, buildAllDocuments, listScenarioIds } from "../index.js";
 
 describe("venture-debt-01 package", () => {
   const { pkg, dir, issues } = loadScenario(scenarioDir(DEFAULT_SCENARIO_ID));
@@ -31,5 +31,42 @@ describe("venture-debt-01 package", () => {
     const built = buildAllDocuments(dir, pkg.documents);
     expect(built.length).toBe(pkg.documents.length);
     for (const b of built) expect(b.anchors.length).toBeGreaterThan(1);
+  });
+});
+
+describe("every bundled scenario", () => {
+  const ids = listScenarioIds();
+  it("includes venture debt and the Acme merger", () => {
+    expect(ids).toEqual(expect.arrayContaining(["venture-debt-01", "acme-merger-01"]));
+  });
+  for (const id of ids) {
+    it(`${id} validates, builds its documents and has the roles the engine relies on`, () => {
+      const { pkg, dir, issues } = loadScenario(scenarioDir(id));
+      expect(issues.filter((i) => i.level === "error")).toEqual([]);
+      const idx = new ScenarioIndex(pkg);
+      expect(idx.character("partner").side).toBe("own_firm");
+      expect(idx.character("senior_associate").side).toBe("own_firm");
+      expect(buildAllDocuments(dir, pkg.documents).length).toBe(pkg.documents.length);
+      expect(Object.keys(pkg.meta.competencies).length).toBeGreaterThan(0);
+    });
+  }
+});
+
+describe("acme-merger-01 package", () => {
+  const { pkg } = loadScenario(scenarioDir("acme-merger-01"));
+  const idx = new ScenarioIndex(pkg);
+  it("keeps Acme's counsel as the only negotiator and BigBank's counsel outside the firm", () => {
+    expect(pkg.characters.filter((c) => c.negotiates).map((c) => c.id)).toEqual(["target_counsel"]);
+    expect(idx.character("lenders_counsel").side).toBe("third_party");
+  });
+  it("cites contract sections in the answer key that exist in the data room documents", () => {
+    const { dir } = loadScenario(scenarioDir("acme-merger-01"));
+    const docs = new Map(buildAllDocuments(dir, pkg.documents).map((d) => [d.id, d]));
+    const has = (doc: string, ref: string) => docs.get(doc)!.anchors.some((a) => a.ref === ref);
+    expect(has("dr-halvorsen-supply", "Section 14.2")).toBe(true);
+    expect(has("dr-unity-gpo", "Section 11.1")).toBe(true);
+    expect(has("dr-corvane-license", "Section 9.3")).toBe(true);
+    expect(has("dr-durham-lease", "Section 15.2")).toBe(true);
+    for (const ref of ["Section 6.3", "Section 6.5", "Section 7.2", "Section 9.1"]) expect(has("merger-agreement", ref)).toBe(true);
   });
 });

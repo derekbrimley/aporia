@@ -89,7 +89,7 @@ export class MockProvider implements LlmProvider {
       case "recap_debrief":
         return c.kind === "debrief"
           ? `${c.associateFirstName ?? ""}, now that we have closed, a few decisions worth walking back through.\n\n${((c.fired as string[]) ?? []).map((t) => `${t}: this surfaced later in the deal, as you saw.`).join("\n\n")}\n\nTake a moment to think about which of these you would call differently, and why.\n\nE.`
-          : `${c.associateFirstName ?? ""}, a quick note since you have been away a few days. ${c.recapHint ?? ""} Nothing has moved; pick up where you left off.\n\nMarcus`;
+          : `${c.associateFirstName ?? ""}, a quick note since you have been away a few days. ${c.recapHint ?? ""} Nothing has moved; pick up where you left off.\n\n${c.signoff ?? ""}`;
       case "eval_judge":
         return { realism: 4, legal_accuracy: 4, socratic_quality: 4, voice_consistency: 4, acceptable: true, answer_key_leak: false, fiction_break: false, notes: "mock" };
       case "bot_associate": {

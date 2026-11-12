@@ -15,7 +15,12 @@ const draftKey = (c: ComposeState) => c.threadId ?? NEW;
 
 const fmt = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
-export function InboxApp({ userName }: { userName: string }) {
+/** Reads the remembered matter, so a tab left open on another matter can notice the switch. */
+function rememberedMatter(): string | null {
+  return document.cookie.split("; ").find((c) => c.startsWith("rematter_matter="))?.split("=")[1] ?? null;
+}
+
+export function InboxApp({ userName, matterId }: { userName: string; matterId: string | null }) {
   const [view, setView] = useState<InboxView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [folder, setFolder] = useState<Folder>("inbox");
@@ -30,6 +35,7 @@ export function InboxApp({ userName }: { userName: string }) {
 
   const load = useCallback(async () => {
     const r = await fetch("/api/inbox", { cache: "no-store" });
+    if (r.status === 409) { window.location.assign("/matters"); return; }
     if (!r.ok) { setError(((await r.json()) as { error?: string }).error ?? "Could not load your inbox."); return; }
     const v = (await r.json()) as InboxView;
     setView(v);
@@ -66,6 +72,16 @@ export function InboxApp({ userName }: { userName: string }) {
     es.onerror = () => { /* the browser reconnects automatically */ };
     return () => es.close();
   }, [load, ready]);
+
+  // Matters are separate inboxes. If another tab opened a different matter, this tab would now be
+  // reading and writing that one, so reload into it when the tab comes back into focus.
+  useEffect(() => {
+    if (!matterId) return;
+    const check = () => { const m = rememberedMatter(); if (m && m !== matterId) window.location.reload(); };
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", check);
+    return () => { window.removeEventListener("focus", check); document.removeEventListener("visibilitychange", check); };
+  }, [matterId]);
 
   const name = useCallback((id: string) => (id === "associate" ? "you" : view?.addressBook.find((a) => a.id === id)?.name ?? id), [view]);
   const role = useCallback((id: string) => (id === "associate" ? "Associate" : view?.addressBook.find((a) => a.id === id)?.roleLabel ?? ""), [view]);
@@ -168,7 +184,9 @@ export function InboxApp({ userName }: { userName: string }) {
       <section aria-label="Threads" className="flex flex-col gap-3.5 min-h-0" style={{ padding: "24px 14px 0" }}>
         <div className="flex items-center justify-between gap-2 px-1.5">
           <div className="flex flex-col gap-0.5">
-            <div className="text-[12px] font-semibold tracking-[0.08em] uppercase text-ink-muted">Halden · Borrower</div>
+            {(view.matterCount ?? 1) > 1
+              ? <a href="/matters" title="Switch matter" aria-label={`${view.matterLabel}: switch matter`} className="text-[12px] font-semibold tracking-[0.08em] uppercase text-ink-muted hover:text-plum-700 no-underline">{view.matterLabel} ▾</a>
+              : <div className="text-[12px] font-semibold tracking-[0.08em] uppercase text-ink-muted">{view.matterLabel}</div>}
             <h1 className="display text-[28px] leading-[1.15] font-normal m-0">Inbox</h1>
           </div>
           <button type="button" className="btn btn-primary" style={{ padding: "0 16px" }} onClick={startNew} disabled={view.readOnly}><Icon.compose />Compose</button>
@@ -262,15 +280,29 @@ export function InboxApp({ userName }: { userName: string }) {
             <h2 className="display m-0 text-[24px] font-normal">Document library</h2>
             <p className="m-0 text-ink-muted text-[14px]">Every attachment on the deal, in one place. Open one to read it next to your email; use Compare in the panel to add a second.</p>
             <div className="text-[12px] uppercase tracking-[0.08em] text-ink-muted">{view.documents.length} documents</div>
-            <ul className="m-0 p-0 list-none flex flex-col gap-1">
-              {view.documents.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 p-2 rounded-[16px] hover:bg-oat-300"><div className="flex items-center gap-2 min-w-0"><span className="text-plum-600 flex"><Icon.file /></span><div><div className="text-[15px]">{d.title}</div><div className="text-[12.5px] text-ink-muted">From {name(d.from)} · {role(d.from)}</div></div></div><button type="button" className="btn btn-sm" onClick={() => openDoc(d.id, 0)}>Open</button></li>)}
-            </ul>
+            <div className="flex flex-col gap-3 overflow-auto" style={{ maxHeight: "60vh" }}>
+              {libraryGroups(view.documents).map(([folder, list]) => (
+                <div key={folder ?? ""} className="flex flex-col gap-1">
+                  {folder && <div className="px-2 text-[12px] font-semibold tracking-[0.06em] uppercase text-ink-muted">{folder}</div>}
+                  <ul className="m-0 p-0 list-none flex flex-col gap-1">
+                    {list.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 p-2 rounded-[16px] hover:bg-oat-300"><div className="flex items-center gap-2 min-w-0"><span className="text-plum-600 flex"><Icon.file /></span><div><div className="text-[15px]">{d.title}</div><div className="text-[12.5px] text-ink-muted">From {name(d.from)} · {role(d.from)}</div></div></div><button type="button" className="btn btn-sm" onClick={() => openDoc(d.id, 0)}>Open</button></li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
             <div className="flex justify-end"><button type="button" className="btn" onClick={() => setLibrary(false)}>Close</button></div>
           </div>
         </div>
       )}
     </main>
   );
+}
+
+/** Documents grouped by library folder, ungrouped ones first, folders in the order they first appear. */
+function libraryGroups<T extends { folder: string | null }>(docs: T[]): [string | null, T[]][] {
+  const groups = new Map<string | null, T[]>();
+  for (const d of [...docs.filter((x) => !x.folder), ...docs.filter((x) => x.folder)]) groups.set(d.folder, [...(groups.get(d.folder) ?? []), d]);
+  return [...groups.entries()];
 }
 
 /**

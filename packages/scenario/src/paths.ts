@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -27,4 +28,12 @@ export function getScenario(id: string, version?: string): LoadedScenario & { do
     throw new Error(`Scenario ${id} is at ${loaded.pkg.meta.version} but the session is pinned to ${version}. Deploy the pinned version or migrate the session.`);
   }
   return loaded;
+}
+
+/** Every bundled scenario id (a folder under scenarios/ with a scenario.yaml), sorted. */
+export function listScenarioIds(): string[] {
+  return fs.readdirSync(SCENARIOS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && fs.existsSync(path.join(SCENARIOS_DIR, d.name, "scenario.yaml")))
+    .map((d) => d.name)
+    .sort();
 }
