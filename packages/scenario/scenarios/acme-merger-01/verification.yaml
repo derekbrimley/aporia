@@ -1,0 +1,22 @@
+- id: V01
+  assignment: A5
+  title: AI-drafted material contracts summary
+  draft_document: ai-draft-contracts-summary
+  source_documents: [dr-halvorsen-supply, dr-unity-gpo, dr-corvane-license, dr-durham-lease]
+  known_flaws:
+    - id: V01.F1
+      location: Unity Health Purchasing Alliance entry
+      description: Says the anti-assignment clause does not apply to a reverse triangular merger; Section 11.1 expressly covers merger, operation of law and change of control.
+      issue: A5.I1
+    - id: V01.F2
+      location: Whole summary
+      description: Omits the Corvane license and its competitor change-of-control termination right.
+      issue: A5.I2
+    - id: V01.F3
+      location: Halvorsen Chemie entry
+      description: States a 90-day termination notice period; Section 14.2 gives 30 days.
+      issue: A5.I3
+    - id: V01.F4
+      location: Durham facility lease entry
+      description: Says the landlord may withhold consent in its sole discretion; Section 15.2 says not to be unreasonably withheld.
+      issue: A5.I4

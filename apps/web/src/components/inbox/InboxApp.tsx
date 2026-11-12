@@ -185,7 +185,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
         <div className="flex items-center justify-between gap-2 px-1.5">
           <div className="flex flex-col gap-0.5">
             {(view.matterCount ?? 1) > 1
-              ? <a href="/matters" title="Switch matter" className="text-[12px] font-semibold tracking-[0.08em] uppercase text-ink-muted hover:text-plum-700 no-underline">{view.matterLabel} · All matters</a>
+              ? <a href="/matters" title="Switch matter" aria-label={`${view.matterLabel}: switch matter`} className="text-[12px] font-semibold tracking-[0.08em] uppercase text-ink-muted hover:text-plum-700 no-underline">{view.matterLabel} ▾</a>
               : <div className="text-[12px] font-semibold tracking-[0.08em] uppercase text-ink-muted">{view.matterLabel}</div>}
             <h1 className="display text-[28px] leading-[1.15] font-normal m-0">Inbox</h1>
           </div>

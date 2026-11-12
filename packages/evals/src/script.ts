@@ -26,6 +26,7 @@ export type BotScript = z.infer<typeof BotScriptSchema>;
 
 export function loadBotScript(scenarioId: string): BotScript {
   const file = path.join(scenarioDir(scenarioId), "bot-script.yaml");
-  if (!fs.existsSync(file)) throw new Error(`No bot-script.yaml for scenario ${scenarioId}; the eval bot needs one.`);
+  if (!fs.existsSync(file))
+    throw new Error(`No bot-script.yaml for scenario ${scenarioId}; the eval bot needs one.`);
   return BotScriptSchema.parse(YAML.parse(fs.readFileSync(file, "utf8")));
 }

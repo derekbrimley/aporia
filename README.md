@@ -1,10 +1,10 @@
 # re:matter: Simulation 01 (Venture Debt)
 
-A borrower-side venture debt financing, run from kickoff to closing inside an email inbox where every other participant is played by AI. Built from the Notion spec "V1 Build Spec: Simulation 01 (Venture Debt)".
+Deal simulations run from kickoff to closing inside an email inbox where every other participant is played by AI. Simulation 01 is a borrower-side venture debt financing, built from the Notion spec "V1 Build Spec: Simulation 01 (Venture Debt)". Simulation 02 (`acme-merger-01`) is a buyer-side distressed acquisition by reverse triangular merger, built from the attorney cofounder's hypothetical.
 
 **Architectural stance:** scenario content is data (`packages/scenario`), the simulation engine is deterministic code (`packages/engine`), and the LLM voices characters and asks questions (`apps/worker`). The LLM never decides deal state and never authors legally substantive text at runtime.
 
-> **Content status: DRAFT.** The `venture-debt-01` scenario package was authored by engineering from the PRD and build spec so the system could be built and exercised end to end. Every fact, issue, delta, consequence and document must be replaced or approved by the attorney cofounder before any cohort sees it. `pnpm scenario:validate` prints this warning until `scenario.yaml` is marked `attorney_reviewed`.
+> **Content status: DRAFT.** Both scenario packages are drafts. The `venture-debt-01` scenario package was authored by engineering from the PRD and build spec so the system could be built and exercised end to end. Every fact, issue, delta, consequence and document must be replaced or approved by the attorney cofounder before any cohort sees it. `pnpm scenario:validate` prints this warning until `scenario.yaml` is marked `attorney_reviewed`.
 
 ## Layout (pnpm workspaces)
 
@@ -61,7 +61,7 @@ Every LLM call is recorded in `generations` (role, model, prompt version, inputs
 
 ## Scenario authoring
 
-Content lives in `packages/scenario/scenarios/venture-debt-01/`. The engine fires consequences off IDs, never prose: issues are `A#.I#`, decision points `A#.D#` with positions `P#`, and every consequence seed points at one of them. `pnpm scenario:import` (needs `NOTION_TOKEN` and a `notion-sources.yaml`) pulls the deal bible tables into the YAML files and lists every field it could not map. Documents are Markdown today; when attorney-approved `.docx` files exist, point the register at them and the builder runs pandoc.
+Content lives in `packages/scenario/scenarios/<id>/`, one folder per simulation; a cohort is pinned to one, chosen in the admin cohort form. Run one bot playthrough of another scenario with `pnpm playthrough -- --path mixed --scenario acme-merger-01`. The engine fires consequences off IDs, never prose: issues are `A#.I#`, decision points `A#.D#` with positions `P#`, and every consequence seed points at one of them. `pnpm scenario:import` (needs `NOTION_TOKEN` and a `notion-sources.yaml`) pulls the deal bible tables into the YAML files and lists every field it could not map. Documents are Markdown today; when attorney-approved `.docx` files exist, point the register at them and the builder runs pandoc.
 
 ## Deploying
 

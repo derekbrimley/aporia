@@ -11,8 +11,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "tsc -p tsconfig.json",
-    "validate": "tsx src/cli/validate.ts scenarios/venture-debt-01",
-    "build-docs": "tsx src/cli/build-docs.ts scenarios/venture-debt-01",
+    "validate": "tsx src/cli/validate.ts",
+    "build-docs": "tsx src/cli/build-docs.ts",
     "import": "tsx src/cli/import-notion.ts"
   },
   "dependencies": {

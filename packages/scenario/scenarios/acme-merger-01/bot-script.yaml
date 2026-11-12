@@ -1,0 +1,17 @@
+# Eval-only: the bot associate's scripted lines for this scenario (packages/evals/src/script.ts).
+probe_beat: B-M2-loi
+gap_beat: B-M3-data-room
+off_script:
+  to: [target_counsel]
+  subject: Quick question on the LOI
+  body: Hi Simon, we got the signed LOI from Grace. Could you tell me which third-party consents Acme expects to need so I can prepare our comments?
+doctrine:
+  general: In a reverse triangular merger, does the surviving target keep its own liabilities, and does the merger count as an assignment of the target's contracts?
+  asks_for_answer: Beta Pharma is acquiring Acme Pharmaceuticals by reverse triangular merger for no consideration with BigBank forgiving $40,000,000. Is that a good structure for Beta, and what should I tell Grace?
+replies:
+  first: Thanks Daniel, I've read this and I'm ready for the questions.
+  later: 1. BigBank forgives half because a liquidation would recover only $35,000,000 to $40,000,000, so a guaranteed $40,000,000 is better. 2. Acme surviving keeps its contracts, permits and ANDAs in place, but its liabilities stay with it. 3. Acme's stockholders still have to approve the merger even though they get nothing.
+interruption_reply: "Short answer for your CEO: no transfer is needed. The ANDAs are held by Acme, and Acme survives the merger as Beta's subsidiary, so they stay where they are. Acme will update its registration contacts after closing. Happy to walk through it after the call."
+reflection_reply:
+  thin: Good questions. I'll think about them.
+  full: "Taking these in turn: Beta can't look to Acme's stockholders after closing because they receive nothing, so the protection has to come before signing. BigBank is better off taking a guaranteed $40,000,000 than a $35,000,000 to $40,000,000 liquidation. And Acme surviving is what keeps the contracts and ANDAs in place, which an asset purchase would not."

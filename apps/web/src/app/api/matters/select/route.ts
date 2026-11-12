@@ -10,6 +10,11 @@ export async function GET(req: Request) {
   const id = url.searchParams.get("c");
   const all = await memberships(u);
   if (!id || !all.some((c) => c.id === id)) return Response.redirect(new URL("/matters", url), 303);
-  (await cookies()).set(MATTER_COOKIE, id, { path: "/", sameSite: "lax", secure: url.protocol === "https:", maxAge: 365 * 86_400 });
+  (await cookies()).set(MATTER_COOKIE, id, {
+    path: "/",
+    sameSite: "lax",
+    secure: url.protocol === "https:",
+    maxAge: 365 * 86_400,
+  });
   return Response.redirect(new URL("/", url), 303);
 }

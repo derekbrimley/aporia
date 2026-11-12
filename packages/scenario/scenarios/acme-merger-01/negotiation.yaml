@@ -1,0 +1,33 @@
+# Acme's counsel quotes these positions; it never improvises a legal position.
+- id: N01
+  title: Third-party consents condition
+  delta: D01
+  opening: Acme's board cannot accept a closing condition that puts the deal in the hands of third parties. Acme will use reasonable best efforts to obtain consents, but there should be no condition.
+  fallback: Acme can accept a condition limited to the Halvorsen and Unity consents, with reasonable best efforts on Corvane and the landlord.
+  walk_away: Acme will not accept a condition on the Corvane or landlord consents.
+  flexibility: medium
+  resolution: fallback
+- id: N02
+  title: Stockholder written consent
+  delta: D02
+  opening: Acme will deliver written consent within five business days after signing; its board must keep a fiduciary out until then, given Acme's insolvency.
+  fallback: Acme will deliver the written consent of Larchmont within 24 hours of signing and use reasonable best efforts to obtain the Series B class consent from Ostrander and Pinecrest in the same period; no fiduciary out after the consent is delivered.
+  walk_away: Acme cannot promise the Ostrander and Pinecrest signatures; it can only use reasonable best efforts.
+  flexibility: medium
+  resolution: fallback
+- id: N03
+  title: FDA remediation covenant
+  delta: D03
+  opening: Acme will continue remediation to the extent of available cash. It cannot commit to spend money it does not have.
+  fallback: Acme will give Beta copies of all FDA correspondence within one business day, and will not submit anything to FDA without giving Beta a reasonable opportunity to comment.
+  walk_away: Acme will not commit to any minimum remediation spend before closing.
+  flexibility: medium
+  resolution: fallback
+- id: N04
+  title: Survival and indemnification
+  delta: D04
+  opening: The representations and warranties do not survive closing. There is no consideration to secure an indemnity, and Acme's stockholders will not give one.
+  fallback: Acme will cooperate with Beta in obtaining a buyer-side representation and warranty insurance policy, at Beta's cost.
+  walk_away: No stockholder indemnity, escrow or holdback of any kind.
+  flexibility: low
+  resolution: fallback

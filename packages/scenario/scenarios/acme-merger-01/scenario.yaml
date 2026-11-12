@@ -1,0 +1,33 @@
+id: acme-merger-01
+version: 0.1.0
+title: "Simulation 02: Distressed acquisition by reverse triangular merger (buyer side)"
+practice_area: mergers_and_acquisitions
+side: buyer
+deal_type: a distressed acquisition structured as a reverse triangular merger
+matter_label: "Acme · Buyer"
+summary: Represent Beta Pharma in acquiring Acme Pharmaceuticals, an insolvent generic oncology manufacturer, by reverse triangular merger alongside a $40,000,000 debt forgiveness by its secured lender.
+counterparty_name: Acme
+debrief_subject: "Acme: closing debrief"
+# DRAFT. Deal structure from Austin's hypothetical (2026-11-12); everything else (names other than
+# Acme, Beta and BigBank, facts, issues, documents) was drafted by the engineering team and must be
+# reviewed by Austin and an M&A reviewer before a pilot.
+status: draft
+attorney_signoff_date: null
+associate:
+  email_domain: thornburyvale.com
+  role_label: Associate
+  firm: Thornbury Vale LLP
+competencies:
+  deal_structure: Deal structure and merger mechanics
+  corporate_approvals: Corporate approvals, stockholder rights and fiduciary duties
+  due_diligence: Due diligence and contract review
+  regulatory_fda: FDA and regulatory matters
+  distressed_finance: Distressed companies and secured creditor arrangements
+  merger_agreement: Merger agreement terms and risk allocation
+  closing_mechanics: Signing and closing mechanics
+  tax_employment: Tax and employment issues
+notes: >
+  Defaults pending Austin: sign then close about ten days later; Beta guarantees an amended and
+  restated BigBank facility for the remaining $40,000,000; about $12,000,000 of trade payables stay
+  in place; tax is flagged for the tax team, not worked; HSR assumed not reportable per Beta's
+  antitrust counsel. Acme, Beta and BigBank names are from the hypothetical.

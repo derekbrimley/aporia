@@ -7,8 +7,10 @@ const get = (flag: string, def: string) => { const i = args.indexOf(flag); retur
 const paths = get("--paths", "mixed").split(",");
 const runs = Number(get("--runs", "1"));
 const judge = args.includes("--judge");
+// Comma-separated scenario ids; defaults to the default scenario only.
+const scenarios = args.includes("--scenarios") ? get("--scenarios", "").split(",") : [undefined];
 const reports: RunReport[] = [];
-for (const p of paths) for (let seed = 1; seed <= runs; seed++) reports.push(await runPlaythrough({ pathName: p, seed, judge }));
+for (const scenarioId of scenarios) for (const p of paths) for (let seed = 1; seed <= runs; seed++) reports.push(await runPlaythrough({ pathName: p, seed, scenarioId, judge }));
 const passed = reports.filter((r) => r.pass && !r.stuck).length;
 const summary = {
   at: new Date().toISOString(), total: reports.length, passed, failed: reports.length - passed,

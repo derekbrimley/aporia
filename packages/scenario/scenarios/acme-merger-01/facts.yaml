@@ -1,0 +1,266 @@
+# Canonical deal facts. Every document and every character must match this file.
+# Characters see only the keys listed in their knowledge slice.
+# DRAFT: the structure is Austin's hypothetical; the details are engineering placeholders.
+
+# ---------------------------------------------------------------- parties
+parties.target:
+  type: party
+  value: Acme Pharmaceuticals, Inc.
+  aliases: [Acme, Acme Pharmaceuticals, the Company]
+  note: Delaware corporation; privately held; specialty pharmaceutical company headquartered in Durham, North Carolina.
+parties.target.business:
+  type: text
+  value: Develops and manufactures generic oncology injectables at a single leased manufacturing facility in Durham, North Carolina, and sells them to hospitals through group purchasing organizations and wholesalers.
+parties.target.products:
+  type: text
+  value: Eleven FDA-approved abbreviated new drug applications (ANDAs) for generic oncology injectables, all held in Acme's name.
+parties.target.anda_count:
+  type: number
+  value: 11
+  unit: ANDAs
+parties.target.employees:
+  type: number
+  value: 310
+  unit: employees
+parties.target.distress:
+  type: text
+  value: After FDA inspection findings at the Durham facility and a voluntary recall of one product lot, Acme lost three major customer contracts, breached the financial covenants in its credit agreement, and is operating under a forbearance agreement with BigBank. It is insolvent and will run out of cash within weeks.
+parties.buyer:
+  type: party
+  value: Beta Pharma, Inc.
+  aliases: [Beta, Beta Pharma, Parent]
+  note: Delaware corporation; a larger generic and specialty pharmaceutical competitor with a stronger balance sheet.
+parties.merger_sub:
+  type: party
+  value: Beta Merger Sub, Inc.
+  aliases: [Merger Sub]
+  note: Newly formed Delaware corporation, wholly owned by Beta, created only for the merger.
+parties.lender:
+  type: party
+  value: BigBank, N.A.
+  aliases: [BigBank, the Bank, Lender]
+parties.lenders_counsel.firm:
+  type: party
+  value: Ferrier Lowe LLP
+parties.lenders_counsel.attorney:
+  type: party
+  value: Nadia Brooks
+parties.target_counsel.firm:
+  type: party
+  value: Garrow & Finch LLP
+  aliases: [Garrow & Finch]
+parties.target_counsel.attorney:
+  type: party
+  value: Simon Pell
+parties.buyers_counsel.firm:
+  type: party
+  value: Thornbury Vale LLP
+  aliases: [Thornbury Vale]
+parties.buyers_counsel.partner:
+  type: party
+  value: Ruth Calloway
+parties.buyers_counsel.senior_associate:
+  type: party
+  value: Daniel Osei
+parties.client_contact:
+  type: party
+  value: Grace Whitlock
+  note: VP Corporate Development at Beta. Not a lawyer; Beta's general counsel is on leave and has asked Grace to run the deal with outside counsel.
+parties.client_contact.title:
+  type: text
+  value: VP Corporate Development
+parties.majority_holder:
+  type: party
+  value: Larchmont Healthcare Partners III, L.P.
+  aliases: [Larchmont]
+  note: Private equity fund; Acme's controlling stockholder.
+
+# ---------------------------------------------------------------- structure
+structure.form:
+  type: text
+  value: Reverse triangular merger. Merger Sub merges with and into Acme under Section 251 of the Delaware General Corporation Law; Acme survives as a wholly owned subsidiary of Beta.
+structure.consideration:
+  type: text
+  value: No cash or other consideration. Every outstanding share of Acme common and preferred stock is cancelled for no consideration at the effective time, because Acme is insolvent and its equity is out of the money.
+structure.consideration_per_share:
+  type: money
+  value: 0
+  display: $0.00
+structure.why_reverse_triangular:
+  type: text
+  value: Beta wants Acme's corporate identity, contracts, licenses, permits, ANDAs and regulatory relationships to stay in place, while avoiding assuming Acme's liabilities at the Beta level.
+structure.liabilities:
+  type: text
+  value: Acme survives with all of its own assets and liabilities, including the FDA warning letter, pending product liability claims and trade payables. Beta does not assume them directly, but it owns the company that keeps them.
+structure.hsr:
+  type: text
+  value: Beta's antitrust counsel has concluded that no Hart-Scott-Rodino filing is required.
+  note: Placeholder; confirm with the attorney reviewer.
+structure.sign_then_close:
+  type: text
+  value: The parties plan to sign the merger agreement, obtain stockholder approval by written consent the same day, and close about ten days later once the BigBank documents and required consents are in hand.
+
+# ---------------------------------------------------------------- debt
+debt.total:
+  type: money
+  value: 80000000
+  display: $80,000,000
+  note: Outstanding term loans under the BigBank credit agreement, secured by substantially all of Acme's assets.
+debt.forgiven:
+  type: money
+  value: 40000000
+  display: $40,000,000
+debt.remaining:
+  type: money
+  value: 40000000
+  display: $40,000,000
+debt.liquidation_recovery:
+  type: text
+  value: BigBank estimates that a liquidation of Acme would recover only $35,000,000 to $40,000,000.
+debt.liquidation_low:
+  type: money
+  value: 35000000
+  display: $35,000,000
+debt.liquidation_high:
+  type: money
+  value: 40000000
+  display: $40,000,000
+debt.collateral:
+  type: text
+  value: A first-priority lien on substantially all of Acme's assets, including its equipment, inventory, receivables, deposit accounts and intellectual property, and a pledge of no third-party equity.
+debt.forbearance:
+  type: text
+  value: Acme is in default under the credit agreement. BigBank has agreed to forbear from exercising remedies until the forbearance expiration date, conditioned on Acme pursuing a sale to Beta. After that date BigBank may accelerate and foreclose.
+debt.bank_deal:
+  type: text
+  value: At closing BigBank forgives $40,000,000 of the $80,000,000, releases its liens to the extent needed for the merger, and keeps the remaining $40,000,000 outstanding under an amended and restated credit agreement that Beta guarantees.
+debt.remaining_terms:
+  type: text
+  value: The remaining $40,000,000 matures five years after closing, bears interest at Term SOFR plus 4.25%, and is guaranteed by Beta on an unsecured basis. BigBank keeps its lien on Acme's assets for the remaining debt.
+  note: Placeholder terms; confirm refinance vs guaranty with Austin.
+debt.trade_payables:
+  type: money
+  value: 12000000
+  display: $12,000,000
+  note: Approximate unsecured trade payables, which stay in place with Acme after closing.
+
+# ---------------------------------------------------------------- capitalization and approvals
+cap.common_holders:
+  type: text
+  value: Common stock held by founders, employees and former employees (about 40 holders of record).
+cap.preferred:
+  type: text
+  value: Series A and Series B preferred stock, with a combined liquidation preference of $95,000,000, held mostly by Larchmont.
+cap.preferred_preference:
+  type: money
+  value: 95000000
+  display: $95,000,000
+cap.larchmont_voting_pct:
+  type: percent
+  value: 62
+  display: 62%
+  note: Larchmont's share of the total voting power, voting common and preferred together.
+cap.series_b_class_vote:
+  type: text
+  value: Acme's certificate of incorporation requires the approval of holders of a majority of the Series B preferred, voting as a separate class, for any merger. Larchmont holds 48% of the Series B; the rest is held by two other funds, Ostrander Ventures and Pinecrest Capital.
+cap.series_b_larchmont_pct:
+  type: percent
+  value: 48
+  display: 48%
+cap.option_holders:
+  type: text
+  value: About 120 employees hold stock options, all out of the money; the plan allows them to be cancelled for no consideration in a merger.
+
+# ---------------------------------------------------------------- contracts and regulatory
+contracts.halvorsen:
+  type: text
+  value: Supply agreement with Halvorsen Chemie GmbH, Acme's sole qualified supplier of the active ingredient for its three largest products. Halvorsen may terminate on 30 days' notice upon a change of control of Acme.
+contracts.halvorsen.party:
+  type: party
+  value: Halvorsen Chemie GmbH
+  aliases: [Halvorsen]
+contracts.unity:
+  type: text
+  value: Group purchasing agreement with Unity Health Purchasing Alliance, Acme's largest remaining customer channel. Acme may not assign it, "whether by merger, operation of law, change of control or otherwise", without Unity's prior written consent.
+contracts.unity.party:
+  type: party
+  value: Unity Health Purchasing Alliance
+  aliases: [Unity]
+contracts.corvane:
+  type: text
+  value: Patent license from Corvane Biologics, Inc. covering a formulation used in two Acme products. Corvane may terminate if Acme undergoes a change of control in favor of a competitor of Corvane; Beta sells a competing product.
+contracts.corvane.party:
+  type: party
+  value: Corvane Biologics, Inc.
+  aliases: [Corvane]
+contracts.lease:
+  type: text
+  value: Lease of the Durham manufacturing facility from Triangle Research Properties LLC. A transfer of more than 50% of Acme's voting stock is deemed an assignment requiring the landlord's consent, not to be unreasonably withheld.
+contracts.lease.landlord:
+  type: party
+  value: Triangle Research Properties LLC
+  aliases: [Triangle Research]
+regulatory.warning_letter:
+  type: text
+  value: FDA issued a warning letter to Acme after inspecting the Durham facility, citing sterility assurance and data integrity failures. Acme's remediation is incomplete, and the FDA has not closed the letter.
+regulatory.remediation_cost:
+  type: money
+  value: 9000000
+  display: $9,000,000
+  note: Acme's own estimate of the cost to complete the remediation plan; Beta's quality team thinks it is low.
+regulatory.anda_status:
+  type: text
+  value: The ANDAs are held by Acme and stay with Acme after the merger; no ANDA transfer is needed, though Acme will update its establishment registration and labeling contacts.
+litigation.product_claims:
+  type: text
+  value: Two product liability suits arising from the recalled lot are pending against Acme, with total claimed damages of about $6,000,000. Acme's product liability insurer has reserved its rights.
+litigation.claims_amount:
+  type: money
+  value: 6000000
+  display: $6,000,000
+employees.plant_consolidation:
+  type: text
+  value: After closing Beta intends to close one of Acme's two packaging lines, eliminating about 85 positions at the Durham facility.
+employees.affected:
+  type: number
+  value: 85
+  unit: positions
+employees.key_employees:
+  type: text
+  value: Acme's head of quality and its plant manager are essential to the FDA remediation; both have change-of-control severance in their employment agreements.
+
+# ---------------------------------------------------------------- dates
+# Deal dates follow the associate's calendar: `offset_days` counts from the day the session starts.
+dates.loi:
+  type: date
+  offset_days: -4
+  value: 2026-11-06
+  display: November 6, 2026
+dates.data_room_open:
+  type: date
+  offset_days: 0
+  value: 2026-11-12
+  display: November 12, 2026
+dates.warning_letter:
+  type: date
+  offset_days: -130
+  value: 2026-07-03
+  display: July 3, 2026
+dates.target_signing:
+  type: date
+  offset_days: 15
+  value: 2026-11-27
+  display: November 27, 2026
+dates.target_closing:
+  type: date
+  offset_days: 25
+  value: 2026-12-07
+  display: December 7, 2026
+dates.forbearance_expiry:
+  type: date
+  offset_days: 30
+  value: 2026-12-12
+  display: December 12, 2026
+dates.exclusivity_period:
+  type: text
+  value: The letter of intent gives Beta exclusivity for 30 days from its signing.

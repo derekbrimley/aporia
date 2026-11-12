@@ -31,6 +31,9 @@ Date: 2026-09-23. Branch `claude/inspiring-pasteur-uz991g`.
 - **Rater pseudonymization** hides names/emails/firm at the query level (ids only). Message bodies are shown verbatim; associates could name themselves in an email.
 - **Mobile** is out of scope; layout is fixed for 1280px and up.
 
+- **Multiple simulations (2026-11-12).** `acme-merger-01` (buyer-side distressed acquisition by reverse triangular merger, from Austin's hypothetical) ships beside `venture-debt-01`. Its content is an engineering draft with defaults pending Austin: sign then close about ten days later, Beta guarantees an amended and restated BigBank facility for the remaining $40,000,000, about $12,000,000 of trade payables stay with Acme, tax is flagged rather than worked, and HSR is assumed not reportable. It passes all five mock bot paths; it has not had a real-model playthrough yet. The nightly real-model suite still runs venture debt only, to avoid doubling its cost; `evals:fast` (mock, CI) runs both.
+- **Matters are separate (2026-11-12).** An associate in several cohorts picks one at `/matters`; each has its own inbox and session. The choice is a cookie, so two tabs share it; a tab left open on another matter reloads into the active one when it regains focus. Merging matters into one inbox is not planned.
+
 ## Not started
 
 - Legal and security documents (one-pager, subprocessor list, ToS, privacy policy, pilot agreement).

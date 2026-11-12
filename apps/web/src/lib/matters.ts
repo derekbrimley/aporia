@@ -19,13 +19,17 @@ export async function memberships(user: CurrentUser): Promise<Cohort[]> {
     .select({ cohort: schema.cohorts })
     .from(schema.cohortMembers)
     .innerJoin(schema.cohorts, eq(schema.cohorts.id, schema.cohortMembers.cohortId))
-    .where(and(eq(schema.cohortMembers.userId, user.id), eq(schema.cohortMembers.orgId, user.orgId)))
+    .where(
+      and(eq(schema.cohortMembers.userId, user.id), eq(schema.cohortMembers.orgId, user.orgId)),
+    )
     .orderBy(schema.cohortMembers.addedAt);
   return rows.map((r) => r.cohort);
 }
 
 /** The matter the user is working on: the remembered one, or the only one. Null cohort means they must choose. */
-export async function activeMatter(user: CurrentUser): Promise<{ cohort: Cohort | null; all: Cohort[] }> {
+export async function activeMatter(
+  user: CurrentUser,
+): Promise<{ cohort: Cohort | null; all: Cohort[] }> {
   const all = await memberships(user);
   const chosen = (await cookies()).get(MATTER_COOKIE)?.value;
   const cohort = all.find((c) => c.id === chosen) ?? (all.length === 1 ? all[0]! : null);
@@ -49,11 +53,19 @@ export async function listMatters(user: CurrentUser): Promise<MatterCard[]> {
   const sessions = await getDb()
     .select()
     .from(schema.sessions)
-    .where(and(eq(schema.sessions.userId, user.id), eq(schema.sessions.orgId, user.orgId), isNull(schema.sessions.archivedAt)));
+    .where(
+      and(
+        eq(schema.sessions.userId, user.id),
+        eq(schema.sessions.orgId, user.orgId),
+        isNull(schema.sessions.archivedAt),
+      ),
+    );
   const cards = all.map((c): MatterCard => {
     const { pkg } = getScenario(c.scenarioId, c.scenarioVersion);
     const s = sessions.find((x) => x.cohortId === c.id);
-    const m = s?.currentMilestone ? pkg.milestones.find((x) => x.id === s.currentMilestone) : undefined;
+    const m = s?.currentMilestone
+      ? pkg.milestones.find((x) => x.id === s.currentMilestone)
+      : undefined;
     return {
       cohortId: c.id,
       title: pkg.meta.title.replace(/^Simulation \d+:\s*/, ""),
