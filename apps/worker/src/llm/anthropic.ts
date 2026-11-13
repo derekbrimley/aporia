@@ -53,7 +53,7 @@ export class AnthropicProvider implements LlmProvider {
     const started = Date.now();
     const p = this.params(req);
     const existing = (p as { output_config?: Record<string, unknown> }).output_config ?? {};
-    let res: Awaited<ReturnType<Anthropic["messages"]["parse"]>>;
+    let res: Anthropic.Message & { parsed_output?: T | null };
     try {
       res = await this.client.messages.parse({
         ...(p as Parameters<Anthropic["messages"]["parse"]>[0]),
