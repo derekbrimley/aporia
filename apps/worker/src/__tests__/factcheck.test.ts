@@ -32,6 +32,8 @@ describe("fact checker rules layer", () => {
   it("catches fiction breaks and grading", () => {
     expect(ruleCheck("As an AI I cannot say.", slice, pkg.facts).map((x) => x.kind)).toContain("fiction_break");
     expect(ruleCheck("You missed the landlord waiver point. 3/5.", slice, pkg.facts).map((x) => x.kind)).toContain("grading");
+    const key = Object.keys(pkg.facts).find((k) => k.includes("."))!;
+    expect(ruleCheck(`Go look at ${key} before you reply.`, slice, pkg.facts).map((x) => x.detail).join(" ")).toContain(`fact key "${key}"`);
   });
   it("accepts amounts that appear inside the character's text facts", () => {
     const lender = idx.character("lenders_counsel");

@@ -21,6 +21,8 @@ export interface RunReport {
   durationMs: number;
   status: string;
   /** Character emails the judge flagged for an answer-key leak or a fiction break, with its notes. */
+  /** The closing debrief's text, so a failing debrief check can be read without the database. */
+  debrief?: string;
   judgeFlags?: { messageId: string; from: string; subject: string; leak: boolean; fictionBreak: boolean; notes: string }[];
   milestonesCompleted: string[];
   consequences: Record<string, string>;
@@ -73,7 +75,7 @@ export async function runPlaythrough(opts: { pathName: string; seed?: number; sc
   for (const g of gens.rows) { const p = PRICE[g.model] ?? { in: 5, out: 25 }; cost += (g.input_tokens * p.in + g.output_tokens * p.out) / 1_000_000; count += g.n; }
   const report: RunReport = {
     path: pathFile.name, seed, sessionId: seeded.sessionId, provider: provider.name, startedAt: new Date(started).toISOString(), durationMs: Date.now() - started,
-    status: state.status, judgeFlags, milestonesCompleted: Object.entries(state.milestones).filter(([, m]) => m.completedAt).map(([id]) => id),
+    status: state.status, judgeFlags, debrief: Object.values(state.messages).find((m) => m.kind === "debrief")?.body, milestonesCompleted: Object.entries(state.milestones).filter(([, m]) => m.completedAt).map(([id]) => id),
     consequences: state.consequences, issues: state.issues, decisions: Object.fromEntries(Object.entries(state.decisions).map(([k, v]) => [k, v.position])),
     sent: bot.log.sent, received: bot.log.received, generations: count, costEstimateUsd: Number(cost.toFixed(4)), checks, pass: checks.every((c) => c.pass), stuck: bot.log.stuck, steps: bot.log.steps,
   };
@@ -82,6 +84,7 @@ export async function runPlaythrough(opts: { pathName: string; seed?: number; sc
   fs.writeFileSync(file, JSON.stringify(report, null, 2));
   if (!opts.quiet) {
     for (const c of checks) console.log(`  ${c.pass ? "PASS" : "FAIL"} ${c.name}: ${c.detail}`);
+    if (report.debrief && checks.some((c) => c.name === "debrief_references_two_fired_consequences" && !c.pass)) console.log(`    debrief:\n${report.debrief.replace(/^/gm, "      ")}`);
     for (const f of judgeFlags ?? []) console.log(`    ${f.leak ? "leak" : "fiction break"}: ${f.from} \"${f.subject}\": ${f.notes}`);
     console.log(`  ${report.pass ? "RUN PASSED" : "RUN FAILED"} in ${report.durationMs}ms, ${count} generations, est. $${report.costEstimateUsd}; report ${path.relative(process.cwd(), file)}`);
   }

@@ -197,10 +197,13 @@
   must_include_facts: [regulatory.remediation_cost]
   brief: >
     Grace mentions that after the associate's note on the LOI, Beta's CEO asked
-    the quality team for a full remediation estimate before signing, since the
-    warning letter stays with Acme, because nobody at Beta trusts Acme's
-    $9,000,000 figure. She asks whether anything else in the memo should feed
-    that estimate. No praise beyond a plain thanks. Under 70 words.
+    the quality team for its own remediation estimate before signing, because
+    nobody at Beta trusts Acme's $9,000,000 figure. She asks, in general terms,
+    whether the memo will turn up anything quality should factor in. She is not
+    a lawyer: she draws no legal conclusions (for example about what happens to
+    the warning letter or to Acme's liabilities) and names no specific risk or
+    issue. The memo has not been written yet. No praise beyond a plain thanks.
+    Under 70 words.
 
 # ---------------------------------------------------------------- M5 Verification
 - id: B-M5-ai-draft
