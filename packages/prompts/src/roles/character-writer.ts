@@ -1,7 +1,7 @@
 import type { Beat, Character, Facts, NegotiationPoint } from "../deps.js";
 import { CHARACTER_HARD_RULES, characterCard, factsBlock, renderThread, type ThreadMessageForPrompt } from "../common.js";
 
-export const CHARACTER_WRITER_VERSION = "character_writer@1.3.0";
+export const CHARACTER_WRITER_VERSION = "character_writer@1.4.0";
 
 export interface CharacterWriterInput {
   character: Character;

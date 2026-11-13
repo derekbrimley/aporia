@@ -49,7 +49,14 @@ export async function runChecks(sessionId: string, state: SessionState, pkg: Sce
 
   const debrief = Object.values(state.messages).find((m) => m.kind === "debrief");
   const fired = pkg.consequences.filter((c) => state.consequences[c.id] === "fired");
-  const referenced = fired.filter((c) => debrief && mentions(debrief.body, c));
+  // Names that single out one consequence: not the cast, and not a party every consequence mentions.
+  const common = new Set(pkg.characters.flatMap((ch) => ch.name.toLowerCase().split(/\s+/)));
+  const seen = new Map<string, number>();
+  for (const c of pkg.consequences) for (const n of new Set(properNames(c.how_it_appears))) seen.set(n, (seen.get(n) ?? 0) + 1);
+  for (const [n, count] of seen) if (count > 1) common.add(n);
+  for (const w of `${pkg.meta.counterparty_name} ${pkg.meta.matter_label}`.toLowerCase().split(/[^a-z]+/)) if (w) common.add(w);
+  const castNames = common;
+  const referenced = fired.filter((c) => debrief && mentions(debrief.body, c, castNames));
   out.push({ name: "debrief_references_two_fired_consequences", pass: Boolean(debrief) && referenced.length >= Math.min(2, fired.length), detail: debrief ? `${referenced.length}/${fired.length} fired consequences referenced` : "no debrief" });
 
   const p95 = await getPool().query<{ p95: number | null }>(`select percentile_cont(0.95) within group (order by latency_ms) as p95 from generations where session_id = $1 and role in ('character_writer','reflection_engine')`, [sessionId]);
@@ -57,9 +64,20 @@ export async function runChecks(sessionId: string, state: SessionState, pkg: Sce
   return out;
 }
 
-function mentions(body: string, c: { title: string; how_it_appears: string }): boolean {
+/**
+ * Whether the debrief refers to a consequence. Evidence is the title's longer words plus the
+ * names in how it appeared (Halvorsen, Ostrander), leaving out names that don't single it out.
+ */
+function mentions(body: string, c: { title: string; how_it_appears: string }, castNames: Set<string>): boolean {
   const b = body.toLowerCase();
   if (b.includes(c.title.toLowerCase())) return true;
-  const key = c.title.toLowerCase().split(/\s+/).filter((w) => w.length > 5);
+  const titleWords = c.title.toLowerCase().split(/[^a-z']+/).filter((w) => w.length > 5);
+  const names = properNames(c.how_it_appears).filter((w) => !castNames.has(w));
+  const key = [...new Set([...titleWords, ...names])];
   return key.filter((w) => b.includes(w)).length >= Math.min(2, key.length);
+}
+
+/** Capitalized words that are not the first word of a sentence. */
+function properNames(text: string): string[] {
+  return [...text.matchAll(/(?<![.!?]\s|^)\b[A-Z][a-z]{3,}\b/g)].map((m) => m[0].toLowerCase());
 }

@@ -99,6 +99,9 @@ export function ruleCheck(draft: string, slice: Facts, allFacts: Facts, readText
       }
     }
   }
+  // Fact keys ("cap.series_b_class_vote") are how the prompt lists facts; a real lawyer would never write one.
+  const leakedKey = Object.keys(allFacts).find((k) => draft.includes(k));
+  if (leakedKey) out.push({ kind: "fiction_break", detail: `Draft cites the internal fact key "${leakedKey}"; name the document or describe the fact instead` });
   if (FICTION_BREAK.test(draft)) out.push({ kind: "fiction_break", detail: `Draft breaks the fiction: ${draft.match(FICTION_BREAK)![0]}` });
   if (GRADING.test(draft)) out.push({ kind: "grading", detail: `Draft grades or announces an error: "${draft.match(GRADING)![0]}"` });
   return out;
