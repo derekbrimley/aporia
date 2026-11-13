@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID, ScenarioIndex, sliceFactsFor } from "@rematter/scenario";
-import { characterWriterPrompt, doctrinePrompt, intentClassifierPrompt, renderThread, MODELS, CHARACTER_HARD_RULES } from "../index.js";
+import { characterWriterPrompt, debriefPrompt, doctrinePrompt, intentClassifierPrompt, renderThread, MODELS, CHARACTER_HARD_RULES } from "../index.js";
 
 const { pkg } = loadScenario(scenarioDir(DEFAULT_SCENARIO_ID));
 const idx = new ScenarioIndex(pkg);
@@ -47,5 +47,13 @@ describe("deal-neutral prompts", () => {
     expect(p.system).toContain("Calder Rowe LLP, buyer's counsel");
     expect(p.system).toContain("on behalf of Acme");
     expect(p.system).toContain("only after the buyer gives a reason");
+  });
+
+  it("names the scenario's senior associate in the debrief", () => {
+    const fired = [{ consequence: { id: "C01", title: "Class vote not locked down", how_it_appears: "Simon raises it." } as never, seedDescription: "missed", rationale: "I assumed Larchmont controlled it." }];
+    const acme = new ScenarioIndex(loadScenario(scenarioDir("acme-merger-01")).pkg);
+    const p = debriefPrompt({ character: acme.character("partner"), facts: {}, associateFirstName: "Sam", seniorAssociateName: "Daniel", fired, notFiredPositive: [], decisions: [], storyDate: "2026-10-01" });
+    expect(`${p.system}\n${p.user}`).toContain("told Daniel");
+    expect(`${p.system}\n${p.user}`).not.toContain("Marcus");
   });
 });

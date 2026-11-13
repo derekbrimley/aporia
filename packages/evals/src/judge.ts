@@ -15,7 +15,9 @@ export async function judgeSession(sessionId: string, orgId: string, state: Sess
     const m = state.messages[id]!;
     if (m.from === "associate" || m.kind === "doctrine") continue;
     const c = idx.character(m.from);
-    const thread = threadForPrompt(state, m.threadId, names).filter((t) => t.body !== m.body);
+    // Only what was in the thread when this email was written: later emails make it look out of sequence.
+    const before = state.threads[m.threadId]?.messageIds.indexOf(m.id) ?? -1;
+    const thread = threadForPrompt(state, m.threadId, names).slice(0, Math.max(0, before));
     const hints = (state.threads[m.threadId]?.assignmentIds ?? []).flatMap((a) => idx.assignment(a).issues.map((i) => `${i.title}: ${i.raised_looks_like}`));
     const p = judgePrompt({ dealType: pkg.meta.deal_type, characterCard: characterCard(c), thread: renderThread(thread), email: m.body, answerKeyHints: hints, isSocratic: m.kind === "reflection" });
     const res = await provider.generateJson({ role: "eval_judge", system: p.system, user: p.user, promptVersion: p.version, sessionId }, JudgeOutputSchema);
