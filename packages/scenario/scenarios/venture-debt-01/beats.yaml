@@ -13,6 +13,8 @@
   opens_assignment: A1
   delay_seconds: 0
   body: |
+    This is a simulation for educational purposes only and does not constitute legal advice; any legal references are for practice only and should not be relied upon.
+
     Welcome aboard. I'm Marcus, the senior associate on this deal, and I'll be working with you through closing.
 
     We represent the borrower, Northlake Compute, a venture-backed data center company. Priya Raman on its finance team is our day-to-day contact. Halden Bank is lending the company $100,000,000 in two $50,000,000 tranches. Tranche 1 becomes available when the company closes its $150,000,000 Series C, and Tranche 2 when it hits a revenue target. The Bank takes a lien on substantially all assets except intellectual property, which is critical to the company and stays out.

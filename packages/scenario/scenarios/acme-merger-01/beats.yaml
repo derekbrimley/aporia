@@ -13,6 +13,8 @@
   opens_assignment: A1
   delay_seconds: 0
   body: |
+    This is a simulation for educational purposes only and does not constitute legal advice; any legal references are for practice only and should not be relied upon.
+
     Welcome to the team. I'm Daniel, the senior associate on this deal, and I'll be working with you through closing.
 
     We represent the buyer, Beta Pharma. Ruth Calloway is the partner running the deal; you'll see her copied on most of what goes to the client. Grace Whitlock, Beta's VP of Corporate Development, is our day-to-day contact. Beta is acquiring Acme Pharmaceuticals, a generic oncology manufacturer that is insolvent after FDA problems and lost customers. Acme owes BigBank $80,000,000 under a secured credit facility. BigBank has agreed to forgive $40,000,000 at closing and keep the other $40,000,000 outstanding with a Beta guaranty. Acme's stockholders get nothing, because the company is under water.
