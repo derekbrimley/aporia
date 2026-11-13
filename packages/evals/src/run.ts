@@ -20,6 +20,8 @@ export interface RunReport {
   startedAt: string;
   durationMs: number;
   status: string;
+  /** Character emails the judge flagged for an answer-key leak or a fiction break, with its notes. */
+  judgeFlags?: { messageId: string; from: string; subject: string; leak: boolean; fictionBreak: boolean; notes: string }[];
   milestonesCompleted: string[];
   consequences: Record<string, string>;
   issues: Record<string, string>;
@@ -56,9 +58,14 @@ export async function runPlaythrough(opts: { pathName: string; seed?: number; sc
   if (!opts.quiet) console.log(`[${pathFile.name}#${seed}] session ${seeded.sessionId} provider=${provider.name}`);
   const state = await bot.run();
   let judgeFindings: { leaks: number; breaks: number } | undefined;
+  let judgeFlags: RunReport["judgeFlags"];
   if (opts.judge) {
     const judged = await judgeSession(seeded.sessionId, seeded.orgId, state, pkg, provider);
     judgeFindings = { leaks: judged.filter((j) => j.rating.answer_key_leak).length, breaks: judged.filter((j) => j.rating.fiction_break).length };
+    judgeFlags = judged.filter((j) => j.rating.answer_key_leak || j.rating.fiction_break).map((j) => ({
+      messageId: j.messageId, from: j.from, subject: state.threads[state.messages[j.messageId]!.threadId]?.subject ?? "",
+      leak: j.rating.answer_key_leak, fictionBreak: j.rating.fiction_break, notes: j.rating.notes,
+    }));
   }
   const checks = await runChecks(seeded.sessionId, state, pkg, judgeFindings);
   const gens = await getPool().query<{ model: string; input_tokens: number; output_tokens: number; n: number }>(`select model, sum(input_tokens)::int as input_tokens, sum(output_tokens)::int as output_tokens, count(*)::int as n from generations where session_id = $1 group by model`, [seeded.sessionId]);
@@ -66,7 +73,7 @@ export async function runPlaythrough(opts: { pathName: string; seed?: number; sc
   for (const g of gens.rows) { const p = PRICE[g.model] ?? { in: 5, out: 25 }; cost += (g.input_tokens * p.in + g.output_tokens * p.out) / 1_000_000; count += g.n; }
   const report: RunReport = {
     path: pathFile.name, seed, sessionId: seeded.sessionId, provider: provider.name, startedAt: new Date(started).toISOString(), durationMs: Date.now() - started,
-    status: state.status, milestonesCompleted: Object.entries(state.milestones).filter(([, m]) => m.completedAt).map(([id]) => id),
+    status: state.status, judgeFlags, milestonesCompleted: Object.entries(state.milestones).filter(([, m]) => m.completedAt).map(([id]) => id),
     consequences: state.consequences, issues: state.issues, decisions: Object.fromEntries(Object.entries(state.decisions).map(([k, v]) => [k, v.position])),
     sent: bot.log.sent, received: bot.log.received, generations: count, costEstimateUsd: Number(cost.toFixed(4)), checks, pass: checks.every((c) => c.pass), stuck: bot.log.stuck, steps: bot.log.steps,
   };
@@ -75,6 +82,7 @@ export async function runPlaythrough(opts: { pathName: string; seed?: number; sc
   fs.writeFileSync(file, JSON.stringify(report, null, 2));
   if (!opts.quiet) {
     for (const c of checks) console.log(`  ${c.pass ? "PASS" : "FAIL"} ${c.name}: ${c.detail}`);
+    for (const f of judgeFlags ?? []) console.log(`    ${f.leak ? "leak" : "fiction break"}: ${f.from} \"${f.subject}\": ${f.notes}`);
     console.log(`  ${report.pass ? "RUN PASSED" : "RUN FAILED"} in ${report.durationMs}ms, ${count} generations, est. $${report.costEstimateUsd}; report ${path.relative(process.cwd(), file)}`);
   }
   return report;

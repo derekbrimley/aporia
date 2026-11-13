@@ -15,7 +15,7 @@
   body: |
     Welcome to the team. I'm Daniel, the senior associate on this deal, and I'll be working with you through closing.
 
-    We represent the buyer, Beta Pharma. Grace Whitlock, Beta's VP of Corporate Development, is our day-to-day contact. Beta is acquiring Acme Pharmaceuticals, a generic oncology manufacturer that is insolvent after FDA problems and lost customers. Acme owes BigBank $80,000,000 under a secured credit facility. BigBank has agreed to forgive $40,000,000 at closing and keep the other $40,000,000 outstanding with a Beta guaranty. Acme's stockholders get nothing, because the company is under water.
+    We represent the buyer, Beta Pharma. Ruth Calloway is the partner running the deal; you'll see her copied on most of what goes to the client. Grace Whitlock, Beta's VP of Corporate Development, is our day-to-day contact. Beta is acquiring Acme Pharmaceuticals, a generic oncology manufacturer that is insolvent after FDA problems and lost customers. Acme owes BigBank $80,000,000 under a secured credit facility. BigBank has agreed to forgive $40,000,000 at closing and keep the other $40,000,000 outstanding with a Beta guaranty. Acme's stockholders get nothing, because the company is under water.
 
     The structure is a reverse triangular merger: Beta's new subsidiary, Beta Merger Sub, merges into Acme, and Acme survives as Beta's wholly owned subsidiary.
 
@@ -55,7 +55,10 @@
   brief: >
     Thank the associate briefly for their self-check answers without evaluating
     them. Pick up one thing they said and ask a single follow-up question about
-    it. Then tell them Grace is about to send over the signed letter of intent
+    it. The question must not rest on a wrong legal premise or hint at the
+    answer. In particular, never suggest that zero consideration removes or
+    weakens the need for Acme's stockholders to approve the merger; if you ask
+    about approvals, ask how the approval will actually be obtained. Then tell them Grace is about to send over the signed letter of intent
     and BigBank's term sheet, and that they should read both and send her their
     thoughts, copying you and Ruth. Keep it under 120 words.
 

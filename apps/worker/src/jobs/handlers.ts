@@ -271,7 +271,7 @@ async function debrief(ctx: JobContext): Promise<JobOutcome> {
   return generateAndDeliver(ctx, { from: c, to: ["associate"], cc: ["senior_associate"], threadId, threadKey: "debrief", subject: ctx.pkg.meta.debrief_subject, attachments: [], kind: "debrief" }, {
     role: "recap_debrief",
     build: (feedback) => {
-      const p = debriefPrompt({ character: c, facts: sliceFactsFor(c, ctx.pkg.facts), associateFirstName: ctx.state.associateFirstName, fired, notFiredPositive: [], decisions, storyDate: storyDate(ctx.now) });
+      const p = debriefPrompt({ character: c, facts: sliceFactsFor(c, ctx.pkg.facts), associateFirstName: ctx.state.associateFirstName, seniorAssociateName: ctx.idx.character("senior_associate").first_name, fired, notFiredPositive: [], decisions, storyDate: storyDate(ctx.now) });
       return { ...p, user: feedback.length ? `${p.user}\n\nFix: ${feedback.join("; ")}` : p.user, mockContext: { kind: "debrief", associateFirstName: ctx.state.associateFirstName, fired: fired.map((f) => f.consequence.title) } };
     },
     parse: (res) => ({ body: res.text, parsed: { referencedConsequences: fired.map((f) => f.consequence.id) } }),
