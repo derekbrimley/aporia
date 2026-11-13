@@ -15,6 +15,10 @@ export type LlmRole =
   | "eval_judge"
   | "bot_associate";
 
+/**
+ * maxTokens is a ceiling, not a target. With adaptive thinking it covers thinking plus the
+ * answer, so it needs headroom: a structured answer cut off mid-JSON fails to parse.
+ */
 export interface ModelSpec {
   /** Anthropic model ID. */
   anthropic: string;
@@ -33,14 +37,14 @@ const OPUS = "claude-opus-5-5";
 
 export const MODELS: Record<LlmRole, ModelSpec> = {
   intent_classifier: { anthropic: HAIKU, bedrock: `anthropic.${HAIKU}`, maxTokens: 256 },
-  assessor: { anthropic: OPUS, bedrock: `anthropic.${OPUS}`, maxTokens: 4000, effort: "high" },
-  character_writer: { anthropic: SONNET, bedrock: `anthropic.${SONNET}`, maxTokens: 1500, effort: "medium" },
-  reflection_engine: { anthropic: SONNET, bedrock: `anthropic.${SONNET}`, maxTokens: 1500, effort: "medium" },
-  doctrine_assistant: { anthropic: SONNET, bedrock: `anthropic.${SONNET}`, maxTokens: 2000, effort: "medium" },
+  assessor: { anthropic: OPUS, bedrock: `anthropic.${OPUS}`, maxTokens: 12000, effort: "high" },
+  character_writer: { anthropic: SONNET, bedrock: `anthropic.${SONNET}`, maxTokens: 4000, effort: "medium" },
+  reflection_engine: { anthropic: SONNET, bedrock: `anthropic.${SONNET}`, maxTokens: 4000, effort: "medium" },
+  doctrine_assistant: { anthropic: SONNET, bedrock: `anthropic.${SONNET}`, maxTokens: 4000, effort: "medium" },
   fact_checker: { anthropic: HAIKU, bedrock: `anthropic.${HAIKU}`, maxTokens: 1000 },
-  recap_debrief: { anthropic: OPUS, bedrock: `anthropic.${OPUS}`, maxTokens: 3000, effort: "high" },
-  eval_judge: { anthropic: OPUS, bedrock: `anthropic.${OPUS}`, maxTokens: 2000, effort: "high" },
-  bot_associate: { anthropic: SONNET, bedrock: `anthropic.${SONNET}`, maxTokens: 2000, effort: "medium" },
+  recap_debrief: { anthropic: OPUS, bedrock: `anthropic.${OPUS}`, maxTokens: 8000, effort: "high" },
+  eval_judge: { anthropic: OPUS, bedrock: `anthropic.${OPUS}`, maxTokens: 8000, effort: "high" },
+  bot_associate: { anthropic: SONNET, bedrock: `anthropic.${SONNET}`, maxTokens: 8000, effort: "medium" },
 };
 
 export function modelFor(role: LlmRole, provider: "anthropic" | "bedrock" | "mock"): string {
