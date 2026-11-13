@@ -12,10 +12,11 @@ describe("stale job locks", () => {
     await closeDb();
   });
 
+  // A task no worker handles, so a worker left running by another test file cannot pick up the job once it is unlocked.
   async function lockedJob(minutesAgo: number) {
     const queue = `session:${randomUUID()}`;
     const worker = `worker-dead-${randomUUID().slice(0, 8)}`;
-    await getPool().query(`select graphile_worker.add_job('session_job', '{}'::json, queue_name := $1)`, [queue]);
+    await getPool().query(`select graphile_worker.add_job('stale_lock_test_noop', '{}'::json, queue_name := $1)`, [queue]);
     const at = `now() - make_interval(mins => ${minutesAgo})`;
     await getPool().query(`update graphile_worker._private_jobs set locked_at = ${at}, locked_by = $2, attempts = 1 where job_queue_id = (select id from graphile_worker._private_job_queues where queue_name = $1)`, [queue, worker]);
     await getPool().query(`update graphile_worker._private_job_queues set locked_at = ${at}, locked_by = $2 where queue_name = $1`, [queue, worker]);
