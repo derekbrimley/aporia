@@ -53,10 +53,19 @@ export class AnthropicProvider implements LlmProvider {
     const started = Date.now();
     const p = this.params(req);
     const existing = (p as { output_config?: Record<string, unknown> }).output_config ?? {};
-    const res = await this.client.messages.parse({
-      ...(p as Parameters<Anthropic["messages"]["parse"]>[0]),
-      output_config: { ...existing, format: zodOutputFormat(schema as z.ZodType<T>) },
-    } as Parameters<Anthropic["messages"]["parse"]>[0]);
+    let res: Anthropic.Message & { parsed_output?: T | null };
+    try {
+      res = await this.client.messages.parse({
+        ...(p as Parameters<Anthropic["messages"]["parse"]>[0]),
+        output_config: { ...existing, format: zodOutputFormat(schema as z.ZodType<T>) },
+      } as Parameters<Anthropic["messages"]["parse"]>[0]);
+    } catch (e) {
+      // A reply cut off at max_tokens surfaces as a JSON parse error; say what actually happened.
+      if (e instanceof Error && /parse structured output/i.test(e.message)) {
+        throw new Error(`Structured output for ${req.role} did not parse; it was probably cut off at max_tokens (${p.max_tokens}). ${e.message}`);
+      }
+      throw e;
+    }
     if (res.stop_reason === "refusal") throw new LlmRefusalError(req.role, (res as { stop_details?: { category?: string } }).stop_details?.category ?? null);
     const parsed = (res as { parsed_output?: T | null }).parsed_output;
     if (parsed == null) throw new Error(`Structured output for ${req.role} did not parse`);
