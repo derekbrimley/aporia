@@ -19,6 +19,14 @@ describe("prompts", () => {
     expect(p.system).toContain("client.financials.monthly_burn");
     expect(p.system).not.toContain("covenants.minimum_cash");
   });
+  it("tells characters which documents the associate has and that they can't attach any", () => {
+    const base = { deal: { firm: "Whitfield Marsh LLP", side: "borrower", counterpartyName: "the Bank" }, character: idx.character("senior_associate"), facts: {}, associateFirstName: "Sam", thread: [], storyDate: "2026-10-01" };
+    const p = characterWriterPrompt({ ...base, associateDocuments: ["Term sheet"], mode: { kind: "reply", toMessageBody: "x" } });
+    expect(p.user).toContain("Documents Sam has received so far: Term sheet. They have nothing else yet.");
+    expect(p.user).toContain("You cannot attach anything to this email");
+    expect(characterWriterPrompt({ ...base, associateDocuments: [], mode: { kind: "reply", toMessageBody: "x" } }).user).toContain("received so far: none.");
+    expect(CHARACTER_HARD_RULES).toMatch(/Everything in this deal happens by email/);
+  });
   it("gives the doctrine assistant no deal facts", () => {
     const p = doctrinePrompt({ character: idx.doctrineAssistant, associateFirstName: "Sam", question: "What is a negative pledge?", priorExchanges: [] });
     expect(p.system).not.toContain("Northlake");

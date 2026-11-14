@@ -70,3 +70,26 @@ describe("acme-merger-01 package", () => {
     for (const ref of ["Section 6.3", "Section 6.5", "Section 7.2", "Section 9.1"]) expect(has("merger-agreement", ref)).toBe(true);
   });
 });
+
+describe("acme-merger-01 fact availability", () => {
+  const { pkg } = loadScenario(scenarioDir("acme-merger-01"));
+  const daniel = new ScenarioIndex(pkg).character("senior_associate");
+
+  it("withholds data-room facts until M3", () => {
+    const before = Object.keys(sliceFactsFor(daniel, pkg.facts, (m) => m === "M1" || m === "M2"));
+    expect(before).not.toContain("cap.series_b_class_vote");
+    expect(before).not.toContain("cap.series_b_larchmont_pct");
+    expect(before).not.toContain("dates.data_room_open");
+    expect(before).toContain("cap.larchmont_voting_pct");
+    expect(before).toContain("debt.forbearance");
+    const after = Object.keys(sliceFactsFor(daniel, pkg.facts, (m) => ["M1", "M2", "M3"].includes(m)));
+    expect(after).toContain("cap.series_b_class_vote");
+    // Without milestone information (validation, tests) everything counts as available.
+    expect(Object.keys(sliceFactsFor(daniel, pkg.facts))).toContain("cap.series_b_class_vote");
+  });
+
+  it("tells characters the forbearance ends early if the signing deadline is missed", () => {
+    const f = pkg.facts["debt.forbearance"] as { value: string };
+    expect(f.value).toMatch(/earlier if a definitive merger agreement is not signed by the target signing date/);
+  });
+});

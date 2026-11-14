@@ -31,10 +31,25 @@ export function displayDate(iso: string): string {
   return new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
-/** Facts with every offset date resolved against the anchor (an ISO timestamp; its UTC day counts). */
-export function resolveDates(facts: Facts, anchor: string | null): Facts {
+/**
+ * The calendar day of an ISO timestamp in a time zone, as YYYY-MM-DD. With no zone (or one the
+ * runtime doesn't know) it is the UTC day, which is how sessions without a recorded zone count.
+ */
+export function anchorDay(anchor: string, timeZone?: string | null): string {
+  if (timeZone) {
+    try {
+      return new Date(anchor).toLocaleDateString("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+    } catch {
+      // unknown zone: fall through to UTC
+    }
+  }
+  return anchor.slice(0, 10);
+}
+
+/** Facts with every offset date resolved against the anchor (an ISO timestamp; its day in `timeZone`, else UTC, counts). */
+export function resolveDates(facts: Facts, anchor: string | null, timeZone?: string | null): Facts {
   if (!anchor) return facts;
-  const start = Date.parse(anchor.slice(0, 10) + "T00:00:00Z");
+  const start = Date.parse(anchorDay(anchor, timeZone) + "T00:00:00Z");
   if (Number.isNaN(start)) return facts;
   const out: Facts = {};
   for (const [k, v] of Object.entries(facts)) {
@@ -57,8 +72,8 @@ export function factTokens(text: string): string[] {
 }
 
 /** The scenario as this session sees it: dates resolved, and fact tokens filled in beats and documents. */
-export function forSession(pkg: ScenarioPackage, documents: Map<string, BuiltDocument>, anchor: string | null): { pkg: ScenarioPackage; documents: Map<string, BuiltDocument> } {
-  const facts = resolveDates(pkg.facts, anchor);
+export function forSession(pkg: ScenarioPackage, documents: Map<string, BuiltDocument>, anchor: string | null, timeZone?: string | null): { pkg: ScenarioPackage; documents: Map<string, BuiltDocument> } {
+  const facts = resolveDates(pkg.facts, anchor, timeZone);
   const fill = (s: string | undefined) => (s == null ? s : fillFacts(s, facts));
   const beats = pkg.beats.map((b) => ({ ...b, body: fill(b.body), brief: fill(b.brief) }));
   const docs = new Map<string, BuiltDocument>();

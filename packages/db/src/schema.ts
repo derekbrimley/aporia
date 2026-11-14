@@ -87,6 +87,8 @@ export const sessions = pgTable(
     activeSeconds: integer("active_seconds").notNull().default(0),
     /** Set when a test checkpoint load replaced this session. Archived sessions are kept but never loaded. */
     archivedAt: timestamp("archived_at", { withTimezone: true }),
+    /** The associate's IANA time zone when the session started; story and deal dates follow it. Null means UTC. */
+    timeZone: text("time_zone"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("sessions_user_cohort_idx").on(t.userId, t.cohortId).where(sql`${t.archivedAt} is null`)],

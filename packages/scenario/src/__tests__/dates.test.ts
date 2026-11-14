@@ -22,6 +22,15 @@ describe("session dates", () => {
     expect((g["dates.target_series_close"] as { value: string }).value).toBe("2026-11-30");
   });
 
+  it("counts from the start day on the associate's calendar when the session has a time zone", () => {
+    // 5:07 PM on Thursday Nov 12 in Denver is already Friday Nov 13 in UTC.
+    const at = "2026-11-13T00:07:52Z";
+    const v = (f: ReturnType<typeof resolveDates>) => (f["dates.lsa_draft"] as { value: string }).value;
+    expect(v(resolveDates(pkg.facts, at))).toBe("2026-11-13");
+    expect(v(resolveDates(pkg.facts, at, "America/Denver"))).toBe("2026-11-12");
+    expect(v(resolveDates(pkg.facts, at, "Not/AZone"))).toBe("2026-11-13");
+  });
+
   it("leaves facts alone without a session", () => {
     expect(resolveDates(pkg.facts, null)).toBe(pkg.facts);
   });

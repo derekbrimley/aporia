@@ -126,6 +126,7 @@ export function crossValidate(pkg: ScenarioPackage, dir?: string): ValidationIss
     const sender = pkg.characters.find((c) => c.id === b.sender);
     if (sender?.is_doctrine_assistant) err(`Beat ${b.id}: the doctrine assistant never initiates email`);
   }
+  for (const [k, v] of Object.entries(pkg.facts)) if (v.available_from) checkRef("milestone", v.available_from, `Fact ${k} available_from`);
   for (const c of pkg.characters) {
     for (const d of c.knows.documents) checkRef("document", d, `Character ${c.id} knows.documents`);
     for (const fk of c.knows.facts) {

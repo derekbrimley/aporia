@@ -63,19 +63,27 @@ export const ScenarioMetaSchema = z.object({
 export type ScenarioMeta = z.infer<typeof ScenarioMetaSchema>;
 
 // ---------------------------------------------------------------- facts.yaml
+/**
+ * Fields every fact may carry. `available_from` withholds the fact from every character's slice until
+ * the session has entered that milestone (for what the firm can only learn from a later document, such
+ * as the data room). A beat's `must_include_facts` still supplies it explicitly.
+ */
+const FactGate = { available_from: MilestoneIdSchema.optional() };
+
 export const FactValueSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("money"), value: z.number(), currency: z.string().default("USD"), display: z.string().optional(), note: z.string().optional() }),
-  z.object({ type: z.literal("percent"), value: z.number(), display: z.string().optional(), note: z.string().optional() }),
-  z.object({ type: z.literal("number"), value: z.number(), unit: z.string().optional(), display: z.string().optional(), note: z.string().optional() }),
+  z.object({ type: z.literal("money"), value: z.number(), currency: z.string().default("USD"), display: z.string().optional(), note: z.string().optional(), ...FactGate }),
+  z.object({ type: z.literal("percent"), value: z.number(), display: z.string().optional(), note: z.string().optional(), ...FactGate }),
+  z.object({ type: z.literal("number"), value: z.number(), unit: z.string().optional(), display: z.string().optional(), note: z.string().optional(), ...FactGate }),
   z.object({
     type: z.literal("date"), value: z.string().date(), display: z.string().optional(), note: z.string().optional(),
     /** Days from the session's start; `value` is then only the fallback when there is no session. See dates.ts. */
     offset_days: z.number().int().optional(),
+    ...FactGate,
   }),
-  z.object({ type: z.literal("text"), value: z.string(), note: z.string().optional() }),
-  z.object({ type: z.literal("party"), value: z.string(), aliases: z.array(z.string()).default([]), note: z.string().optional() }),
-  z.object({ type: z.literal("defined_term"), value: z.string(), definition: z.string(), note: z.string().optional() }),
-  z.object({ type: z.literal("placeholder"), value: z.string(), note: z.string().optional() }),
+  z.object({ type: z.literal("text"), value: z.string(), note: z.string().optional(), ...FactGate }),
+  z.object({ type: z.literal("party"), value: z.string(), aliases: z.array(z.string()).default([]), note: z.string().optional(), ...FactGate }),
+  z.object({ type: z.literal("defined_term"), value: z.string(), definition: z.string(), note: z.string().optional(), ...FactGate }),
+  z.object({ type: z.literal("placeholder"), value: z.string(), note: z.string().optional(), ...FactGate }),
 ]);
 export type FactValue = z.infer<typeof FactValueSchema>;
 export const FactsSchema = z.record(FactKeySchema, FactValueSchema);

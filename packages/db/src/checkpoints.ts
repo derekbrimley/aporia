@@ -44,8 +44,8 @@ export async function forkSessionAtCheckpoint(args: ForkArgs): Promise<{ session
   const client = await getPool().connect();
   try {
     await client.query("begin");
-    const src = (await client.query<{ scenario_id: string; scenario_version: string; test_mode: boolean }>(
-      `select scenario_id, scenario_version, test_mode from sessions where id = $1`,
+    const src = (await client.query<{ scenario_id: string; scenario_version: string; test_mode: boolean; time_zone: string | null }>(
+      `select scenario_id, scenario_version, test_mode, time_zone from sessions where id = $1`,
       [args.sourceSessionId],
     )).rows[0];
     if (!src) throw new Error(`Source session ${args.sourceSessionId} not found`);
@@ -60,8 +60,9 @@ export async function forkSessionAtCheckpoint(args: ForkArgs): Promise<{ session
 
     await client.query(`update sessions set archived_at = $3 where user_id = $1 and cohort_id = $2 and archived_at is null`, [args.userId, args.cohortId, now]);
     const sessionId = (await client.query<{ id: string }>(
-      `insert into sessions (org_id, user_id, cohort_id, scenario_id, scenario_version, engine_version, test_mode) values ($1, $2, $3, $4, $5, $6, $7) returning id`,
-      [args.orgId, args.userId, args.cohortId, args.pkg.meta.id, args.pkg.meta.version, ENGINE_VERSION, src.test_mode],
+      // The fork keeps the source's date anchor, so it keeps the source's time zone too: its dates then match the source's emails.
+      `insert into sessions (org_id, user_id, cohort_id, scenario_id, scenario_version, engine_version, test_mode, time_zone) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`,
+      [args.orgId, args.userId, args.cohortId, args.pkg.meta.id, args.pkg.meta.version, ENGINE_VERSION, src.test_mode, src.time_zone],
     )).rows[0]!.id;
 
     let state = initialState(args.pkg);

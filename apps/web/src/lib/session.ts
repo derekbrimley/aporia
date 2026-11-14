@@ -3,8 +3,25 @@ import { ENGINE_VERSION } from "@rematter/engine";
 import { dateAnchor, forSession } from "@rematter/scenario";
 import { appendEvent, ensureSession, getDb, getPool, getSessionState, recordActivity, schema } from "@rematter/db";
 import type { CurrentUser } from "./auth.js";
+import { cookies } from "next/headers";
 import { getScenario } from "./scenario.js";
 import { activeMatter } from "./matters.js";
+
+/** Set by the root layout from the browser's Intl time zone. */
+export const TZ_COOKIE = "rematter_tz";
+
+/** A valid IANA zone name from the cookie, else null. */
+export function timeZoneFromCookie(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const tz = decodeURIComponent(raw);
+  if (!/^[A-Za-z0-9_+\-\/]{1,64}$/.test(tz)) return null;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return tz;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Finds the associate's session in the matter (cohort) they are working on, starting it on first load and
@@ -21,6 +38,9 @@ export async function bootstrapSession(user: CurrentUser) {
   const row = (await getPool().query<{ status: string; last_activity_at: Date | null }>(`select status, last_activity_at from sessions where id = $1`, [session.id])).rows[0]!;
   const now = new Date();
   if (row.status === "not_started") {
+    // Story and deal dates follow the associate's calendar; set before session_started so the first jobs see it.
+    const tz = timeZoneFromCookie((await cookies()).get(TZ_COOKIE)?.value);
+    if (tz) await getPool().query(`update sessions set time_zone = $2 where id = $1 and time_zone is null`, [session.id, tz]);
     await appendEvent(session.id, { type: "session_started", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: ENGINE_VERSION, associateFirstName: user.firstName } }, "api", pkg);
   } else if (row.status === "in_progress" && row.last_activity_at) {
     const gapDays = Math.floor((now.getTime() - row.last_activity_at.getTime()) / 86_400_000);
@@ -40,6 +60,6 @@ export async function sessionForUser(user: CurrentUser) {
   const loaded = getScenario(s.scenarioId, s.scenarioVersion);
   const state = await getSessionState(s.id, loaded.pkg);
   // Deal dates follow the day this session started, in documents and everywhere else.
-  const { pkg, documents } = forSession(loaded.pkg, loaded.documents, dateAnchor(state));
+  const { pkg, documents } = forSession(loaded.pkg, loaded.documents, dateAnchor(state), s.timeZone);
   return { session: s, cohort, pkg, documents, state };
 }
