@@ -21,8 +21,8 @@ interface SessionJobPayload {
 export async function runSessionJob(payload: SessionJobPayload, opts: { provider?: LlmProvider; attempt?: number; maxAttempts?: number } = {}): Promise<JobOutcome> {
   const pool = getPool();
   const provider = await getProvider(opts.provider);
-  const row = (await pool.query<{ id: string; org_id: string; test_mode: boolean; scenario_id: string; scenario_version: string; assessor_shadow_mode: boolean; status: string; archived_at: Date | null }>(
-    `select s.id, s.org_id, s.test_mode, s.scenario_id, s.scenario_version, s.status, s.archived_at, c.assessor_shadow_mode from sessions s join cohorts c on c.id = s.cohort_id where s.id = $1`,
+  const row = (await pool.query<{ id: string; org_id: string; test_mode: boolean; scenario_id: string; scenario_version: string; assessor_shadow_mode: boolean; status: string; archived_at: Date | null; time_zone: string | null }>(
+    `select s.id, s.org_id, s.test_mode, s.scenario_id, s.scenario_version, s.status, s.archived_at, s.time_zone, c.assessor_shadow_mode from sessions s join cohorts c on c.id = s.cohort_id where s.id = $1`,
     [payload.sessionId],
   )).rows[0];
   if (!row) throw new Error(`session ${payload.sessionId} not found`);
@@ -37,7 +37,7 @@ export async function runSessionJob(payload: SessionJobPayload, opts: { provider
     client.release();
   }
   const ctx = makeContext({
-    session: { id: row.id, orgId: row.org_id, testMode: row.test_mode, assessorShadowMode: row.assessor_shadow_mode },
+    session: { id: row.id, orgId: row.org_id, testMode: row.test_mode, assessorShadowMode: row.assessor_shadow_mode, timeZone: row.time_zone ?? null },
     job: payload.job, state, pkg, documents, provider, pool, now: new Date().toISOString(), attempt: opts.attempt ?? 1,
   });
   const outcome = await handleJob(ctx);

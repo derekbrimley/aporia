@@ -4,10 +4,10 @@ import {
 } from "@rematter/prompts";
 import { openAssignments, workText } from "@rematter/engine";
 import type { Job, JobPayload } from "@rematter/engine";
-import { formatFact, sliceFactsFor, type Facts } from "@rematter/scenario";
-import { forwardedForPrompt, otherThreadsFor, storyDate, threadForPrompt } from "../context.js";
+import { formatFact, type Facts } from "@rematter/scenario";
+import { answeredSince, associateDocuments, forwardedForPrompt, otherThreadsFor, storyDate, threadForPrompt } from "../context.js";
 import { beatSubject, deliverFixed, generateAndDeliver, threadIdForKey } from "./deliver.js";
-import type { JobContext, JobOutcome } from "./types.js";
+import { factsFor, type JobContext, type JobOutcome } from "./types.js";
 
 export async function handleJob(ctx: JobContext): Promise<JobOutcome> {
   const p = ctx.job.payload;
@@ -83,7 +83,9 @@ async function characterReply(ctx: JobContext, messageId: string, characterId: s
   const msg = ctx.state.messages[messageId];
   const thread = ctx.state.threads[threadId];
   if (!msg || !thread) throw new Error(`character_reply: unknown message or thread`);
-  const facts = sliceFactsFor(c, ctx.pkg.facts);
+  // A reply that already went out after this email saw it and answered the thread; don't write a second one.
+  if (answeredSince(ctx.state, threadId, messageId, characterId)) return { events: [], generations: [] };
+  const facts = factsFor(ctx, c);
   const hints = answerKeyHints(ctx, threadId);
   const negotiation = c.negotiates ? ctx.pkg.negotiation : undefined;
   const to = [msg.from === "associate" ? "associate" : msg.from];
@@ -91,7 +93,7 @@ async function characterReply(ctx: JobContext, messageId: string, characterId: s
   return generateAndDeliver(ctx, { from: c, to, cc, threadId, threadKey: thread.key, subject: thread.subject, attachments: [], kind: "reply", inReplyTo: messageId }, {
     role: "character_writer",
     build: (feedback) => {
-      const p = characterWriterPrompt({ deal: dealFor(ctx), character: c, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), otherThreads: otherThreadsFor(ctx.state, c.id, threadId, ctx.names), mode: { kind: "reply", toMessageBody: msg.body, draftFor: draftFor ? { deliverable: ctx.idx.assignment(draftFor.assignmentId).deliverable, deliverToName: ctx.names.name(draftFor.deliverTo) } : undefined }, negotiation, feedback, storyDate: storyDate(ctx.now) });
+      const p = characterWriterPrompt({ deal: dealFor(ctx), character: c, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), otherThreads: otherThreadsFor(ctx.state, c.id, threadId, ctx.names), associateDocuments: associateDocuments(ctx.state, ctx.names), mode: { kind: "reply", toMessageBody: msg.body, draftFor: draftFor ? { deliverable: ctx.idx.assignment(draftFor.assignmentId).deliverable, deliverToName: ctx.names.name(draftFor.deliverTo) } : undefined }, negotiation, feedback, storyDate: storyDate(ctx.now, ctx.session.timeZone) });
       return { ...p, mockContext: { mode: "reply", associateFirstName: ctx.state.associateFirstName, characterFirstName: c.first_name, signoff: signoff(c), replyHint: c.id === "client_contact" ? "That's helpful, though I'm not sure I follow all of it." : undefined } };
     },
     parse: (res) => ({ body: res.text }),
@@ -113,11 +115,11 @@ async function beat(ctx: JobContext, beatId: string): Promise<JobOutcome> {
   if (b.mode === "fixed") return deliverFixed(ctx, spec, b.body!);
   const must: Facts = {};
   for (const k of b.must_include_facts) if (ctx.pkg.facts[k]) must[k] = ctx.pkg.facts[k]!;
-  const facts = { ...sliceFactsFor(sender, ctx.pkg.facts), ...must };
+  const facts = { ...factsFor(ctx, sender), ...must };
   return generateAndDeliver(ctx, spec, {
     role: "character_writer",
     build: (feedback) => {
-      const p = characterWriterPrompt({ deal: dealFor(ctx), character: sender, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: sender.id }), otherThreads: otherThreadsFor(ctx.state, sender.id, threadId, ctx.names), mode: { kind: b.is_interruption ? "interruption" : "beat", beat: b, mustIncludeFacts: must }, negotiation: sender.negotiates ? ctx.pkg.negotiation : undefined, feedback, storyDate: storyDate(ctx.now) });
+      const p = characterWriterPrompt({ deal: dealFor(ctx), character: sender, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: sender.id }), otherThreads: otherThreadsFor(ctx.state, sender.id, threadId, ctx.names), associateDocuments: associateDocuments(ctx.state, ctx.names), mode: { kind: b.is_interruption ? "interruption" : "beat", beat: b, mustIncludeFacts: must }, negotiation: sender.negotiates ? ctx.pkg.negotiation : undefined, feedback, storyDate: storyDate(ctx.now, ctx.session.timeZone) });
       return { ...p, mockContext: { mode: "beat", brief: b.brief, associateFirstName: ctx.state.associateFirstName, characterFirstName: sender.first_name, signoff: signoff(sender), mustIncludeDisplay: factsDisplay(must) } };
     },
     parse: (res) => ({ body: res.text }),
@@ -137,7 +139,7 @@ async function reflection(ctx: JobContext, job: Extract<JobPayload, { kind: "ref
   const msg = ctx.state.messages[messageId];
   const thread = ctx.state.threads[threadId];
   if (!msg || !thread) throw new Error(`reflection: unknown message or thread`);
-  const facts = sliceFactsFor(c, ctx.pkg.facts);
+  const facts = factsFor(ctx, c);
   const assessment: AssessmentOutput = {
     issues: a.issues.map((i) => ({ id: i.id, status: ctx.state.issues[i.id] ?? "missed", evidence: "" })),
     decisions: a.decision_points.map((d) => ({ id: d.id, position: ctx.state.decisions[d.id]?.position ?? "none", evidence: "" })),
@@ -157,7 +159,7 @@ async function reflection(ctx: JobContext, job: Extract<JobPayload, { kind: "ref
   return generateAndDeliver(ctx, { from: c, to: ["associate"], ...spec, attachments: [], kind: "reflection", inReplyTo: messageId, assignmentId }, {
     role: "reflection_engine",
     build: (feedback) => {
-      const p = reflectionPrompt({ character: c, facts, associateFirstName: ctx.state.associateFirstName, assignment: a, assessment, decisions, privateNote: side !== null, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), priorQuestions: ctx.state.reflectionQuestionsAsked, storyDate: storyDate(ctx.now), feedback });
+      const p = reflectionPrompt({ character: c, facts, associateFirstName: ctx.state.associateFirstName, assignment: a, assessment, decisions, privateNote: side !== null, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), priorQuestions: ctx.state.reflectionQuestionsAsked, storyDate: storyDate(ctx.now, ctx.session.timeZone), feedback });
       return { ...p, mockContext: { socraticAngles: a.socratic_angles, priorQuestions: ctx.state.reflectionQuestionsAsked, associateFirstName: ctx.state.associateFirstName, signoff: signoff(c), assignmentTitle: a.title, decisionLabel: decisions[0]?.positionLabel ?? null } };
     },
     parse: (res) => {
@@ -211,7 +213,7 @@ async function recap(ctx: JobContext, gapDays: number): Promise<JobOutcome> {
   return generateAndDeliver(ctx, { from: c, to: ["associate"], cc: [], threadId, threadKey: null, subject: "Where things stand", attachments: [], kind: "recap" }, {
     role: "recap_debrief",
     build: (feedback) => {
-      const p = recapPrompt({ character: c, facts: sliceFactsFor(c, ctx.pkg.facts), associateFirstName: ctx.state.associateFirstName, gapDays, milestone: m, openItems: open, recentSubjects: recent, storyDate: storyDate(ctx.now) });
+      const p = recapPrompt({ character: c, facts: factsFor(ctx, c), associateFirstName: ctx.state.associateFirstName, gapDays, milestone: m, openItems: open, recentSubjects: recent, storyDate: storyDate(ctx.now, ctx.session.timeZone) });
       return { ...p, user: feedback.length ? `${p.user}\n\nFix: ${feedback.join("; ")}` : p.user, mockContext: { kind: "recap", associateFirstName: ctx.state.associateFirstName, recapHint: m.recap_hint, signoff: signoff(c) } };
     },
     parse: (res) => ({ body: res.text }),
@@ -235,7 +237,7 @@ async function nudge(ctx: JobContext, messageId: string, assignmentId: string): 
   return generateAndDeliver(ctx, { from: c, to: ["associate"], cc: [], threadId, threadKey: a.thread_key, subject: thread?.subject ?? a.title, attachments: [], kind: "nudge" }, {
     role: "character_writer",
     build: (feedback) => {
-      const p = nudgePrompt({ character: c, facts: sliceFactsFor(c, ctx.pkg.facts), associateFirstName: ctx.state.associateFirstName, assignmentTitle: a.title, deliverable: a.deliverable, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), storyDate: storyDate(ctx.now) });
+      const p = nudgePrompt({ character: c, facts: factsFor(ctx, c), associateFirstName: ctx.state.associateFirstName, assignmentTitle: a.title, deliverable: a.deliverable, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), storyDate: storyDate(ctx.now, ctx.session.timeZone) });
       return { ...p, user: feedback.length ? `${p.user}\n\nFix: ${feedback.join("; ")}` : p.user, mockContext: { mode: "nudge", associateFirstName: ctx.state.associateFirstName, signoff: signoff(c), assignmentTitle: a.title } };
     },
     parse: (res) => ({ body: res.text }),
@@ -271,7 +273,7 @@ async function debrief(ctx: JobContext): Promise<JobOutcome> {
   return generateAndDeliver(ctx, { from: c, to: ["associate"], cc: ["senior_associate"], threadId, threadKey: "debrief", subject: ctx.pkg.meta.debrief_subject, attachments: [], kind: "debrief" }, {
     role: "recap_debrief",
     build: (feedback) => {
-      const p = debriefPrompt({ character: c, facts: sliceFactsFor(c, ctx.pkg.facts), associateFirstName: ctx.state.associateFirstName, seniorAssociateName: ctx.idx.character("senior_associate").first_name, fired, notFiredPositive: [], decisions, storyDate: storyDate(ctx.now) });
+      const p = debriefPrompt({ character: c, facts: factsFor(ctx, c), associateFirstName: ctx.state.associateFirstName, seniorAssociateName: ctx.idx.character("senior_associate").first_name, fired, notFiredPositive: [], decisions, storyDate: storyDate(ctx.now, ctx.session.timeZone) });
       return { ...p, user: feedback.length ? `${p.user}\n\nFix: ${feedback.join("; ")}` : p.user, mockContext: { kind: "debrief", associateFirstName: ctx.state.associateFirstName, fired: fired.map((f) => f.consequence.title) } };
     },
     parse: (res) => ({ body: res.text, parsed: { referencedConsequences: fired.map((f) => f.consequence.id) } }),

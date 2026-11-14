@@ -1,7 +1,7 @@
 import type pg from "pg";
 import type { EngineEvent, Job, SessionState } from "@rematter/engine";
 import type { BuiltDocument, Facts, ScenarioPackage } from "@rematter/scenario";
-import { ScenarioIndex, dateAnchor, forSession } from "@rematter/scenario";
+import { ScenarioIndex, dateAnchor, forSession, sliceFactsFor, type Character } from "@rematter/scenario";
 import type { LlmProvider } from "../llm/provider.js";
 import { Names } from "../context.js";
 
@@ -10,6 +10,8 @@ export interface SessionInfo {
   orgId: string;
   testMode: boolean;
   assessorShadowMode: boolean;
+  /** The associate's IANA time zone, from their browser when the session started; null on older sessions (UTC). */
+  timeZone: string | null;
 }
 
 export interface JobContext {
@@ -63,8 +65,13 @@ export interface JobOutcome {
 
 /** Every job sees the scenario as its session does: dates follow the session's start (see scenario dates.ts). */
 export function makeContext(base: Omit<JobContext, "idx" | "names">): JobContext {
-  const { pkg, documents } = forSession(base.pkg, base.documents, dateAnchor(base.state));
-  return { ...base, pkg, documents, idx: new ScenarioIndex(pkg), names: new Names(pkg, base.state.associateFirstName) };
+  const { pkg, documents } = forSession(base.pkg, base.documents, dateAnchor(base.state), base.session.timeZone);
+  return { ...base, pkg, documents, idx: new ScenarioIndex(pkg), names: new Names(pkg, base.state.associateFirstName, base.session.timeZone) };
+}
+
+/** A character's facts at this point in the session: facts with a later `available_from` milestone are withheld. */
+export function factsFor(ctx: Pick<JobContext, "pkg" | "state">, character: Character): Facts {
+  return sliceFactsFor(character, ctx.pkg.facts, (m) => Boolean(ctx.state.milestones[m]?.enteredAt));
 }
 
 export type { Facts };

@@ -130,7 +130,8 @@ debt.collateral:
   value: A first-priority lien on substantially all of Acme's assets, including its equipment, inventory, receivables, deposit accounts and intellectual property, and a pledge of no third-party equity.
 debt.forbearance:
   type: text
-  value: Acme is in default under the credit agreement. BigBank has agreed to forbear from exercising remedies until the forbearance expiration date, conditioned on Acme pursuing a sale to Beta. After that date BigBank may accelerate and foreclose.
+  value: Acme is in default under the credit agreement. BigBank has agreed to forbear from exercising remedies until the forbearance expiration date, conditioned on Acme pursuing a sale to Beta. The forbearance ends earlier if a definitive merger agreement is not signed by the target signing date (Section 6 of BigBank's term sheet; the Sale Milestones in the forbearance agreement). When it ends, BigBank may accelerate and foreclose.
+  note: Two dates matter, the target signing date and the forbearance expiration date. The signing date is a hard deadline set by BigBank, not just Beta's internal target.
 debt.bank_deal:
   type: text
   value: At closing BigBank forgives $40,000,000 of the $80,000,000, releases its liens to the extent needed for the merger, and keeps the remaining $40,000,000 outstanding under an amended and restated credit agreement that Beta guarantees.
@@ -145,6 +146,7 @@ debt.trade_payables:
   note: Approximate unsecured trade payables, which stay in place with Acme after closing.
 
 # ---------------------------------------------------------------- capitalization and approvals
+# `available_from: M3` marks what the firm only learns from the data room, which opens in M3.
 cap.common_holders:
   type: text
   value: Common stock held by founders, employees and former employees (about 40 holders of record).
@@ -162,9 +164,11 @@ cap.larchmont_voting_pct:
   note: Larchmont's share of the total voting power, voting common and preferred together.
 cap.series_b_class_vote:
   type: text
+  available_from: M3
   value: Acme's certificate of incorporation requires the approval of holders of a majority of the Series B preferred, voting as a separate class, for any merger. Larchmont holds 48% of the Series B; the rest is held by two other funds, Ostrander Ventures and Pinecrest Capital.
 cap.series_b_larchmont_pct:
   type: percent
+  available_from: M3
   value: 48
   display: 48%
 cap.option_holders:
@@ -174,6 +178,7 @@ cap.option_holders:
 # ---------------------------------------------------------------- contracts and regulatory
 contracts.halvorsen:
   type: text
+  available_from: M3
   value: Supply agreement with Halvorsen Chemie GmbH, Acme's sole qualified supplier of the active ingredient for its three largest products. Halvorsen may terminate on 30 days' notice upon a change of control of Acme.
 contracts.halvorsen.party:
   type: party
@@ -181,6 +186,7 @@ contracts.halvorsen.party:
   aliases: [Halvorsen]
 contracts.unity:
   type: text
+  available_from: M3
   value: Group purchasing agreement with Unity Health Purchasing Alliance, Acme's largest remaining customer channel. Acme may not assign it, "whether by merger, operation of law, change of control or otherwise", without Unity's prior written consent.
 contracts.unity.party:
   type: party
@@ -188,6 +194,7 @@ contracts.unity.party:
   aliases: [Unity]
 contracts.corvane:
   type: text
+  available_from: M3
   value: Patent license from Corvane Biologics, Inc. covering a formulation used in two Acme products. Corvane may terminate if Acme undergoes a change of control in favor of a competitor of Corvane; Beta sells a competing product.
 contracts.corvane.party:
   type: party
@@ -195,6 +202,7 @@ contracts.corvane.party:
   aliases: [Corvane]
 contracts.lease:
   type: text
+  available_from: M3
   value: Lease of the Durham manufacturing facility from Triangle Research Properties LLC. A transfer of more than 50% of Acme's voting stock is deemed an assignment requiring the landlord's consent, not to be unreasonably withheld.
 contracts.lease.landlord:
   type: party
@@ -227,6 +235,7 @@ employees.affected:
   unit: positions
 employees.key_employees:
   type: text
+  available_from: M3
   value: Acme's head of quality and its plant manager are essential to the FDA remediation; both have change-of-control severance in their employment agreements.
 
 # ---------------------------------------------------------------- dates
@@ -238,6 +247,7 @@ dates.loi:
   display: November 6, 2026
 dates.data_room_open:
   type: date
+  available_from: M3
   offset_days: 0
   value: 2026-11-12
   display: November 12, 2026
@@ -248,6 +258,7 @@ dates.warning_letter:
   display: July 3, 2026
 dates.target_signing:
   type: date
+  note: Beta's target signing date, and also BigBank's deadline. The forbearance ends early if the merger agreement is not signed by then.
   offset_days: 15
   value: 2026-11-27
   display: November 27, 2026

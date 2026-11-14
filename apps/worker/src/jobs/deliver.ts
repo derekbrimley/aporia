@@ -4,7 +4,7 @@ import { checkDraft } from "../factcheck/index.js";
 import { derivedUuid } from "../ids.js";
 import type { LlmProvider, LlmTextResult } from "../llm/provider.js";
 import { alert } from "../telemetry.js";
-import type { GenerationRecord, JobContext, JobOutcome } from "./types.js";
+import { factsFor, type GenerationRecord, type JobContext, type JobOutcome } from "./types.js";
 
 export interface DeliverySpec {
   from: Character;
@@ -46,7 +46,7 @@ const MAX_REGENERATIONS = 2;
  */
 export async function generateAndDeliver(ctx: JobContext, spec: DeliverySpec, gen: GenerateArgs): Promise<JobOutcome> {
   const generations: GenerationRecord[] = [];
-  const slice = { ...sliceFactsFor(spec.from, ctx.pkg.facts), ...(gen.extraFacts ?? {}) };
+  const slice = { ...factsFor(ctx, spec.from), ...(gen.extraFacts ?? {}) };
   let feedback: string[] = [];
   let lastBody = "";
   let lastQuestions: string[] | undefined;

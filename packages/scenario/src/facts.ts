@@ -1,9 +1,15 @@
 import type { Character, Facts, FactValue } from "./schema.js";
 
-/** Returns the subset of facts a character is allowed to know. */
-export function sliceFactsFor(character: Character, facts: Facts): Facts {
+/**
+ * Returns the subset of facts a character is allowed to know. Pass `entered` (has the session entered
+ * this milestone?) to withhold facts whose `available_from` milestone hasn't arrived yet; without it,
+ * every fact counts as available (validation and tests).
+ */
+export function sliceFactsFor(character: Character, facts: Facts, entered?: (milestoneId: string) => boolean): Facts {
   const out: Facts = {};
   for (const key of Object.keys(facts)) {
+    const gate = facts[key]!.available_from;
+    if (gate && entered && !entered(gate)) continue;
     for (const pattern of character.knows.facts) {
       if (pattern === key || (pattern.endsWith(".*") && key.startsWith(pattern.slice(0, -1)))) {
         out[key] = facts[key]!;
