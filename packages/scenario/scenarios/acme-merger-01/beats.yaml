@@ -299,11 +299,13 @@
   after: [B-M7-open-points]
   must_include_facts: [cap.series_b_larchmont_pct]
   brief: >
-    Simon writes ahead of the associate's positions to say, as a courtesy, that
-    Ostrander and Pinecrest have not yet agreed to sign the Series B class
-    consent that Acme's certificate of incorporation requires for a merger, and
-    that Larchmont holds only 48% of the Series B. He notes nobody raised this
-    at the letter of intent stage. Courteous, firm, under 80 words.
+    Simon writes to set expectations on stockholder approval, as the reason
+    Acme can only promise reasonable best efforts on part of the written
+    consent: Ostrander and Pinecrest have not yet agreed to sign the Series B
+    class consent that Acme's certificate of incorporation requires for a
+    merger, and Larchmont holds only 48% of the Series B. He notes nobody raised
+    this at the letter of intent stage, and argues it should not become a
+    closing condition. Courteous, firm, tactical, under 90 words.
 
 - id: B-M7-no-escrow
   title: Nothing to escrow
