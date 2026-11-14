@@ -165,7 +165,7 @@ async function reflection(ctx: JobContext, job: Extract<JobPayload, { kind: "ref
       return { body: parsed.email_body, reflectionQuestions: parsed.questions, parsed };
     },
     check: "full",
-    answerKeyHints: a.issues.map((i) => `${i.title}: ${i.raised_looks_like}`),
+    answerKeyHints: a.issues.map((i) => `${i.title}: ${i.description}`),
     isSocratic: true,
     inputRefs: { messageId, assignmentId, characterId },
   });
@@ -240,7 +240,7 @@ async function nudge(ctx: JobContext, messageId: string, assignmentId: string): 
     },
     parse: (res) => ({ body: res.text }),
     check: "full",
-    answerKeyHints: a.issues.map((i) => `${i.title}: ${i.raised_looks_like}`),
+    answerKeyHints: a.issues.map((i) => `${i.title}: ${i.description}`),
     isSocratic: c.gives_socratic_feedback,
     inputRefs: { messageId, assignmentId },
   });
@@ -294,7 +294,7 @@ function answerKeyHints(ctx: JobContext, threadId: string): string[] {
   const ids = new Set(t?.assignmentIds ?? []);
   for (const a of openAssignments(ctx.state)) ids.add(a);
   const out: string[] = [];
-  for (const aid of ids) for (const i of ctx.idx.assignment(aid).issues) out.push(`${i.title}: ${i.raised_looks_like}`);
+  for (const aid of ids) for (const i of ctx.idx.assignment(aid).issues) out.push(`${i.title}: ${i.description}`);
   return out;
 }
 
