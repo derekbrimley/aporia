@@ -333,14 +333,17 @@ class Ctx {
 
     if (p.probe) {
       // Not the work after all: answer it as the question it was classified as.
-      if (!msg || s.assignments[assignmentId]?.status !== "open" || !isWorkProduct(asg, issues, decisions)) {
+      const thread = msg ? s.threads[msg.threadId] : undefined;
+      // Addressed to the person the work is for, on the assignment's own thread: that is the associate
+      // handing it in, even when it is thin. Grade it as submitted rather than leave the milestone stuck.
+      const handedIn = !!msg && !!thread?.assignmentIds.includes(assignmentId) && [...msg.to, ...msg.cc].includes(deliverTo(asg));
+      if (!msg || s.assignments[assignmentId]?.status !== "open" || !(isWorkProduct(asg, issues, decisions) || (handedIn && attemptsWork(asg, issues)))) {
         if (msg) this.replyOrNudge(msg);
         return;
       }
       msg.intent = "deliverable";
-      const thread = s.threads[msg.threadId]!;
-      thread.lastIntent = "deliverable";
-      if (!thread.assignmentIds.includes(assignmentId)) thread.assignmentIds.push(assignmentId);
+      thread!.lastIntent = "deliverable";
+      if (!thread!.assignmentIds.includes(assignmentId)) thread!.assignmentIds.push(assignmentId);
     }
 
     // Every issue on the assignment gets a status; anything the assessor did not mention is missed.
@@ -622,15 +625,21 @@ function openDeliverables(state: SessionState, idx: ScenarioIndex, threadId: str
 
 /**
  * The assignment a substantive email sent only to people other than its recipient (a draft to Marcus
- * before it goes to Priya) is probably the work for. The reply then reads it as a draft for review.
+ * before it goes to Priya) is probably the work for: on the assignment's thread, or on any thread when it
+ * names the recipient ("Hi Priya,"). The reply then reads it as a draft for review.
  */
 export function draftForReview(state: SessionState, idx: ScenarioIndex, msg: MessageState, responderId: string): Assignment | undefined {
   if (msg.from !== "associate" || workText(state, msg).trim().split(/\s+/).length < SUBSTANTIVE_WORDS) return undefined;
   const rec = new Set([...msg.to, ...msg.cc]);
   const thread = state.threads[msg.threadId];
   return openDeliverables(state, idx, msg.threadId).find(
-    (a) => !rec.has(deliverTo(a)) && a.expected_recipients.includes(responderId) && (thread?.assignmentIds.includes(a.id) ?? false),
+    (a) => !rec.has(deliverTo(a)) && a.expected_recipients.includes(responderId) && ((thread?.assignmentIds.includes(a.id) ?? false) || mentionsName(workText(state, msg), idx.character(deliverTo(a)).first_name)),
   );
+}
+
+/** Whether the text names this person as a word ("Hi Grace," or "a draft to Grace"), ignoring case. */
+function mentionsName(text: string, firstName: string): boolean {
+  return new RegExp(`\\b${firstName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(text);
 }
 
 /**
@@ -650,6 +659,16 @@ export function isWorkProduct(asg: Assignment, issues: Record<string, IssueStatu
   if (asg.decision_points.some((d) => d.positions.some((p) => p.id === decisions[d.id]))) return true;
   const raised = asg.issues.filter((i) => issues[i.id] === "raised").length;
   return asg.issues.length > 0 && raised * 2 >= asg.issues.length;
+}
+
+/**
+ * A thin hand-in still counts: at least one issue raised and another at least touched on. Used only for
+ * an email sent to the assignment's recipient on its own thread, which the associate means as the work.
+ */
+export function attemptsWork(asg: Assignment, issues: Record<string, IssueStatus>): boolean {
+  const raised = asg.issues.filter((i) => issues[i.id] === "raised").length;
+  const touched = asg.issues.filter((i) => issues[i.id] === "raised" || issues[i.id] === "partial").length;
+  return raised >= 1 && touched >= 2;
 }
 
 export function openAssignments(state: SessionState): string[] {

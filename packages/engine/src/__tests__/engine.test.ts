@@ -19,6 +19,7 @@ class Harness {
   t = Date.parse("2026-10-01T09:00:00Z");
   n = 0;
   raise: Set<string> = new Set();
+  partial: Set<string> = new Set();
   positions: Record<string, string> = {};
 
   now() { this.t += 60_000; return new Date(this.t).toISOString(); }
@@ -70,7 +71,7 @@ class Harness {
       case "assess": {
         const a = idx.assignment(p.assignmentId);
         const issues: Record<string, "raised" | "partial" | "missed"> = {};
-        for (const i of a.issues) issues[i.id] = this.raise.has(i.id) ? "raised" : "missed";
+        for (const i of a.issues) issues[i.id] = this.raise.has(i.id) ? "raised" : this.partial.has(i.id) ? "partial" : "missed";
         const decisions: Record<string, string> = {};
         for (const d of a.decision_points) if (this.positions[d.id]) decisions[d.id] = this.positions[d.id]!;
         this.apply({ type: "assessment_recorded", payload: { messageId: p.messageId, assignmentId: p.assignmentId, issues, decisions, probe: p.probe } });
@@ -388,6 +389,61 @@ describe("engine: reflections and reasoning", () => {
     expect(h.state.issues).toEqual({});
     const reply = h.state.threads[threadId]!.messageIds.map((id) => h.state.messages[id]!).at(-1);
     expect(reply).toMatchObject({ kind: "reply", from: "client_contact" });
+  });
+});
+
+describe("engine: a thin note handed in", () => {
+  const note = "Here is where I think we are on the term sheet and what I would push on before signing. ".repeat(6);
+
+  it("counts a thin note sent to the client on the assignment's thread, so the milestone moves on", () => {
+    const h = toTermSheet();
+    h.raise = new Set(["A2.I1"]);
+    h.partial = new Set(["A2.I2"]);
+    const { messageId } = h.send("term-sheet", ["client_contact"], note, { intent: "question" });
+    h.drain();
+    expect(h.state.messages[messageId]).toMatchObject({ intent: "deliverable", assignmentId: "A2" });
+    expect(h.state.assignments.A2).toMatchObject({ status: "complete", deliverableMessageId: messageId });
+    expect(h.state.issues["A2.I1"]).toBe("raised");
+    expect(h.state.issues["A2.I2"]).toBe("partial");
+  });
+
+  it("still answers it as a question when it touches only one issue", () => {
+    const h = toTermSheet();
+    h.partial = new Set(["A2.I2"]);
+    const { messageId } = h.send("term-sheet", ["client_contact"], note, { intent: "question" });
+    h.drain();
+    expect(h.state.messages[messageId]).toMatchObject({ intent: "question", assignmentId: null });
+    expect(h.state.assignments.A2?.status).toBe("open");
+  });
+
+  it("needs the assignment's own thread: the same note on a new thread stays a question", () => {
+    const h = toTermSheet();
+    h.raise = new Set(["A2.I1"]);
+    h.partial = new Set(["A2.I2"]);
+    const { messageId } = h.send(null, ["client_contact"], note, { intent: "question" });
+    h.drain();
+    expect(h.state.messages[messageId]).toMatchObject({ intent: "question", assignmentId: null });
+    expect(h.state.assignments.A2?.status).toBe("open");
+  });
+});
+
+describe("engine: a draft sent to the senior on another thread", () => {
+  const replyJob = (h: Harness, before: number) => (h.effects.slice(before).find((e) => e.type === "enqueue_job" && e.job.kind === "character_reply") as { job: Job } | undefined)?.job;
+
+  it("reads it as a draft of the open assignment when it names the recipient", () => {
+    const h = toTermSheet();
+    const before = h.effects.length;
+    h.send("orientation", ["senior_associate"], `Hi Priya, ${"here are my comments on the term sheet. ".repeat(12)}`, { intent: "deliverable" });
+    expect(replyJob(h, before)?.payload).toMatchObject({ characterId: "senior_associate", draftFor: { assignmentId: "A2", deliverTo: "client_contact" } });
+    h.drain();
+    expect(h.state.assignments.A2?.status).toBe("open");
+  });
+
+  it("treats it as ordinary mail when it does not name the recipient", () => {
+    const h = toTermSheet();
+    const before = h.effects.length;
+    h.send("orientation", ["senior_associate"], "Some general thoughts about how the deal is going so far. ".repeat(12), { intent: "question" });
+    expect(replyJob(h, before)?.payload).toMatchObject({ characterId: "senior_associate", draftFor: null });
   });
 });
 
