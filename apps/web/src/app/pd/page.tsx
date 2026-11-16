@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { roster } from "@/lib/pd";
 import { Shell } from "@/components/admin/Shell";
+import { LocalTime } from "@/components/LocalTime";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function PdPage() {
         <table className="admin-table">
           <thead><tr><th>Cohort</th><th>Associate</th><th>Status</th><th>Current milestone</th><th>Last active</th><th>Active time</th></tr></thead>
           <tbody>
-            {rows.map((r) => <tr key={r.cohortId + r.userId}><td>{r.cohortName}</td><td>{r.name}<div className="text-ink-muted text-[12.5px]">{r.email}</div></td><td>{label[r.status] ?? r.status}</td><td>{r.status === "in_progress" ? r.currentMilestone : "—"}</td><td>{r.lastActiveAt ? new Date(r.lastActiveAt).toLocaleDateString() : "—"}</td><td>{r.activeMinutes ? `${Math.floor(r.activeMinutes / 60)}h ${r.activeMinutes % 60}m` : "—"}</td></tr>)}
+            {rows.map((r) => <tr key={r.cohortId + r.userId}><td>{r.cohortName}</td><td>{r.name}<div className="text-ink-muted text-[12.5px]">{r.email}</div></td><td>{label[r.status] ?? r.status}</td><td>{r.status === "in_progress" ? r.currentMilestone : "—"}</td><td><LocalTime iso={r.lastActiveAt} dateOnly /></td><td>{r.activeMinutes ? `${Math.floor(r.activeMinutes / 60)}h ${r.activeMinutes % 60}m` : "—"}</td></tr>)}
             {!rows.length && <tr><td colSpan={6} className="text-ink-muted">No associates yet. Invite them from Cohorts and users.</td></tr>}
           </tbody>
         </table>
