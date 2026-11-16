@@ -5,7 +5,7 @@ type UserRow = { id: string; name: string; email: string; role: string; orgName:
 
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "never");
 
-export function CohortAdmin({ role, cohorts, users, orgs, scenarios }: { role: string; users: UserRow[]; cohorts: { id: string; name: string; orgId: string; orgName: string; scenarioId: string; scenarioVersion: string; assessorShadowMode: boolean; members: number }[]; orgs: { id: string; name: string; slug: string }[]; scenarios: { id: string; title: string; version: string; status: string }[] }) {
+export function CohortAdmin({ role, cohorts, users, orgs, scenarios, testRuns }: { role: string; users: UserRow[]; testRuns: { count: number; shown: boolean }; cohorts: { id: string; name: string; orgId: string; orgName: string; scenarioId: string; scenarioVersion: string; assessorShadowMode: boolean; members: number }[]; orgs: { id: string; name: string; slug: string }[]; scenarios: { id: string; title: string; version: string; status: string }[] }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [invite, setInvite] = useState({ cohortId: cohorts[0]?.id ?? "", email: "", name: "", role: "associate" });
   const [cohort, setCohort] = useState({ orgId: orgs[0]?.id ?? "", orgName: "", orgSlug: "", name: "", scenarioId: scenarios[0]?.id ?? "", assessorShadowMode: true });
@@ -28,7 +28,10 @@ export function CohortAdmin({ role, cohorts, users, orgs, scenarios }: { role: s
         <p className="m-0"><strong className="text-ink">Cohort</strong>: a group of associates in one firm running one simulation together (for example, the fall class on the venture debt deal). An associate gets one session per cohort they are in, and picks between them under "Your matters".</p>
         <p className="m-0"><strong className="text-ink">User</strong>: one person's account in one firm, with one role. The same email can have an account in several firms; the person sees all of their matters either way.</p>
       </div>
-      <h2 className="display text-[22px] font-normal m-0 md:col-span-2">Cohorts</h2>
+      <div className="md:col-span-2 flex items-baseline justify-between gap-4 flex-wrap">
+        <h2 className="display text-[22px] font-normal m-0">Cohorts</h2>
+        {testRuns.count > 0 && <a className="text-sm" href={testRuns.shown ? "/admin/cohorts" : "/admin/cohorts?testRuns=1"}>{testRuns.shown ? "Hide" : "Show"} {testRuns.count} test-run firm{testRuns.count > 1 ? "s" : ""} (one per bot playthrough)</a>}
+      </div>
       <div className="card table-card md:col-span-2">
         <table className="admin-table"><thead><tr><th>Firm</th><th>Cohort</th><th>Scenario</th><th>Assessor</th><th>Members</th></tr></thead><tbody>{cohorts.map((c) => <tr key={c.id}><td>{c.orgName}</td><td>{c.name}</td><td>{c.scenarioId}@{c.scenarioVersion}</td><td>{c.assessorShadowMode ? "shadow (human confirms)" : "live"}</td><td>{c.members}</td></tr>)}</tbody></table>
       </div>

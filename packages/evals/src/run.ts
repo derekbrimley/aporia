@@ -55,7 +55,7 @@ export async function runPlaythrough(opts: { pathName: string; seed?: number; sc
   const provider = await getProvider(opts.provider);
   const seed = opts.seed ?? 1;
   const pathFile = loadPath(opts.pathName);
-  const seeded = await seedDevData(getDb(), pkg, { slug: `eval-${pathFile.name}-${Date.now()}-${seed}`, testMode: true });
+  const seeded = await seedDevData(getDb(), pkg, { slug: `eval-${pathFile.name}-${Date.now()}-${seed}`, orgName: `Test run: ${pkg.meta.id}, ${pathFile.name} path, ${new Date().toISOString().slice(0, 10)}`, testMode: true });
   const bot = new BotAssociate(seeded.sessionId, pkg, pathFile, provider, url, seed);
   if (!opts.quiet) console.log(`[${pathFile.name}#${seed}] session ${seeded.sessionId} provider=${provider.name}`);
   const state = await bot.run();
