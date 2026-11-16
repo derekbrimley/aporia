@@ -7,8 +7,10 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const u = await requireUser(["associate"]);
-  // In more than one matter and none remembered: choose first.
-  const { cohort, all } = await activeMatter(u);
-  if (!cohort && all.length > 1) redirect("/matters");
+  // None remembered and more than one (or only one, in another firm): choose first.
+  const { cohort, total, elsewhere } = await activeMatter(u);
+  // The remembered matter is in another firm: switch to their account there.
+  if (elsewhere) redirect(`/api/matters/select?c=${elsewhere}`);
+  if (!cohort && total > 0) redirect("/matters");
   return <InboxApp userName={u.firstName} matterId={cohort?.id ?? null} />;
 }

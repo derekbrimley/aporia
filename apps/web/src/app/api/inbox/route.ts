@@ -11,11 +11,11 @@ export async function GET() {
   if (u instanceof Response) return u;
   const boot = await bootstrapSession(u);
   if (!boot) {
-    const { all } = await activeMatter(u);
-    if (all.length > 1) return Response.json({ error: "Choose a matter to open.", choose: true }, { status: 409 });
+    const { total } = await activeMatter(u);
+    if (total > 0) return Response.json({ error: "Choose a matter to open.", choose: true }, { status: 409 });
     return Response.json({ error: "You are not in a cohort yet. Ask your PD team for an invitation." }, { status: 404 });
   }
-  const matterCount = (await activeMatter(u)).all.length;
+  const matterCount = (await activeMatter(u)).total;
   const s = (await sessionForUser(u))!;
   const view = await buildInboxView(s.session.id, s.state, s.pkg, { associateEmail: `${u.email.split("@")[0]}@${s.pkg.meta.associate.email_domain}`, testerFlagsEnabled: s.cohort.testerFlagsEnabled });
   // Test checkpoints, only in a cohort an admin pointed at a source run.
