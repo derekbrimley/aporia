@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
+import { LocalTime } from "@/components/LocalTime";
 
 type UserRow = { id: string; name: string; email: string; role: string; orgName: string; lastSeenAt: string | null; removedAt: string | null; cohorts: string[]; otherFirms: number };
 
-const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "never");
 
 export function CohortAdmin({ role, cohorts, users, orgs, scenarios, testRuns }: { role: string; users: UserRow[]; testRuns: { count: number; shown: boolean }; cohorts: { id: string; name: string; orgId: string; orgName: string; scenarioId: string; scenarioVersion: string; assessorShadowMode: boolean; members: number }[]; orgs: { id: string; name: string; slug: string }[]; scenarios: { id: string; title: string; version: string; status: string }[] }) {
   const [msg, setMsg] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export function CohortAdmin({ role, cohorts, users, orgs, scenarios, testRuns }:
       </div>
       <h2 className="display text-[22px] font-normal m-0 md:col-span-2">Users <span className="text-ink-muted text-[16px]">({users.filter((x) => !x.removedAt).length} active{users.some((x) => x.removedAt) ? `, ${users.filter((x) => x.removedAt).length} removed` : ""})</span></h2>
       <div className="card table-card md:col-span-2">
-        <table className="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Firm</th><th>Role</th><th>Cohorts</th><th>Last seen</th></tr></thead><tbody>{users.map((x) => <tr key={x.id} style={x.removedAt ? { opacity: 0.55 } : undefined}><td>{x.name}{x.removedAt ? " (removed)" : ""}</td><td>{x.email}{x.otherFirms > 0 ? <span className="text-ink-muted" title="This email also has an account in another firm"> · also in {x.otherFirms} other firm{x.otherFirms > 1 ? "s" : ""}</span> : null}</td><td>{x.orgName}</td><td>{x.role.replace("_", " ")}</td><td>{x.cohorts.length ? x.cohorts.join(", ") : <span className="text-ink-muted">none</span>}</td><td>{fmtDate(x.lastSeenAt)}</td></tr>)}</tbody></table>
+        <table className="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Firm</th><th>Role</th><th>Cohorts</th><th>Last seen</th></tr></thead><tbody>{users.map((x) => <tr key={x.id} style={x.removedAt ? { opacity: 0.55 } : undefined}><td>{x.name}{x.removedAt ? " (removed)" : ""}</td><td>{x.email}{x.otherFirms > 0 ? <span className="text-ink-muted" title="This email also has an account in another firm"> · also in {x.otherFirms} other firm{x.otherFirms > 1 ? "s" : ""}</span> : null}</td><td>{x.orgName}</td><td>{x.role.replace("_", " ")}</td><td>{x.cohorts.length ? x.cohorts.join(", ") : <span className="text-ink-muted">none</span>}</td><td><LocalTime iso={x.lastSeenAt} empty="never" /></td></tr>)}</tbody></table>
       </div>
       <h2 className="display text-[22px] font-normal m-0 md:col-span-2">Add</h2>
       <form onSubmit={doInvite} className="card flex flex-col gap-3">

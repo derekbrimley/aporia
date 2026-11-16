@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { LocalTime } from "@/components/LocalTime";
 
 export function HeldQueue({ held }: { held: { id: string; sessionId: string; jobKey: string; userName: string; violations: unknown; proposedDelivery: { payload: { body: string; from: string; subject: string } }; createdAt: string }[] }) {
   const [items, setItems] = useState(held);
@@ -13,7 +14,7 @@ export function HeldQueue({ held }: { held: { id: string; sessionId: string; job
     <div className="flex flex-col gap-4">
       {items.map((h) => (
         <article key={h.id} className="card flex flex-col gap-3" style={{ padding: 18 }}>
-          <div className="text-sm text-ink-muted">{h.userName} · {h.proposedDelivery.payload.from} · {h.jobKey} · {new Date(h.createdAt).toLocaleString()}</div>
+          <div className="text-sm text-ink-muted">{h.userName} · {h.proposedDelivery.payload.from} · {h.jobKey} · <LocalTime iso={h.createdAt} /></div>
           <div className="display text-[17px]">{h.proposedDelivery.payload.subject}</div>
           <pre className="text-[12.5px] whitespace-pre-wrap bg-plum-50 rounded-[14px] p-3 m-0">Violations: {JSON.stringify(h.violations, null, 1)}</pre>
           <textarea className="text-area" style={{ minHeight: 160 }} value={bodies[h.id] ?? h.proposedDelivery.payload.body} onChange={(e) => setBodies({ ...bodies, [h.id]: e.target.value })} />
