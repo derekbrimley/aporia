@@ -26,7 +26,7 @@ test("associate plays orientation and sends term sheet comments", async ({ page,
   await page.goto("/sign-in");
   await page.screenshot({ path: `${shots}/1-sign-in.png` });
   await page.goto(url);
-  await page.getByRole("button", { name: /^Continue to/ }).click();
+  // The confirm page submits itself in a real browser: no click.
   await expect(page).toHaveURL(/\/$/);
 
   // M1: welcome email from Marcus.

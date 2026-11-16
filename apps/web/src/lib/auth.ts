@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { getDb, schema } from "@rematter/db";
 import { env } from "./env.js";
 
@@ -16,10 +16,24 @@ function hash(token: string): string {
   return crypto.createHmac("sha256", env.authSecret).update(token).digest("hex");
 }
 
+/**
+ * The invited account for an email. The same person can have one in several firms; sign-in picks the
+ * one used most recently (the matter picker reaches the others), never an arbitrary row.
+ */
+async function userByEmail(email: string) {
+  const rows = await getDb()
+    .select()
+    .from(schema.users)
+    .where(and(eq(schema.users.email, email.toLowerCase().trim()), isNull(schema.users.removedAt)))
+    .orderBy(sql`${schema.users.lastSeenAt} desc nulls last`, desc(schema.users.invitedAt))
+    .limit(1);
+  return rows[0];
+}
+
 /** Issues a magic link for an existing, invited user. Returns the link (callers decide how to deliver it). */
 export async function createMagicLink(email: string): Promise<{ url: string; delivered: "email" | "log" } | null> {
   const db = getDb();
-  const user = (await db.select().from(schema.users).where(and(eq(schema.users.email, email.toLowerCase().trim()), isNull(schema.users.removedAt))))[0];
+  const user = await userByEmail(email);
   if (!user) return null;
   const token = crypto.randomBytes(32).toString("base64url");
   await db.insert(schema.magicLinks).values({ userId: user.id, tokenHash: hash(token), expiresAt: new Date(Date.now() + LINK_MINUTES * 60_000) });
@@ -134,7 +148,7 @@ export async function workosSignIn(code: string): Promise<CurrentUser | null> {
   // Users are matched by email, so an unverified address could claim someone else's invite.
   if (!json.user?.email_verified) return null;
   const db = getDb();
-  const user = (await db.select().from(schema.users).where(and(eq(schema.users.email, json.user.email.toLowerCase()), isNull(schema.users.removedAt))))[0];
+  const user = await userByEmail(json.user.email);
   if (!user) return null;
   await db.update(schema.users).set({ authSubject: json.user.id }).where(eq(schema.users.id, user.id));
   const signedIn = await signIn(user.id);
