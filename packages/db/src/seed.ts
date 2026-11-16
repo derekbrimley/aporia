@@ -16,10 +16,10 @@ export interface SeedResult {
 }
 
 /** Creates a firm, a cohort and the four role users. Idempotent on the org slug. */
-export async function seedDevData(db: Db, pkg: ScenarioPackage, opts: { slug?: string; testMode?: boolean; adminEmail?: string } = {}): Promise<SeedResult> {
+export async function seedDevData(db: Db, pkg: ScenarioPackage, opts: { slug?: string; orgName?: string; testMode?: boolean; adminEmail?: string } = {}): Promise<SeedResult> {
   const slug = opts.slug ?? "dev-firm";
   let org = (await db.select().from(t.organizations).where(eq(t.organizations.slug, slug)))[0];
-  if (!org) [org] = await db.insert(t.organizations).values({ name: "Dev Firm LLP", slug }).returning();
+  if (!org) [org] = await db.insert(t.organizations).values({ name: opts.orgName ?? "Dev Firm LLP", slug }).returning();
   const user = async (email: string, name: string, role: (typeof t.users.$inferInsert)["role"]) => {
     const existing = (await db.select().from(t.users).where(eq(t.users.email, email)))[0];
     if (existing) return existing;
