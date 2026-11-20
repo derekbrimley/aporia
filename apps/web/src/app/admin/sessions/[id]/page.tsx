@@ -1,4 +1,6 @@
 import { getPool } from "@rematter/db";
+import { stuckBeats } from "@rematter/engine";
+import { getScenario } from "@/lib/scenario";
 import { requireUser, audit } from "@/lib/auth";
 import { sessionDetail } from "@/lib/admin";
 import { cohortsForSource } from "@/lib/checkpoints";
@@ -21,6 +23,9 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
     )
   ).rows[0];
   const canViewAs = owner && owner.role === "associate" && !owner.removed_at;
+  const scenario = (await getPool().query<{ scenario_id: string; scenario_version: string }>(`select scenario_id, scenario_version from sessions where id = $1`, [id])).rows[0];
+  const beatTitles = new Map(scenario ? getScenario(scenario.scenario_id, scenario.scenario_version).pkg.beats.map((b) => [b.id, b.title]) : []);
+  const stuck = stuckBeats(d.state);
   return (
     <Shell user={u} title={`Session ${id.slice(0, 8)}`}>
       {owner && (
@@ -39,6 +44,16 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
               <button className="btn btn-sm btn-primary">Log in as {owner.name.split(" ")[0]}</button>
             </form>
           )}
+        </div>
+      )}
+      {stuck.length > 0 && (
+        <div className="card text-sm mb-4 bg-plum-50" style={{ padding: 18 }}>
+          <div className="text-plum-600 text-[12px] uppercase">Stuck scripted email</div>
+          <p className="mt-1">
+            Every try at {stuck.length === 1 ? "this email" : "these emails"} failed, so the story is waiting on {stuck.length === 1 ? "it" : "them"}:{" "}
+            {stuck.map((b) => `${beatTitles.get(b) ?? b} (${b})`).join(", ")}.
+            {" "}{stuck.length === 1 ? "It goes" : "They go"} out again the next time the tester sends an email. Check the worker logs for why the tries failed.
+          </p>
         </div>
       )}
       <SessionViewer id={id} detail={JSON.parse(JSON.stringify(d))} cohorts={cohorts} />

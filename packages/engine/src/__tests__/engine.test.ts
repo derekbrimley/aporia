@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID, ScenarioIndex } from "@rematter/scenario";
-import { initialState, replay, step, likelyDeliverable, workText, writingByThread, type EngineEvent, type Effect, type Job, type SessionState } from "../index.js";
+import { initialState, replay, step, likelyDeliverable, workText, writingByThread, stuckBeats, type EngineEvent, type Effect, type Job, type SessionState } from "../index.js";
 
 const { pkg } = loadScenario(scenarioDir(DEFAULT_SCENARIO_ID));
 const idx = new ScenarioIndex(pkg);
@@ -546,6 +546,33 @@ describe("engine: state-machine edges", () => {
     h2.apply({ type: "message_discarded", payload: { jobKey: reply.key, job: reply } });
     h2.apply({ type: "job_failed", payload: { jobKey: `classify:${messageId}`, kind: "classify_intent", error: "boom", attempts: 4 } });
     expect(h2.jobs).toEqual([]);
+  });
+
+  it("tries a beat that gave up once more when the associate next writes", () => {
+    const h = new Harness();
+    h.apply({ type: "session_started", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: "0.1.0", associateFirstName: "Sam" } });
+    const fail = (job: Job) => h.apply({ type: "job_failed", payload: { jobKey: job.key, kind: job.kind, error: "credit balance too low", attempts: 4, job } });
+    fail(h.jobs.shift()!);
+    fail(h.jobs.shift()!);
+    fail(h.jobs.shift()!);
+    expect(h.jobs).toEqual([]);
+    expect(stuckBeats(h.state)).toEqual(["B-M1-welcome"]);
+
+    h.send("orientation", ["senior_associate"], "Hi Daniel, is anything coming my way?");
+    expect(h.jobs.map((j) => j.key)).toContain("beat:B-M1-welcome#4");
+    expect(h.jobs.find((j) => j.key === "beat:B-M1-welcome#4")).toMatchObject({ kind: "beat", delaySeconds: 0, payload: { kind: "beat", beatId: "B-M1-welcome" } });
+    expect(stuckBeats(h.state)).toEqual([]);
+    h.drain();
+    expect(h.state.beats["B-M1-welcome"]).toBe("delivered");
+    expect(stuckBeats(h.state)).toEqual([]);
+  });
+
+  it("does not touch a beat that is still queued", () => {
+    const h = new Harness();
+    h.apply({ type: "session_started", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: "0.1.0", associateFirstName: "Sam" } });
+    expect(stuckBeats(h.state)).toEqual([]);
+    h.send("orientation", ["senior_associate"], "Hello?");
+    expect(h.jobs.filter((j) => j.key.startsWith("beat:B-M1-welcome")).map((j) => j.key)).toEqual(["beat:B-M1-welcome"]);
   });
 
   it("a delivered retry completes the beat it stands in for", () => {
