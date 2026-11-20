@@ -20,6 +20,7 @@
     "scenario:import": "pnpm --filter @rematter/scenario run import",
     "db:migrate": "pnpm --filter @rematter/db run migrate",
     "db:seed": "pnpm --filter @rematter/db run seed",
+    "session:export": "pnpm --filter @rematter/db run export-session",
     "playthrough": "pnpm --filter @rematter/evals run playthrough",
     "evals:fast": "pnpm --filter @rematter/evals run fast",
     "evals:cases": "pnpm --filter @rematter/evals run cases",

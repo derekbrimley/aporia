@@ -1,7 +1,9 @@
-import { apiUser } from "@/lib/auth";
+import { auditExport, exportReader } from "@/lib/auth";
 import { listSessions } from "@/lib/admin";
-export async function GET() {
-  const u = await apiUser(["internal_admin"]);
-  if (u instanceof Response) return u;
+/** Internal admins, or the export token (so a script can find a session id by tester name). */
+export async function GET(req: Request) {
+  const reader = await exportReader(req);
+  if (reader instanceof Response) return reader;
+  if (!reader.user) await auditExport(reader, "session.list");
   return Response.json({ sessions: await listSessions() });
 }

@@ -29,6 +29,14 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
             <div className="text-ink-muted text-[12px] uppercase">Tester</div>
             {owner.name} · {owner.email}
           </div>
+          <div className="flex items-center gap-2">
+            <a className="btn btn-sm" href={`/api/admin/sessions/${id}/export`} download title="Transcript, JSON and one CSV per table">
+              Download export
+            </a>
+            <a className="btn btn-sm" href={`/api/admin/sessions/${id}/export?format=transcript`} target="_blank" rel="noreferrer">
+              Transcript
+            </a>
+          </div>
           {canViewAs && (
             <form action={`/api/admin/sessions/${id}/view-as`} method="post" className="ml-auto flex items-center gap-3">
               <span className="text-ink-muted text-[13px]">

@@ -261,3 +261,34 @@ export async function workosLogoutUrl(returnTo: string): Promise<string | null> 
   u.searchParams.set("return_to", returnTo);
   return u.toString();
 }
+
+// ---------------------------------------------------------------- session export API token
+/**
+ * Read-only access to session exports for scripts and Claude, without a browser sign-in:
+ * `Authorization: Bearer $EXPORT_API_TOKEN`. Off unless the variable is set (32+ characters).
+ * The token only works on the GET export routes that call this; it never signs anyone in.
+ */
+export function exportTokenValid(req: Request): boolean {
+  const want = process.env.EXPORT_API_TOKEN;
+  if (!want || want.length < 32) return false;
+  const got = req.headers.get("authorization")?.match(/^Bearer\s+(\S+)$/i)?.[1];
+  if (!got) return false;
+  const a = crypto.createHash("sha256").update(got).digest();
+  const b = crypto.createHash("sha256").update(want).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
+/** An internal admin's cookie session, or the export token. Tokens are audited with no actor. */
+export async function exportReader(req: Request): Promise<{ user: CurrentUser | null } | Response> {
+  if (req.headers.get("authorization")) {
+    if (!exportTokenValid(req)) return Response.json({ error: "invalid export token" }, { status: 401 });
+    return { user: null };
+  }
+  const u = await apiUser(["internal_admin"]);
+  return u instanceof Response ? u : { user: u };
+}
+
+export async function auditExport(reader: { user: CurrentUser | null }, action: string, target?: string, details?: Record<string, unknown>) {
+  if (reader.user) return audit(reader.user, action, target, details);
+  await getDb().insert(schema.auditLog).values({ orgId: null, actorUserId: null, action, target: target ?? null, details: { ...details, via: "export_token" } });
+}
