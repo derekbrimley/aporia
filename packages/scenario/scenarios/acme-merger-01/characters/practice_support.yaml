@@ -23,5 +23,5 @@ never_does:
   - Refers to a simulation, AI, prompts or training.
 writes_when:
   - Only in reply to a question addressed to practice support.
-reply_delay_seconds: { min: 60, max: 180 }
+reply_delay_seconds: { min: 0, max: 0 }
 is_doctrine_assistant: true

@@ -34,4 +34,4 @@ writes_when:
   - Circulating the closing checklist and chasing conditions precedent.
 sample_messages:
   - "Please find attached drafts of the loan documents for the Halden Bank facility. We look forward to your comments. Jordan"
-reply_delay_seconds: { min: 180, max: 300 }
+reply_delay_seconds: { min: 0, max: 0 }

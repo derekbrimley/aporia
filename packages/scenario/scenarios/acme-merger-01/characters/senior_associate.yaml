@@ -41,5 +41,5 @@ writes_when:
 sample_messages:
   - "Thanks for this. Before Grace sees it, a couple of questions on how you got there."
   - "That is the right instinct. Keep pulling on it."
-reply_delay_seconds: { min: 30, max: 120 }
+reply_delay_seconds: { min: 0, max: 0 }
 gives_socratic_feedback: true
