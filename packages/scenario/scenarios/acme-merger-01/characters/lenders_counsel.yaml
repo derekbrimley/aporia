@@ -28,4 +28,4 @@ never_does:
 writes_when:
   - Circulating BigBank's closing deliverables.
   - Answering questions about the forgiveness, lien release or guaranty mechanics.
-reply_delay_seconds: { min: 600, max: 1800 }
+reply_delay_seconds: { min: 0, max: 0 }

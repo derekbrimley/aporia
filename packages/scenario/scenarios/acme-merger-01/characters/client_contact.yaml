@@ -34,4 +34,4 @@ writes_when:
   - Answering a question from the associate about Beta's plans.
 sample_messages:
   - "Team, the LOI is signed and attached, along with BigBank's term sheet. Before we go further, tell me what I've actually agreed to and what I should be worried about. Grace"
-reply_delay_seconds: { min: 120, max: 600 }
+reply_delay_seconds: { min: 0, max: 0 }

@@ -237,17 +237,23 @@ describe("engine: mechanics", () => {
     expect(h.jobs[0]?.kind).toBe("recap");
   });
 
-  it("uses deterministic, non-zero delays outside test mode", () => {
-    let s = initialState(pkg);
-    const r1 = step(s, { type: "session_started", at: "2026-10-01T09:00:00Z", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: "0.1.0", associateFirstName: "Sam" } }, pkg, {});
+  it("ships with no reply delays in any character", () => {
+    for (const c of pkg.characters) expect(c.reply_delay_seconds, c.id).toEqual({ min: 0, max: 0 });
+  });
+
+  it("uses deterministic delays inside a character's window outside test mode", () => {
+    // The shipped scenarios reply at once; a window still works if a scenario sets one.
+    const windowed = { ...pkg, characters: pkg.characters.map((c) => (c.id === "senior_associate" ? { ...c, reply_delay_seconds: { min: 30, max: 120 } } : c)) };
+    let s = initialState(windowed);
+    const r1 = step(s, { type: "session_started", at: "2026-10-01T09:00:00Z", payload: { scenarioId: pkg.meta.id, scenarioVersion: pkg.meta.version, engineVersion: "0.1.0", associateFirstName: "Sam" } }, windowed, {});
     const job = r1.effects.find((e) => e.type === "enqueue_job") as { job: Job };
     expect(job.job.delaySeconds).toBe(0); // welcome beat has delay_seconds: 0
     s = r1.state;
-    const r2 = step(s, { type: "email_sent", at: "2026-10-01T09:05:00Z", payload: { messageId: "m1", threadId: "t1", to: ["senior_associate"], cc: [], body: "q", attachments: [], intent: "question" } }, pkg, {});
+    const r2 = step(s, { type: "email_sent", at: "2026-10-01T09:05:00Z", payload: { messageId: "m1", threadId: "t1", to: ["senior_associate"], cc: [], body: "q", attachments: [], intent: "question" } }, windowed, {});
     const reply = r2.effects.find((e) => e.type === "enqueue_job") as { job: Job };
     expect(reply.job.delaySeconds).toBeGreaterThanOrEqual(30);
     expect(reply.job.delaySeconds).toBeLessThanOrEqual(120);
-    const again = step(s, { type: "email_sent", at: "2026-10-01T09:05:00Z", payload: { messageId: "m1", threadId: "t1", to: ["senior_associate"], cc: [], body: "q", attachments: [], intent: "question" } }, pkg, {});
+    const again = step(s, { type: "email_sent", at: "2026-10-01T09:05:00Z", payload: { messageId: "m1", threadId: "t1", to: ["senior_associate"], cc: [], body: "q", attachments: [], intent: "question" } }, windowed, {});
     expect(again.effects).toEqual(r2.effects);
   });
 

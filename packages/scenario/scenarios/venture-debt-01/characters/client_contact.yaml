@@ -33,4 +33,4 @@ writes_when:
   - Forwarding an urgent board or CFO question mid-assignment.
 sample_messages:
   - "Team, we received the attached term sheet from Halden Bank. Before we respond, what do you think? I've read it, but I'm not sure what I should be looking for. Priya"
-reply_delay_seconds: { min: 120, max: 600 }
+reply_delay_seconds: { min: 0, max: 0 }
