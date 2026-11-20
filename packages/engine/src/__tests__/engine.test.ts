@@ -363,6 +363,21 @@ describe("engine: reflections and reasoning", () => {
     expect(r.threadId).toBe(h.state.threadIdByKey[key]);
   });
 
+  it("never probes later emails on the private follow-up thread against the next assignment", () => {
+    const h = toTermSheet();
+    const ts = h.send("term-sheet", ["client_contact", "senior_associate"], "My comments.", { intent: "deliverable" });
+    h.drain();
+    const key = `reflection:${ts.messageId}`;
+    h.send(key, ["senior_associate"], "First answer.", { intent: "question" });
+    h.drain();
+    const later = "The cap table and the change of control clauses are where I would start, then the lien search. ".repeat(6);
+    const before = h.jobs.length;
+    h.send(key, ["senior_associate"], later, { intent: "question" });
+    const jobs = h.jobs.slice(before).map((j) => j.kind);
+    expect(jobs).not.toContain("assess");
+    expect(jobs).toContain("character_reply");
+  });
+
   it("promotes a question-shaped email to the deliverable when the probe finds work product", () => {
     const h = toTermSheet();
     const a2 = idx.assignment("A2");

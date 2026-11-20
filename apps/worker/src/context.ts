@@ -1,6 +1,6 @@
 import type { MessageState, SessionState } from "@rematter/engine";
-import type { ForwardedForPrompt, ThreadMessageForPrompt } from "@rematter/prompts";
-import { ScenarioIndex, type ScenarioPackage } from "@rematter/scenario";
+import type { AssociateReading, ForwardedForPrompt, ThreadMessageForPrompt } from "@rematter/prompts";
+import { ScenarioIndex, type BuiltDocument, type Character, type ScenarioPackage } from "@rematter/scenario";
 
 /** Display helpers that turn participant ids into names for prompts and the UI. */
 export class Names {
@@ -100,6 +100,69 @@ export function associateDocuments(state: SessionState, names: Names): string[] 
     for (const d of m.attachments) seen.add(d);
   }
   return [...seen].map((d) => docs.get(d) ?? d);
+}
+
+/** Which documents the associate has, for prompts that split facts into ones they can look up and ones they can't. */
+export function associateReading(state: SessionState, names: Names): AssociateReading {
+  const titles = new Map(names.pkg.documents.map((d) => [d.id, d.title]));
+  return { associateFirstName: names.name("associate"), released: [...state.documentsReleased], docTitle: (d) => titles.get(d) ?? d };
+}
+
+/**
+ * The full text of the associate's documents that this character knows, in the order they arrived,
+ * so the character can check what a document actually says instead of recalling it.
+ */
+export function documentTextsFor(state: SessionState, documents: Map<string, BuiltDocument>, character: Character): { title: string; text: string }[] {
+  const known = new Set(character.knows.documents);
+  return state.documentsReleased.filter((d) => known.has(d) && documents.has(d)).map((d) => ({ title: documents.get(d)!.title, text: documents.get(d)!.text }));
+}
+
+/** For the associate's own firm: each assignment the associate owes right now, as "title: what to deliver". */
+export function currentWorkFor(state: SessionState, pkg: ScenarioPackage, character: Character): string[] | undefined {
+  if (character.side !== "own_firm") return undefined;
+  return pkg.assignments.filter((a) => state.assignments[a.id]?.status === "open").map((a) => `${a.title}: ${a.deliverable.trim()}`);
+}
+
+/**
+ * On a private follow-up thread (the side thread a reflection opens when work went outside the firm),
+ * whether this character has already replied there once and should now close it.
+ */
+export function followUpThreadFor(state: SessionState, threadId: string, characterId: string): { closeNow: boolean } | undefined {
+  const t = state.threads[threadId];
+  if (!t?.key?.startsWith("reflection:")) return undefined;
+  const replies = t.messageIds.map((id) => state.messages[id]!).filter((m) => m.from === characterId && m.kind === "reply").length;
+  return { closeNow: replies >= 1 };
+}
+
+/**
+ * How many times in a row this character has already answered the associate's questions on this
+ * thread, counting back from the newest email to the last time the associate sent anything other than
+ * a question (or someone else wrote). Two rounds of hints without progress means the associate is
+ * stuck, and the reply should stop withholding (see `helpFor`).
+ */
+export function questionRounds(state: SessionState, threadId: string, characterId: string): number {
+  const msgs = (state.threads[threadId]?.messageIds ?? []).map((id) => state.messages[id]!);
+  let rounds = 0;
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i]!;
+    if (m.from === "associate") {
+      if (m.intent && m.intent !== "question") break;
+      continue;
+    }
+    if (m.from === characterId && m.kind === "reply") rounds++;
+    else break;
+  }
+  return rounds;
+}
+
+/**
+ * For a character who teaches by asking: after one round of hints the reply points to the exact place
+ * in the document, and after two it simply answers. Pushing longer reads as withholding.
+ */
+export function helpFor(state: SessionState, threadId: string, character: Character): "point" | "answer" | undefined {
+  if (!character.gives_socratic_feedback) return undefined;
+  const rounds = questionRounds(state, threadId, character.id);
+  return rounds >= 2 ? "answer" : rounds >= 1 ? "point" : undefined;
 }
 
 /**

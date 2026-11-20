@@ -6,6 +6,8 @@
 
 1.1 Borrower acknowledges that term loans of $80,000,000 are outstanding under the Credit Agreement, that the Specified Defaults (breach of the minimum EBITDA and fixed charge coverage covenants) have occurred and are continuing, and that Lender's liens are valid, perfected and first-priority.
 
+1.2 Borrower represents that its unsecured trade payables total approximately $12,000,000, a substantial portion of which is past due.
+
 ## 2. Forbearance
 
 2.1 Lender agrees to forbear from exercising its rights and remedies in respect of the Specified Defaults until the earliest of (a) {{dates.forbearance_expiry}}, (b) any new Event of Default, and (c) Borrower's failure to satisfy any Sale Milestone (the "Forbearance Termination Date").

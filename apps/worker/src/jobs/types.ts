@@ -69,9 +69,17 @@ export function makeContext(base: Omit<JobContext, "idx" | "names">): JobContext
   return { ...base, pkg, documents, idx: new ScenarioIndex(pkg), names: new Names(pkg, base.state.associateFirstName, base.session.timeZone) };
 }
 
-/** A character's facts at this point in the session: facts with a later `available_from` milestone are withheld. */
+/**
+ * A character's facts at this point in the session: facts with a later `available_from` milestone are
+ * withheld, and so are gated facts whose documents haven't reached the associate yet (unless this
+ * character wrote that document).
+ */
 export function factsFor(ctx: Pick<JobContext, "pkg" | "state">, character: Character): Facts {
-  return sliceFactsFor(character, ctx.pkg.facts, (m) => Boolean(ctx.state.milestones[m]?.enteredAt));
+  const from = new Map(ctx.pkg.documents.map((d) => [d.id, d.from]));
+  return sliceFactsFor(character, ctx.pkg.facts, (m) => Boolean(ctx.state.milestones[m]?.enteredAt), {
+    released: (d) => ctx.state.documentsReleased.includes(d),
+    ownedBy: (d) => from.get(d) === character.id,
+  });
 }
 
 export type { Facts };

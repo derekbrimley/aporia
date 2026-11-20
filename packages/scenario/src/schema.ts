@@ -68,7 +68,17 @@ export type ScenarioMeta = z.infer<typeof ScenarioMetaSchema>;
  * the session has entered that milestone (for what the firm can only learn from a later document, such
  * as the data room). A beat's `must_include_facts` still supplies it explicitly.
  */
-const FactGate = { available_from: MilestoneIdSchema.optional() };
+const FactGate = {
+  available_from: MilestoneIdSchema.optional(),
+  /**
+   * Where the associate can read this fact: the documents that state it, or "background" for what
+   * characters know from the deal itself (conversations, their own side's plans) that no document
+   * the associate gets says. Prompts tell characters which facts they can point the associate to, and
+   * a fact gated by `available_from` also waits for one of its documents to arrive (see `sliceFactsFor`). Optional, so older
+   * scenarios still load; a scenario that sets it on one fact must set it on every fact.
+   */
+  source: z.union([z.literal("background"), z.array(DocumentIdSchema).min(1)]).optional(),
+};
 
 export const FactValueSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("money"), value: z.number(), currency: z.string().default("USD"), display: z.string().optional(), note: z.string().optional(), ...FactGate }),
