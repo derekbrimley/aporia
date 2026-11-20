@@ -7,6 +7,8 @@ export interface InboxMessage {
   id: string; threadId: string; from: string; to: string[]; cc: string[]; subject: string; body: string; attachments: string[]; at: string; kind: string; intent: string | null; rationale: string | null; quotedRefs: { documentId: string; ref: string; text: string }[]; readAt: string | null;
   /** The message this one forwards, if it is a forward. */
   forwardedMessageId: string | null;
+  /** The earlier message on the thread this one answers, when known. */
+  inReplyTo: string | null;
   /** Whether it sits on a hidden practice support thread, which can't be forwarded. */
   private: boolean;
 }
@@ -37,7 +39,7 @@ export async function buildInboxView(sessionId: string, state: SessionState, pkg
   const readAt = new Map(reads.rows.map((r) => [r.id, r.read_at?.toISOString() ?? null]));
   const messages: InboxMessage[] = state.messageOrder.map((id) => {
     const m = state.messages[id]!;
-    return { id: m.id, threadId: m.threadId, from: m.from, to: m.to, cc: m.cc, subject: m.subject, body: m.body, attachments: m.attachments, at: m.at, kind: m.kind, intent: m.intent, rationale: m.rationale, quotedRefs: m.quotedRefs, forwardedMessageId: m.forwardedMessageId ?? null, private: state.threads[m.threadId]?.hidden ?? false, readAt: m.from === "associate" ? m.at : readAt.get(m.id) ?? null };
+    return { id: m.id, threadId: m.threadId, from: m.from, to: m.to, cc: m.cc, subject: m.subject, body: m.body, attachments: m.attachments, at: m.at, kind: m.kind, intent: m.intent, rationale: m.rationale, quotedRefs: m.quotedRefs, forwardedMessageId: m.forwardedMessageId ?? null, inReplyTo: m.inReplyTo ?? null, private: state.threads[m.threadId]?.hidden ?? false, readAt: m.from === "associate" ? m.at : readAt.get(m.id) ?? null };
   });
   const threads: InboxThread[] = Object.values(state.threads)
     .map((t) => ({ id: t.id, key: t.key, subject: t.subject, participants: t.participants, lastMessageAt: t.lastMessageAt, messageIds: t.messageIds, unread: t.messageIds.filter((id) => state.messages[id]!.from !== "associate" && !readAt.get(id)).length }))

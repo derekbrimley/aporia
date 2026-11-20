@@ -309,6 +309,7 @@ export const drafts = pgTable(
     attachments: jsonb("attachments").$type<string[]>().notNull(),
     quotes: jsonb("quotes").$type<{ documentId: string; documentTitle: string; ref: string; text: string }[]>().notNull().default([]),
     forwardedMessageId: text("forwarded_message_id"),
+    inReplyTo: text("in_reply_to"),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("drafts_session_idx").on(t.sessionId)],

@@ -1,7 +1,7 @@
 import type { Beat, Character, Facts, NegotiationPoint } from "../deps.js";
 import { CHARACTER_HARD_RULES, characterCard, factsBlock, renderThread, type ThreadMessageForPrompt } from "../common.js";
 
-export const CHARACTER_WRITER_VERSION = "character_writer@1.5.0";
+export const CHARACTER_WRITER_VERSION = "character_writer@1.6.0";
 
 export interface CharacterWriterInput {
   character: Character;
@@ -26,6 +26,10 @@ export interface CharacterWriterInput {
 }
 
 /** Whether the most recent email on the thread forwards another one. */
+function repliesToEarlier(thread: ThreadMessageForPrompt[]): boolean {
+  return Boolean(thread.at(-1)?.replyingTo);
+}
+
 function forwardsSomething(thread: ThreadMessageForPrompt[]): boolean {
   return Boolean(thread.at(-1)?.forwarded);
 }
@@ -44,7 +48,7 @@ export function characterWriterPrompt(input: CharacterWriterInput) {
   const noAttachments = " You cannot attach anything to this email, so never say you are attaching, sending or forwarding a document, or that one is on its way.";
   let task: string;
   if (input.mode.kind === "reply") {
-    task = `Write your reply to the most recent email on this thread. If the associate sent several emails since you last wrote, answer them together in this one reply. Respond as you would in a real deal, in your voice, within what you know.${noAttachments} If the email asks you to decide something legal or to give the answer to the associate's assignment, do what this person would really do: ask what they think, redirect, or defer.${forwardsSomething(input.thread) ? ` The associate forwarded you the email quoted under "Forwarded message"; you have now read it and may refer to what it says.` : ""}${input.mode.draftFor ? ` The associate sent this to you only; it has not gone to ${input.mode.draftFor.deliverToName} yet. It reads as their draft of this assignment: ${input.mode.draftFor.deliverable} React the way a senior associate reviewing a draft would: keep it short, don't grade it or rewrite it, ask at most one question, and tell them to send it to ${input.mode.draftFor.deliverToName} when they're ready. Do not talk as if ${input.mode.draftFor.deliverToName} has seen it.` : ""}`;
+    task = `Write your reply to the most recent email on this thread. If the associate sent several emails since you last wrote, answer them together in this one reply. Respond as you would in a real deal, in your voice, within what you know.${noAttachments}${repliesToEarlier(input.thread) ? ` The most recent email answers the earlier email named in its "In reply to" line, not the one just above it, so read it in that context.` : ""} If the email asks you to decide something legal or to give the answer to the associate's assignment, do what this person would really do: ask what they think, redirect, or defer.${forwardsSomething(input.thread) ? ` The associate forwarded you the email quoted under "Forwarded message"; you have now read it and may refer to what it says.` : ""}${input.mode.draftFor ? ` The associate sent this to you only; it has not gone to ${input.mode.draftFor.deliverToName} yet. It reads as their draft of this assignment: ${input.mode.draftFor.deliverable} React the way a senior associate reviewing a draft would: keep it short, don't grade it or rewrite it, ask at most one question, and tell them to send it to ${input.mode.draftFor.deliverToName} when they're ready. Do not talk as if ${input.mode.draftFor.deliverToName} has seen it.` : ""}`;
   } else {
     const b = input.mode.beat;
     const must = Object.keys(input.mode.mustIncludeFacts).length ? `\nThese facts must appear accurately in the email:\n${factsBlock(input.mode.mustIncludeFacts).split("\n").slice(1).join("\n")}` : "";

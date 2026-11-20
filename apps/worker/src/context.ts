@@ -44,7 +44,22 @@ export function toPromptMessage(m: MessageState, names: Names, state?: SessionSt
     at: sentAt(m.at, names.timeZone),
     body: m.body,
     forwarded: fwd ? forwardedForPrompt(fwd, names) : null,
+    replyingTo: state ? replyingToForPrompt(state, m, names) : null,
   };
+}
+
+/**
+ * The earlier email a message answers, when the associate replied on a specific message further up
+ * the thread. A reply to the email just before it needs no note: that is how every thread reads.
+ */
+export function replyingToForPrompt(state: SessionState, m: MessageState, names: Names): ThreadMessageForPrompt["replyingTo"] {
+  const target = m.inReplyTo ? state.messages[m.inReplyTo] : undefined;
+  if (!target || target.threadId !== m.threadId) return null;
+  const ids = state.threads[m.threadId]?.messageIds ?? [];
+  const i = ids.indexOf(m.id);
+  if (i > 0 && ids[i - 1] === target.id) return null;
+  const flat = target.body.replace(/\s+/g, " ").trim();
+  return { from: names.name(target.from), at: sentAt(target.at, names.timeZone), excerpt: flat.length > 120 ? `${flat.slice(0, 120)}…` : flat };
 }
 
 /** A forwarded email as its new recipients see it. Attachments are named by document title. */

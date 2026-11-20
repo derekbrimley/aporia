@@ -49,12 +49,12 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
   useEffect(() => {
     void fetch("/api/inbox/drafts", { cache: "no-store" }).then(async (r) => {
       if (!r.ok) return;
-      const { drafts: rows } = (await r.json()) as { drafts: { id: string; threadId: string | null; to: string[]; cc: string[]; subject: string | null; body: string; attachments: string[]; quotes: Quote[]; forwardedMessageId: string | null }[] };
+      const { drafts: rows } = (await r.json()) as { drafts: { id: string; threadId: string | null; to: string[]; cc: string[]; subject: string | null; body: string; attachments: string[]; quotes: Quote[]; forwardedMessageId: string | null; inReplyTo: string | null }[] };
       const restored: Record<string, ComposeState> = {};
       for (const d of rows) {
         const key = d.threadId ?? NEW;
         if (restored[key]) continue;
-        restored[key] = { threadId: d.threadId, to: d.to, cc: d.cc, subject: d.subject ?? "", body: d.body, attachments: d.attachments, quotes: d.quotes, draftId: d.id, forwardedMessageId: d.forwardedMessageId ?? null };
+        restored[key] = { threadId: d.threadId, to: d.to, cc: d.cc, subject: d.subject ?? "", body: d.body, attachments: d.attachments, quotes: d.quotes, draftId: d.id, forwardedMessageId: d.forwardedMessageId ?? null, inReplyTo: d.inReplyTo ?? null };
         markDraftSaved(restored[key]);
       }
       setDrafts((cur) => ({ ...restored, ...cur }));
@@ -113,13 +113,36 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
 
   const thread = view?.threads.find((t) => t.id === selected) ?? null;
   // The open draft follows the selection: the reply draft for the selected thread, or the new email.
-  const compose = drafts[selected ?? NEW] ?? null;
+  const compose = withReplyNote(drafts[selected ?? NEW] ?? null);
   const putDraft = (c: ComposeState) => setDrafts((d) => ({ ...d, [draftKey(c)]: c }));
   const dropDraft = (key: string) => setDrafts(({ [key]: _, ...rest }) => rest);
   const hasText = (c: ComposeState | undefined) => Boolean(c && (c.body.trim() || c.quotes.length || c.forwardedMessageId));
   const messageById = useCallback((id: string | null) => (id ? view?.messages.find((m) => m.id === id) ?? null : null), [view]);
   const docTitle = (id: string) => view?.documents.find((x) => x.id === id)?.shortTitle ?? id;
   const messages = useMemo(() => (thread && view ? thread.messageIds.map((id) => view.messages.find((m) => m.id === id)!).filter(Boolean) : []), [thread, view]);
+
+  /**
+   * The earlier email a message answers, when it isn't the one just before it on the thread. A reply
+   * to the latest email needs no note: that is how every thread reads.
+   */
+  function answeredEarlier(m: { id: string; inReplyTo?: string | null } | null, t: InboxThread | null) {
+    if (!m?.inReplyTo || !t || !view) return null;
+    const ids = t.messageIds;
+    const at = ids.indexOf(m.id);
+    const before = at === -1 ? ids[ids.length - 1] : ids[at - 1];
+    if (before === m.inReplyTo) return null;
+    return view.messages.find((x) => x.id === m.inReplyTo && x.threadId === t.id) ?? null;
+  }
+  function emailOf(m: { from: string }) { return m.from === "associate" ? "your email" : `${name(m.from)}'s email`; }
+  /** The reply draft with a note naming the earlier email it answers, for the composer to show. */
+  function withReplyNote(c: ComposeState | null): ComposeState | null {
+    if (!c || !c.threadId) return c;
+    const target = answeredEarlier({ id: "", inReplyTo: c.inReplyTo }, view?.threads.find((t) => t.id === c.threadId) ?? null);
+    return { ...c, replyNote: target ? { label: emailOf(target), at: fmt(target.at) } : null };
+  }
+  function showMessage(id: string) {
+    document.getElementById(`msg-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   // Mark visible messages read.
   useEffect(() => {
@@ -150,9 +173,9 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
   /** Reply or Reply all to one message: readdresses the thread's draft and keeps anything already written. */
   function replyToMessage(m: InboxView["messages"][number], all: boolean) {
     if (!thread) return;
-    const base = emptyCompose(thread, view?.addressBook, m.from, m.to, all ? m.cc : []);
+    const base = emptyCompose(thread, view?.addressBook, m.from, m.to, all ? m.cc : [], m.id);
     const addressed = all ? base : { ...base, cc: [] };
-    const old = drafts[thread.id];
+    const old = drafts[thread.id] && { ...drafts[thread.id]!, inReplyTo: m.id };
     putDraft(old ? { ...old, to: addressed.to, cc: addressed.cc } : addressed);
   }
   /** Forwarding opens it as the new email; an unsent new email is only replaced if the associate agrees. */
@@ -240,7 +263,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
               <div className="text-[13.5px] text-ink-muted">{messages.length} {messages.length === 1 ? "message" : "messages"}</div>
             </div>
             {messages.map((m) => (
-              <article key={m.id} className="flex flex-col gap-3.5 border-b border-oat-400" style={{ padding: "20px 32px" }} aria-label={`Message from ${name(m.from)}`}>
+              <article key={m.id} id={`msg-${m.id}`} className="scroll-mt-4 flex flex-col gap-3.5 border-b border-oat-400" style={{ padding: "20px 32px" }} aria-label={`Message from ${name(m.from)}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex flex-col gap-0.5 text-[13.5px] text-ink-muted min-w-0">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5"><span className="text-[14.5px] font-semibold text-ink whitespace-nowrap">{m.from === "associate" ? "You" : name(m.from)}</span><span className="role-chip">{role(m.from)}</span><span className="text-[12.5px] whitespace-nowrap">{fmt(m.at)}</span></div>
@@ -254,6 +277,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
                     {m.from !== "associate" && <FlagButton targetType="message" targetId={m.id} enabled={view.testerFlagsEnabled} />}
                   </div>
                 </div>
+                {(() => { const t = answeredEarlier(m, thread); return t && <ReplyingTo target={t} label={emailOf(t)} onShow={showMessage} />; })()}
                 {m.body.trim() && <EmailBody className="email-body" body={m.body} />}
                 {messageById(m.forwardedMessageId) && <Forwarded message={messageById(m.forwardedMessageId)!} nameOf={name} docTitle={docTitle} onOpenDoc={(d) => openDoc(d, 0)} />}
                 {m.rationale && <div className="quote"><div className="flex items-center gap-1.5 text-[12px] text-ink-muted"><Icon.lock />Your reasoning · Not part of the email</div><div className="text-[14px] leading-[1.5]">{m.rationale}</div></div>}
@@ -332,5 +356,16 @@ function CheckpointPicker({ checkpoints }: { checkpoints: { eventCount: number; 
       </select>
       {err && <span className="block mt-1 text-[12.5px]" role="alert">{err}</span>}
     </label>
+  );
+}
+
+/** "Replying to Priya's email from Nov 3": a reply on an earlier email, with a link back up to it. */
+function ReplyingTo({ target, label, onShow }: { target: InboxView["messages"][number]; label: string; onShow: (id: string) => void }) {
+  const excerpt = target.body.replace(/\s+/g, " ").trim();
+  return (
+    <button type="button" className="quote text-left bg-transparent border-y-0 border-r-0 cursor-pointer" onClick={() => onShow(target.id)} aria-label={`Replying to ${label} from ${fmt(target.at)}. Show it`}>
+      <span className="flex items-center gap-1.5 text-[12px] text-ink-muted"><Icon.reply />Replying to {label} from {fmt(target.at)}</span>
+      {excerpt && <span className="text-[14px] leading-[1.5] text-ink-muted line-clamp-2">{excerpt}</span>}
+    </button>
   );
 }

@@ -1,7 +1,7 @@
 import type { Assignment } from "../deps.js";
 import { renderThread, type ThreadMessageForPrompt } from "../common.js";
 
-export const BOT_ASSOCIATE_VERSION = "bot_associate@1.2.0";
+export const BOT_ASSOCIATE_VERSION = "bot_associate@1.2.1";
 
 /** Plays the associate in headless eval runs, following a path file. */
 export function botAssociatePrompt(input: {

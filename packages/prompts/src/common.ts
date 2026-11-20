@@ -43,6 +43,8 @@ export interface ThreadMessageForPrompt {
   body: string;
   /** The email this one forwards, quoted beneath the body. */
   forwarded?: ForwardedForPrompt | null;
+  /** The earlier email on the thread this one answers, set only when it isn't the one just before it. */
+  replyingTo?: { from: string; at: string; excerpt: string } | null;
 }
 
 export interface ForwardedForPrompt {
@@ -66,7 +68,7 @@ export function renderForwarded(f: ForwardedForPrompt): string {
 export function renderThread(msgs: ThreadMessageForPrompt[]): string {
   return msgs
     .map((m) => {
-      const head = `From: ${m.from} (${m.fromRole})  To: ${m.to.join(", ")}${m.cc.length ? `  Cc: ${m.cc.join(", ")}` : ""}  Sent: ${m.at}`;
+      const head = `From: ${m.from} (${m.fromRole})  To: ${m.to.join(", ")}${m.cc.length ? `  Cc: ${m.cc.join(", ")}` : ""}  Sent: ${m.at}${m.replyingTo ? `\nIn reply to: ${m.replyingTo.from}'s email of ${m.replyingTo.at} ("${m.replyingTo.excerpt}")` : ""}`;
       const body = [m.body.trim(), m.forwarded ? renderForwarded(m.forwarded) : ""].filter(Boolean).join("\n\n");
       return `${head}\n${body}`;
     })
