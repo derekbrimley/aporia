@@ -33,6 +33,7 @@ test("associate plays orientation and sends term sheet comments", async ({ page,
   await expect(page.getByRole("heading", { name: "Start here: getting oriented" })).toBeVisible({ timeout: 30_000 });
   const convo = page.getByRole("region", { name: "Conversation" });
   await expect(convo.getByText("Welcome aboard. I'm Marcus")).toBeVisible();
+  await expect(convo.locator("em", { hasText: "DISCLAIMER: This is a simulation" })).toBeVisible();
   await page.screenshot({ path: `${shots}/2-first-inbox.png` });
 
   // Reply -> self-check arrives over the live connection.
