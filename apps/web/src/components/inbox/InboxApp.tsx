@@ -230,7 +230,8 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
       </section>
 
       {/* ---------------------------------------------------------------- thread + compose */}
-      <section aria-label="Conversation" className="flex flex-col min-h-0 bg-oat-100 border-x border-oat-400 overflow-auto">
+      {/* relative: makes this scroll box the containing block for absolutely positioned children (the composer's sr-only "Email body" label). Without it they resolve against the page, so a reply box below a long thread stretched the page and left blank space to scroll into. */}
+      <section aria-label="Conversation" className="relative flex flex-col min-h-0 bg-oat-100 border-x border-oat-400 overflow-auto">
         {view.readOnly && <div className="px-8 py-2 text-[13px] bg-plum-100 text-plum-700">The deal has closed. Your inbox stays available to read.</div>}
         {thread ? (
           <>
@@ -271,7 +272,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
       </section>
 
       {/* ---------------------------------------------------------------- documents */}
-      {docsOpen && <section aria-label="Documents" className="flex flex-col min-h-0">
+      {docsOpen && <section aria-label="Documents" className="relative flex flex-col min-h-0">
         <DocumentPanel open={docs} library={view.documents.map((d) => ({ id: d.id, shortTitle: d.shortTitle, title: d.title, from: d.from }))} layout={layout} onLayout={setLayout} onOpen={(id, slot) => void openDoc(id, slot)} onClose={(slot) => setDocs((p) => { const n = [...p] as (DocView | null)[]; n[slot] = null; if (!n[0] && n[1]) { n[0] = n[1]; n[1] = null; } return n; })} canQuote={!view.readOnly} onQuote={addQuote} flagsEnabled={view.testerFlagsEnabled} roleOf={role} nameOf={name} />
       </section>}
 
