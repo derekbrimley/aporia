@@ -33,3 +33,46 @@ jobs:
       - run: pnpm test:db
       - name: Fast playthroughs (3 x Mixed path, mock LLM)
         run: pnpm evals:fast
+
+  e2e:
+    # Browser smoke tests (apps/web/e2e) against the real web app and worker on the mock model.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rematter_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/rematter_e2e
+      LLM_PROVIDER: mock
+      REMATTER_TEST_MODE: "1"
+      AUTH_SECRET: ci-only-auth-secret-not-used-anywhere-else-0123456789
+      APP_URL: http://localhost:3000
+      WEB_LOG: /tmp/web.log
+      SHOTS_DIR: /tmp/shots
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # version comes from packageManager in package.json
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @rematter/web exec playwright install --with-deps chromium
+      - run: pnpm scenario:build-docs
+      - run: pnpm db:migrate
+      - run: pnpm db:seed
+      - name: Start worker and web
+        run: |
+          nohup pnpm --filter @rematter/worker start > /tmp/worker.log 2>&1 &
+          nohup pnpm dev:web > "$WEB_LOG" 2>&1 &
+          for i in $(seq 1 90); do curl -sf -o /dev/null http://localhost:3000/sign-in && exit 0; sleep 2; done
+          echo "::error::web app did not start"; tail -50 "$WEB_LOG"; exit 1
+      - run: pnpm --filter @rematter/web e2e --trace off
+      - if: failure()
+        run: tail -100 /tmp/web.log; tail -100 /tmp/worker.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: e2e-screenshots, path: /tmp/shots, if-no-files-found: ignore }

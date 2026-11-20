@@ -26,10 +26,11 @@ pnpm playthrough -- --path mixed   # one headless bot run through closing (--fro
 pnpm evals:fast                 # both sims × mixed, realistic × 3 runs, mock model (CI runs this)
 pnpm evals:weekly               # both sims × mixed, realistic × 1 run + judge (real model, Mondays in GitHub Actions)
 pnpm evals:nightly              # both sims × all 6 paths × 4 runs + judge (by hand; expensive)
-pnpm --filter @rematter/web e2e   # Playwright smoke test
+pnpm --filter @rematter/web e2e   # Playwright smoke tests (needs web + worker running; see the e2e job in ci.yml)
+pnpm evals:cases                # replay eval cases made from tester flags (packages/evals/cases/README.md)
 ```
 
-CI (`.github/workflows/ci.yml`) runs validate → build-docs → typecheck → test:unit → db:migrate → test:db → evals:fast, with `LLM_PROVIDER=mock` and `REMATTER_TEST_MODE=1`.
+CI (`.github/workflows/ci.yml`) runs validate → build-docs → typecheck → test:unit → db:migrate → test:db → evals:fast, with `LLM_PROVIDER=mock` and `REMATTER_TEST_MODE=1`, and a separate `e2e` job that seeds a database, starts the worker and web app on the mock model and runs the Playwright specs in `apps/web/e2e`.
 
 Don't run `pnpm format`: most files predate Prettier and it rewrites the whole repo. Format only the files you touch with `pnpm exec prettier --write <files>`, and only if they were already clean.
 
