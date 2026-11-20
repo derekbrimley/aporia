@@ -20,6 +20,8 @@ async function signIn(page: Page, request: APIRequestContext, email: string) {
   }
   expect(url).toContain("/api/auth/callback?token=");
   await page.goto(url);
+  // The confirm page submits itself; wait until it has landed on the user's home page, signed in.
+  await page.waitForURL((u) => !u.pathname.startsWith("/sign-in") && !u.pathname.startsWith("/api/auth"), { timeout: 30_000 });
 }
 
 test("a stuck conversation flag becomes a downloadable eval case", async ({ browser }) => {
@@ -43,6 +45,7 @@ test("a stuck conversation flag becomes a downloadable eval case", async ({ brow
   const p = await admin.newPage();
   await signIn(p, admin.request, ADMIN);
   await p.goto("/admin/flags");
+  await expect(p.getByRole("heading", { name: "Tester flags" })).toBeVisible({ timeout: 30_000 });
   const row = p.getByRole("row").filter({ hasText: "Marcus keeps asking the same thing" }).first();
   await expect(row).toBeVisible();
   await expect(row).toContainText("conversation");
