@@ -33,7 +33,7 @@ function Picker({ label, id, value, onChange, addressBook, exclude }: { label: s
       <label htmlFor={id} className="w-10 text-[13.5px] text-ink-muted">{label}</label>
       {value.map((e) => {
         const a = addressBook.find((x) => x.email === e);
-        return <span key={e} className="flex items-center gap-1 text-[14px] bg-oat-300 rounded-full pl-3 pr-1 h-8">{a?.name ?? e}{a && <span className="role-chip" style={{ padding: "1px 7px" }}>{a.roleLabel}</span>}<button type="button" aria-label={`Remove ${a?.name ?? e}`} className="btn btn-ghost" style={{ height: 28, width: 28, padding: 0 }} onClick={() => onChange(value.filter((x) => x !== e))}><Icon.close /></button></span>;
+        return <span key={e} className="flex items-center gap-1 text-[14px] bg-oat-300 rounded-full pl-3 pr-1 h-8">{a?.name ?? e}{a && <span className="role-chip" style={{ padding: "1px 7px" }}>{a.roleLabel}</span>}<button type="button" aria-label={`Remove ${a?.name ?? e}`} data-tip="Remove recipient" className="btn btn-ghost" style={{ height: 28, width: 28, padding: 0 }} onClick={() => onChange(value.filter((x) => x !== e))}><Icon.close /></button></span>;
       })}
       <select id={id} className="bg-transparent border-0 outline-none text-[14px] text-ink-muted flex-1 min-w-[120px] h-8" value="" onChange={(e) => e.target.value && onChange([...value, e.target.value])}>
         <option value="">{value.length ? "Add…" : "Choose from the deal…"}</option>
@@ -128,7 +128,7 @@ export function Compose(props: {
       <div className="flex-1 flex flex-col gap-3" style={{ padding: "16px 4px 12px" }}>
         {state.quotes.map((q, i) => (
           <div key={i} className="quote">
-            <div className="flex items-center justify-between text-[12px] text-ink-muted"><span>From {q.documentTitle} · {q.ref}</span><button type="button" className="btn btn-ghost btn-sm" aria-label="Remove quote" onClick={() => onChange({ ...state, quotes: state.quotes.filter((_, j) => j !== i) })}><Icon.close /></button></div>
+            <div className="flex items-center justify-between text-[12px] text-ink-muted"><span>From {q.documentTitle} · {q.ref}</span><button type="button" className="btn btn-ghost btn-sm" aria-label="Remove quote" data-tip="Remove quote" data-tip-align="end" onClick={() => onChange({ ...state, quotes: state.quotes.filter((_, j) => j !== i) })}><Icon.close /></button></div>
             <div className="display italic text-[15.5px] leading-[1.5]">“{q.text}”</div>
           </div>
         ))}
@@ -137,10 +137,10 @@ export function Compose(props: {
         {props.forwarded && (
           <div className="relative">
             <Forwarded message={props.forwarded} nameOf={props.nameOf} docTitle={(d) => props.documents.find((x) => x.id === d)?.shortTitle ?? d} />
-            {!props.readOnly && <button type="button" className="btn btn-ghost btn-sm absolute top-2 right-2" aria-label="Remove forwarded message" onClick={() => onChange({ ...state, forwardedMessageId: null })}><Icon.close /></button>}
+            {!props.readOnly && <button type="button" className="btn btn-ghost btn-sm absolute top-2 right-2" aria-label="Remove forwarded message" data-tip="Remove forwarded message" data-tip-align="end" onClick={() => onChange({ ...state, forwardedMessageId: null })}><Icon.close /></button>}
           </div>
         )}
-        {state.attachments.length > 0 && <div className="flex flex-wrap gap-2">{state.attachments.map((d) => <span key={d} className="btn btn-sm"><Icon.file />{props.documents.find((x) => x.id === d)?.shortTitle ?? d}<button type="button" aria-label="Remove attachment" className="btn btn-ghost" style={{ height: 24, width: 24, padding: 0 }} onClick={() => onChange({ ...state, attachments: state.attachments.filter((x) => x !== d) })}><Icon.close /></button></span>)}</div>}
+        {state.attachments.length > 0 && <div className="flex flex-wrap gap-2">{state.attachments.map((d) => <span key={d} className="btn btn-sm"><Icon.file />{props.documents.find((x) => x.id === d)?.shortTitle ?? d}<button type="button" aria-label="Remove attachment" data-tip="Remove attachment" className="btn btn-ghost" style={{ height: 24, width: 24, padding: 0 }} onClick={() => onChange({ ...state, attachments: state.attachments.filter((x) => x !== d) })}><Icon.close /></button></span>)}</div>}
       </div>
       {error && <p role="alert" className="m-0 mb-2 text-sm text-plum-700">{error}</p>}
       <div className="flex items-center justify-between gap-2.5">

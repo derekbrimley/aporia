@@ -56,7 +56,7 @@ function DocumentView(props: { doc: DocView; canQuote: boolean; onQuote: (q: Quo
             {doc.anchors.filter((a) => a.level <= 3).map((a) => <option key={a.id} value={a.ref}>{a.ref === a.title ? a.title : `${a.ref} · ${a.title.slice(0, 40)}`}</option>)}
           </select>
           <button type="button" className="btn btn-ghost btn-sm" onClick={props.onReplace}>Replace</button>
-          <button type="button" aria-label={`Close ${doc.shortTitle}`} className="btn btn-ghost" style={{ width: 40, padding: 0 }} onClick={props.onClose}><Icon.close /></button>
+          <button type="button" aria-label={`Close ${doc.shortTitle}`} data-tip="Close document" className="btn btn-ghost" style={{ width: 40, padding: 0 }} onClick={props.onClose}><Icon.close /></button>
         </div>
         <div className="pill-input" style={{ width: 220 }}><Icon.search /><input aria-label={`Search in ${doc.shortTitle}`} placeholder={`Search in ${doc.shortTitle.toLowerCase()}`} value={query} onChange={(e) => setQuery(e.target.value)} /></div>
       </div>
@@ -86,7 +86,7 @@ export function DocumentPanel(props: {
     <div className="flex flex-col flex-1 min-h-0" style={{ padding: "24px 28px 24px" }}>
       <div className="flex items-center justify-between gap-3 mb-2 no-print">
         <div className="flex items-center gap-1 bg-oat-100 rounded-full border border-oat-400 p-0.5" role="group" aria-label="Layout">
-          {([["email", "More email", Icon.layoutEmail], ["even", "Even split", Icon.layoutEven], ["docs", "More documents", Icon.layoutDocs]] as const).map(([l, label, LayoutIcon]) => <button key={l} type="button" className="btn btn-sm btn-ghost" aria-label={label} title={label} aria-pressed={props.layout === l} style={{ width: 36, padding: 0, ...(props.layout === l ? { background: "var(--color-plum-100)" } : {}) }} onClick={() => props.onLayout(l)}><LayoutIcon /></button>)}
+          {([["email", "More email", Icon.layoutEmail], ["even", "Even split", Icon.layoutEven], ["docs", "More documents", Icon.layoutDocs]] as const).map(([l, label, LayoutIcon]) => <button key={l} type="button" className="btn btn-sm btn-ghost" aria-label={label} data-tip={label} aria-pressed={props.layout === l} style={{ width: 36, padding: 0, ...(props.layout === l ? { background: "var(--color-plum-100)" } : {}) }} onClick={() => props.onLayout(l)}><LayoutIcon /></button>)}
         </div>
         {docs.length === 1 && <button type="button" className="btn btn-sm" onClick={() => setPicker({ slot: 1, mode: "compare" })}>Compare</button>}
       </div>

@@ -247,9 +247,9 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {/* Icon buttons, so the row still fits when the document panel narrows the thread. */}
-                    {!view.readOnly && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply" title="Reply" onClick={() => replyToMessage(m, false)}><Icon.reply /></button>}
-                    {!view.readOnly && m.to.length + m.cc.length > 1 && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply all" title="Reply all" onClick={() => replyToMessage(m, true)}><Icon.replyAll /></button>}
-                    {!view.readOnly && !m.private && <button type="button" className="btn btn-ghost btn-sm" aria-label="Forward" title="Forward" onClick={() => startForward(m)}><Icon.forward /></button>}
+                    {!view.readOnly && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply" data-tip="Reply" onClick={() => replyToMessage(m, false)}><Icon.reply /></button>}
+                    {!view.readOnly && m.to.length + m.cc.length > 1 && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply all" data-tip="Reply all" onClick={() => replyToMessage(m, true)}><Icon.replyAll /></button>}
+                    {!view.readOnly && !m.private && <button type="button" className="btn btn-ghost btn-sm" aria-label="Forward" data-tip="Forward" data-tip-align="end" onClick={() => startForward(m)}><Icon.forward /></button>}
                     {m.from !== "associate" && <FlagButton targetType="message" targetId={m.id} enabled={view.testerFlagsEnabled} />}
                   </div>
                 </div>
