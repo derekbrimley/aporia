@@ -48,6 +48,8 @@ export function Compose(props: {
   isReply: boolean; onDiscard: () => void; onSent: (r: { threadId: string }) => void; readOnly: boolean;
   /** The message being forwarded, when this is a forward. */
   forwarded?: InboxMessage | null; nameOf: (id: string) => string;
+  /** Bring the composer into view and put the cursor in the body (after Reply, Reply all, Forward or Compose). */
+  focusRequested?: boolean; onFocused?: () => void;
 }) {
   const { state, onChange } = props;
   const [busy, setBusy] = useState(false);
@@ -55,6 +57,7 @@ export function Compose(props: {
   const [saved, setSaved] = useState<"saved" | "saving" | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const latest = useRef(state);
   latest.current = state;
   const pending = useRef(false);
@@ -114,8 +117,23 @@ export function Compose(props: {
     } finally { setBusy(false); }
   }
 
+  // Reply on a message near the top of a long thread opens the composer at the bottom, out of sight,
+  // so scroll it into view (like a mail client does) and focus the body with the cursor at the end.
+  const { focusRequested, onFocused } = props;
+  useEffect(() => {
+    if (!focusRequested) return;
+    rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // A new email starts with an empty To line, so only replies and forwards jump straight to the body.
+    const body = props.isReply || state.forwardedMessageId ? bodyRef.current : null;
+    if (body && !body.disabled) {
+      body.focus({ preventScroll: true });
+      body.setSelectionRange(body.value.length, body.value.length);
+    }
+    onFocused?.();
+  }, [focusRequested, onFocused]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <div className="flex flex-col flex-1" style={{ padding: "0 28px 24px" }}>
+    <div ref={rootRef} className="flex flex-col flex-1 scroll-mt-4" style={{ padding: "0 28px 24px" }}>
       <div className="flex items-center justify-between h-10 px-1 border-t-2 border-ink text-[12px] font-bold tracking-[0.1em] uppercase">
         <span>{props.isReply ? "Your reply" : state.forwardedMessageId ? "Forward" : "New email"}</span>
         {saved && <span className="text-ink-muted font-medium normal-case tracking-normal">{saved === "saving" ? "Saving draft…" : "Draft saved"}</span>}

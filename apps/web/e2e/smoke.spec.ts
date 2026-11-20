@@ -63,6 +63,9 @@ test("associate plays orientation and sends term sheet comments", async ({ page,
   // Quote in reply via selection, then the deliverable. Marcus's note to the associate alone is the
   // latest message, so Reply all on Priya's email is what reaches her (a draft to Marcus is only a draft).
   await convo.getByRole("button", { name: "Reply all" }).first().click();
+  // The composer sits under the last message, so Reply all brings it into view and focuses it.
+  await expect(page.getByLabel("Email body")).toBeFocused();
+  await expect(page.getByLabel("Email body")).toBeInViewport();
   await page.evaluate(() => {
     const el = document.querySelector('.deal-document [data-ref="Section 6"] p');
     if (!el) return;
