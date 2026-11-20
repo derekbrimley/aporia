@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { EmailBody } from "./EmailBody";
 import type { DocView, InboxThread, InboxView, Layout, Quote } from "./types";
 import { Icon } from "./icons";
 import { FlagButton } from "./FlagButton";
@@ -252,7 +253,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
                     {m.from !== "associate" && <FlagButton targetType="message" targetId={m.id} enabled={view.testerFlagsEnabled} />}
                   </div>
                 </div>
-                {m.body.trim() && <div className="email-body">{m.body}</div>}
+                {m.body.trim() && <EmailBody className="email-body" body={m.body} />}
                 {messageById(m.forwardedMessageId) && <Forwarded message={messageById(m.forwardedMessageId)!} nameOf={name} docTitle={docTitle} onOpenDoc={(d) => openDoc(d, 0)} />}
                 {m.rationale && <div className="quote"><div className="flex items-center gap-1.5 text-[12px] text-ink-muted"><Icon.lock />Your reasoning · Not part of the email</div><div className="text-[14px] leading-[1.5]">{m.rationale}</div></div>}
                 {m.attachments.length > 0 && <div className="flex flex-wrap gap-2">{m.attachments.map((d) => <button key={d} type="button" className="btn btn-sm" onClick={() => openDoc(d, 0)}><span className="flex text-plum-600"><Icon.file /></span>{view.documents.find((x) => x.id === d)?.shortTitle ?? d}</button>)}</div>}

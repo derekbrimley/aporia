@@ -1,3 +1,4 @@
+import { EmailBody } from "./EmailBody";
 import type { InboxMessage } from "./types";
 
 const fmt = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
@@ -15,7 +16,7 @@ export function Forwarded({ message, nameOf, docTitle, onOpenDoc }: {
         <span>Subject: {message.subject}</span>
         <span>To {message.to.map(who).join(", ")}{message.cc.length > 0 && <> · Cc {message.cc.map(who).join(", ")}</>}</span>
       </div>
-      <div className="email-body text-[14.5px]">{message.body}</div>
+      <EmailBody className="email-body text-[14.5px]" body={message.body} />
       {message.attachments.length > 0 && (
         <div className="text-[12.5px] text-ink-muted">
           Attachments:{" "}
