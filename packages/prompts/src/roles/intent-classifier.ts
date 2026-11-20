@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ForwardedForPrompt, ThreadMessageForPrompt } from "../common.js";
 import { renderForwarded, renderThread } from "../common.js";
 
-export const INTENT_CLASSIFIER_VERSION = "intent_classifier@1.1.0";
+export const INTENT_CLASSIFIER_VERSION = "intent_classifier@1.1.1";
 
 export const IntentOutputSchema = z.object({
   intent: z.enum(["deliverable", "question", "logistics", "acknowledgment"]),

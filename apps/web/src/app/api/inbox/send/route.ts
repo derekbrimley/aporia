@@ -16,6 +16,8 @@ const Body = z.object({
   quotedRefs: z.array(z.object({ documentId: z.string(), ref: z.string(), text: z.string().max(2000) })).default([]),
   draftId: z.string().uuid().nullable().optional(),
   forwardedMessageId: z.string().uuid().nullable().optional(),
+  /** The email on this thread being answered (Reply or Reply all on a specific message). */
+  inReplyTo: z.string().uuid().nullable().optional(),
 });
 
 /**
@@ -49,10 +51,12 @@ export async function POST(req: Request) {
   const threadId = parsed.data.threadId ?? randomUUID();
   const existing = parsed.data.threadId ? s.state.threads[parsed.data.threadId] : undefined;
   if (parsed.data.threadId && !existing) return Response.json({ error: "unknown thread" }, { status: 400 });
+  // A reply can only answer a message on its own thread; anything else is dropped rather than refused.
+  const inReplyTo = existing && parsed.data.inReplyTo && s.state.messages[parsed.data.inReplyTo]?.threadId === existing.id ? parsed.data.inReplyTo : null;
   const messageId = randomUUID();
   await appendEvent(s.session.id, {
     type: "email_sent",
-    payload: { messageId, threadId, subject: parsed.data.subject ?? existing?.subject ?? "(no subject)", to, cc, body: parsed.data.body, attachments: parsed.data.attachments, quotedRefs: parsed.data.quotedRefs, forwardedMessageId: fwd?.id ?? null },
+    payload: { messageId, threadId, subject: parsed.data.subject ?? existing?.subject ?? "(no subject)", to, cc, body: parsed.data.body, attachments: parsed.data.attachments, quotedRefs: parsed.data.quotedRefs, forwardedMessageId: fwd?.id ?? null, inReplyTo },
   }, "associate", s.pkg);
   await recordActivity(s.session.id, new Date());
   if (parsed.data.draftId) await (await import("@rematter/db")).getPool().query(`delete from drafts where id = $1 and session_id = $2`, [parsed.data.draftId, s.session.id]);

@@ -57,6 +57,8 @@ export type EmailSentEvent = Base<"email_sent", {
   quotedRefs?: { documentId: string; ref: string; text: string }[];
   /** The message this email forwards, which recipients see quoted beneath the body. */
   forwardedMessageId?: string | null;
+  /** The earlier message on the same thread this email answers (Reply on a specific message). */
+  inReplyTo?: string | null;
   /** Legacy (engine 0.1): private rationale from the retired at-send sheet. */
   rationale?: string | null;
   /** Legacy (engine 0.1): decision point the at-send sheet was shown for. */
@@ -218,6 +220,8 @@ export interface MessageState {
   quotedRefs: { documentId: string; ref: string; text: string }[];
   /** Associate forwards: the message forwarded. Absent on snapshots from before forwarding existed. */
   forwardedMessageId?: string | null;
+  /** The earlier message on this thread this one answers. Absent on snapshots from before it was recorded. */
+  inReplyTo?: string | null;
   /** Associate emails that set off a scripted beat on their own thread: the beat is the answer, so no generic reply follows. */
   answeredByBeat?: boolean;
 }

@@ -4,15 +4,19 @@ import type { AddressBookEntry, InboxMessage, InboxThread, Quote } from "./types
 import { Icon } from "./icons";
 import { Forwarded } from "./Forwarded";
 
-export interface ComposeState { threadId: string | null; to: string[]; cc: string[]; subject: string; body: string; attachments: string[]; quotes: Quote[]; draftId: string; forwardedMessageId: string | null }
+export interface ComposeState { threadId: string | null; to: string[]; cc: string[]; subject: string; body: string; attachments: string[]; quotes: Quote[]; draftId: string; forwardedMessageId: string | null;
+  /** Reply or Reply all on a specific email: the message this reply answers. */
+  inReplyTo?: string | null;
+  /** Display only, set by the inbox: who and when the answered email is from, when it isn't the latest on the thread. */
+  replyNote?: { label: string; at: string } | null }
 
-export function emptyCompose(thread?: InboxThread | null, addressBook: AddressBookEntry[] = [], lastFrom?: string, lastTo: string[] = [], lastCc: string[] = []): ComposeState {
+export function emptyCompose(thread?: InboxThread | null, addressBook: AddressBookEntry[] = [], lastFrom?: string, lastTo: string[] = [], lastCc: string[] = [], inReplyTo: string | null = null): ComposeState {
   // The draft id is minted here so every autosave of this draft upserts the same row.
   if (!thread) return { threadId: null, to: [], cc: [], subject: "", body: "", attachments: [], quotes: [], draftId: crypto.randomUUID(), forwardedMessageId: null };
   const toIds = lastFrom && lastFrom !== "associate" ? [lastFrom] : lastTo.filter((x) => x !== "associate");
   const ccIds = [...lastTo, ...lastCc].filter((x) => x !== "associate" && !toIds.includes(x));
   const email = (id: string) => addressBook.find((a) => a.id === id)?.email;
-  return { threadId: thread.id, to: toIds.map(email).filter(Boolean) as string[], cc: ccIds.map(email).filter(Boolean) as string[], subject: thread.subject, body: "", attachments: [], quotes: [], draftId: crypto.randomUUID(), forwardedMessageId: null };
+  return { threadId: thread.id, to: toIds.map(email).filter(Boolean) as string[], cc: ccIds.map(email).filter(Boolean) as string[], subject: thread.subject, body: "", attachments: [], quotes: [], draftId: crypto.randomUUID(), forwardedMessageId: null, inReplyTo };
 }
 
 /** A new email forwarding a message: a new thread, "Fwd:" subject, the original's attachments carried along. */
@@ -23,7 +27,7 @@ export function forwardCompose(m: InboxMessage): ComposeState {
 
 /** What each draft last sent to the server, by draft id, so unchanged drafts aren't re-saved on reopen. */
 const lastSaved = new Map<string, string>();
-const draftPayload = (s: ComposeState) => JSON.stringify({ id: s.draftId, threadId: s.threadId, to: s.to, cc: s.cc, subject: s.subject || null, body: s.body, attachments: s.attachments, quotes: s.quotes, forwardedMessageId: s.forwardedMessageId });
+const draftPayload = (s: ComposeState) => JSON.stringify({ id: s.draftId, threadId: s.threadId, to: s.to, cc: s.cc, subject: s.subject || null, body: s.body, attachments: s.attachments, quotes: s.quotes, forwardedMessageId: s.forwardedMessageId, inReplyTo: s.inReplyTo ?? null });
 export function markDraftSaved(s: ComposeState) { lastSaved.set(s.draftId, draftPayload(s)); }
 
 function Picker({ label, id, value, onChange, addressBook, exclude }: { label: string; id: string; value: string[]; onChange: (v: string[]) => void; addressBook: AddressBookEntry[]; exclude: string[] }) {
@@ -91,7 +95,7 @@ export function Compose(props: {
     }, 2500);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.body, state.to, state.cc, state.subject, state.attachments, state.quotes, state.forwardedMessageId]);
+  }, [state.body, state.to, state.cc, state.subject, state.attachments, state.quotes, state.forwardedMessageId, state.inReplyTo]);
 
   // Navigating to another thread unmounts the draft; flush any save still waiting on the timer.
   useEffect(() => () => { if (pending.current) void save(latest.current); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -109,7 +113,7 @@ export function Compose(props: {
       // The send deletes the draft row, so no autosave may land after it.
       cancelSave();
       await inFlight.current?.catch(() => undefined);
-      const r = await fetch("/api/inbox/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ threadId: state.threadId, to: state.to, cc: state.cc, subject: props.isReply ? undefined : state.subject || "(no subject)", body: fullBody, attachments: state.attachments, quotedRefs: state.quotes.map((q) => ({ documentId: q.documentId, ref: q.ref, text: q.text })), draftId: state.draftId, forwardedMessageId: state.forwardedMessageId }) });
+      const r = await fetch("/api/inbox/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ threadId: state.threadId, to: state.to, cc: state.cc, subject: props.isReply ? undefined : state.subject || "(no subject)", body: fullBody, attachments: state.attachments, quotedRefs: state.quotes.map((q) => ({ documentId: q.documentId, ref: q.ref, text: q.text })), draftId: state.draftId, forwardedMessageId: state.forwardedMessageId, inReplyTo: state.inReplyTo ?? null }) });
       const j = (await r.json()) as { error?: string; threadId?: string };
       // Not sent: the draft is still live, so save what autosave was cancelled from saving.
       if (!r.ok) { setError(j.error ?? "Could not send."); void save(latest.current); return; }
@@ -140,6 +144,9 @@ export function Compose(props: {
       </div>
       <Picker label="To" id="to" value={state.to} onChange={(to) => onChange({ ...state, to })} addressBook={props.addressBook} exclude={state.cc} />
       <Picker label="Cc" id="cc" value={state.cc} onChange={(cc) => onChange({ ...state, cc })} addressBook={props.addressBook} exclude={state.to} />
+      {props.isReply && state.replyNote && (
+        <div className="flex items-center gap-2 min-h-11 px-1 border-b border-oat-400 text-[13.5px] text-ink-muted"><Icon.reply /><span className="flex-1">Replying to {state.replyNote.label} from {state.replyNote.at}</span>{!props.readOnly && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply to the thread instead" title="Reply to the thread instead" onClick={() => onChange({ ...state, inReplyTo: null })}><Icon.close /></button>}</div>
+      )}
       {!props.isReply && (
         <div className="flex items-center gap-2 h-11 px-1 border-b border-oat-400"><label htmlFor="subject" className="w-14 text-[13.5px] text-ink-muted">Subject</label><input id="subject" className="flex-1 h-10 border-0 bg-transparent text-[15px] outline-none" value={state.subject} onChange={(e) => onChange({ ...state, subject: e.target.value })} /></div>
       )}

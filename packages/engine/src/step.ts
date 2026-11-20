@@ -167,6 +167,9 @@ class Ctx {
 
     const forwarded = p.forwardedMessageId ? s.messages[p.forwardedMessageId] : undefined;
     if (p.forwardedMessageId && !forwarded) this.warn(`email_sent forwards unknown message ${p.forwardedMessageId}`);
+    // A reply names the message it answers only when that message is on the same thread.
+    const repliedTo = p.inReplyTo ? s.messages[p.inReplyTo] : undefined;
+    if (p.inReplyTo && repliedTo?.threadId !== p.threadId) this.warn(`email_sent replies to ${p.inReplyTo}, which is not on its thread`);
     const intent: Intent | null = p.notMyAnswerYet ? "question" : p.intent ?? null;
     const msg: MessageState = {
       id: p.messageId, threadId: p.threadId, from: "associate", to: p.to, cc: p.cc,
@@ -174,6 +177,7 @@ class Ctx {
       intent, rationale: p.rationale ?? null, decisionPointId: p.decisionPointId ?? null, beatId: null,
       assignmentId: null, reflectionQuestions: [], quotedRefs: p.quotedRefs ?? [],
       forwardedMessageId: forwarded?.id ?? null,
+      inReplyTo: repliedTo?.threadId === p.threadId ? repliedTo.id : null,
     };
     this.addMessage(msg);
     thread.associateMessageCount += 1;
@@ -402,6 +406,7 @@ class Ctx {
       id: p.messageId, threadId: p.threadId, from: p.from, to: p.to, cc: p.cc, subject: p.subject || thread.subject, body: p.body,
       attachments: p.attachments, at: this.at, kind: p.kind, intent: null, rationale: null, decisionPointId: null,
       beatId: p.beatId ?? null, assignmentId: p.assignmentId ?? null, reflectionQuestions: p.reflectionQuestions ?? [], quotedRefs: [],
+      inReplyTo: p.inReplyTo && s.messages[p.inReplyTo]?.threadId === p.threadId ? p.inReplyTo : null,
     };
     this.addMessage(msg);
     for (const d of p.attachments) if (!s.documentsReleased.includes(d)) s.documentsReleased.push(d);

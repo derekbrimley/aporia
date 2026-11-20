@@ -3,7 +3,7 @@ import type { Assignment, Character, DecisionPoint, Facts } from "../deps.js";
 import { CHARACTER_HARD_RULES, characterCard, documentsBlock, factsBlock, renderThread, type AssociateReading, type ThreadMessageForPrompt } from "../common.js";
 import type { AssessmentOutput } from "./assessor.js";
 
-export const REFLECTION_ENGINE_VERSION = "reflection_engine@1.7.0";
+export const REFLECTION_ENGINE_VERSION = "reflection_engine@1.7.1";
 
 export const ReflectionOutputSchema = z.object({
   questions: z.array(z.string()).min(1).max(3),
