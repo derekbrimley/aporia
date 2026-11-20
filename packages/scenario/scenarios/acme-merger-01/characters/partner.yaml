@@ -33,5 +33,5 @@ writes_when:
   - The closing debrief.
 sample_messages:
   - "Daniel, please have our associate take the first pass. Grace wants something she can take to Beta's CEO on Thursday. R."
-reply_delay_seconds: { min: 300, max: 900 }
+reply_delay_seconds: { min: 0, max: 0 }
 gives_socratic_feedback: true

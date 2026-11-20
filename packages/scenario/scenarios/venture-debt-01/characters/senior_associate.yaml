@@ -37,5 +37,5 @@ writes_when:
 sample_messages:
   - "Thanks for these. Before Priya gets back to us, a few questions on your note."
   - "Good. That is the question to keep asking."
-reply_delay_seconds: { min: 30, max: 120 }
+reply_delay_seconds: { min: 0, max: 0 }
 gives_socratic_feedback: true

@@ -30,5 +30,5 @@ writes_when:
   - The closing debrief.
 sample_messages:
   - "Marcus, can you get our associate started on the comparison? I want the client to see something by Friday. E."
-reply_delay_seconds: { min: 300, max: 900 }
+reply_delay_seconds: { min: 0, max: 0 }
 gives_socratic_feedback: true

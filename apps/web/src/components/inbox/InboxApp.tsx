@@ -115,6 +115,9 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
   // The open draft follows the selection: the reply draft for the selected thread, or the new email.
   const compose = withReplyNote(drafts[selected ?? NEW] ?? null);
   const putDraft = (c: ComposeState) => setDrafts((d) => ({ ...d, [draftKey(c)]: c }));
+  // The draft whose composer should scroll into view and take focus on its next render.
+  const [focusDraft, setFocusDraft] = useState<string | null>(null);
+  const clearFocusDraft = useCallback(() => setFocusDraft(null), []);
   const dropDraft = (key: string) => setDrafts(({ [key]: _, ...rest }) => rest);
   const hasText = (c: ComposeState | undefined) => Boolean(c && (c.body.trim() || c.quotes.length || c.forwardedMessageId));
   const messageById = useCallback((id: string | null) => (id ? view?.messages.find((m) => m.id === id) ?? null : null), [view]);
@@ -169,7 +172,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
     const last = [...messages].reverse().find((m) => m.from !== "associate") ?? messages[messages.length - 1];
     return emptyCompose(t, view?.addressBook, last?.from, last?.to ?? [], last?.cc ?? []);
   }
-  function startReply() { if (thread && !drafts[thread.id]) putDraft(replyTo(thread)); }
+  function startReply() { if (!thread) return; if (!drafts[thread.id]) putDraft(replyTo(thread)); setFocusDraft(thread.id); }
   /** Reply or Reply all to one message: readdresses the thread's draft and keeps anything already written. */
   function replyToMessage(m: InboxView["messages"][number], all: boolean) {
     if (!thread) return;
@@ -177,6 +180,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
     const addressed = all ? base : { ...base, cc: [] };
     const old = drafts[thread.id] && { ...drafts[thread.id]!, inReplyTo: m.id };
     putDraft(old ? { ...old, to: addressed.to, cc: addressed.cc } : addressed);
+    setFocusDraft(thread.id);
   }
   /** Forwarding opens it as the new email; an unsent new email is only replaced if the associate agrees. */
   function startForward(m: InboxView["messages"][number]) {
@@ -184,9 +188,9 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
     const old = drafts[NEW];
     if (old) void fetch("/api/inbox/drafts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: old.draftId }) });
     putDraft(forwardCompose(m));
-    setSelected(null); setSelectedRow(null);
+    setSelected(null); setSelectedRow(null); setFocusDraft(NEW);
   }
-  function startNew() { if (!drafts[NEW]) putDraft(emptyCompose()); setSelected(null); setSelectedRow(null); }
+  function startNew() { if (!drafts[NEW]) putDraft(emptyCompose()); setSelected(null); setSelectedRow(null); setFocusDraft(NEW); }
   function addQuote(q: Quote) {
     const key = thread?.id ?? NEW;
     setDrafts((d) => {
@@ -271,9 +275,9 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {/* Icon buttons, so the row still fits when the document panel narrows the thread. */}
-                    {!view.readOnly && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply" title="Reply" onClick={() => replyToMessage(m, false)}><Icon.reply /></button>}
-                    {!view.readOnly && m.to.length + m.cc.length > 1 && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply all" title="Reply all" onClick={() => replyToMessage(m, true)}><Icon.replyAll /></button>}
-                    {!view.readOnly && !m.private && <button type="button" className="btn btn-ghost btn-sm" aria-label="Forward" title="Forward" onClick={() => startForward(m)}><Icon.forward /></button>}
+                    {!view.readOnly && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply" data-tip="Reply" onClick={() => replyToMessage(m, false)}><Icon.reply /></button>}
+                    {!view.readOnly && m.to.length + m.cc.length > 1 && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply all" data-tip="Reply all" onClick={() => replyToMessage(m, true)}><Icon.replyAll /></button>}
+                    {!view.readOnly && !m.private && <button type="button" className="btn btn-ghost btn-sm" aria-label="Forward" data-tip="Forward" data-tip-align="end" onClick={() => startForward(m)}><Icon.forward /></button>}
                     {m.from !== "associate" && <FlagButton targetType="message" targetId={m.id} enabled={view.testerFlagsEnabled} />}
                   </div>
                 </div>
@@ -292,7 +296,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
             {!compose && !view.readOnly && <div className="border-t border-oat-400 mt-auto" style={{ padding: "16px 32px 24px" }}><button type="button" className="btn btn-primary" onClick={startReply}><Icon.reply />Reply</button></div>}
           </>
         ) : (!compose && <div className="flex-1 flex items-center justify-center text-ink-muted">Select a thread</div>)}
-        {compose && <Compose key={draftKey(compose)} state={compose} onChange={putDraft} addressBook={view.addressBook} documents={view.documents} isReply={Boolean(compose.threadId)} readOnly={view.readOnly} forwarded={messageById(compose.forwardedMessageId)} nameOf={name} onDiscard={() => { if (compose.draftId) void fetch("/api/inbox/drafts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: compose.draftId }) }); dropDraft(draftKey(compose)); }} onSent={({ threadId }) => { dropDraft(draftKey(compose)); setSelected(threadId); void load(); }} />}
+        {compose && <Compose key={draftKey(compose)} state={compose} onChange={putDraft} addressBook={view.addressBook} documents={view.documents} isReply={Boolean(compose.threadId)} readOnly={view.readOnly} forwarded={messageById(compose.forwardedMessageId)} nameOf={name} focusRequested={focusDraft === draftKey(compose)} onFocused={clearFocusDraft} onDiscard={() => { if (compose.draftId) void fetch("/api/inbox/drafts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: compose.draftId }) }); dropDraft(draftKey(compose)); }} onSent={({ threadId }) => { dropDraft(draftKey(compose)); setSelected(threadId); void load(); }} />}
       </section>
 
       {/* ---------------------------------------------------------------- documents */}

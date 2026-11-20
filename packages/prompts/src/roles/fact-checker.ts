@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Character, Facts } from "../deps.js";
 import { factsBlock } from "../common.js";
 
-export const FACT_CHECKER_VERSION = "fact_checker@1.2.0";
+export const FACT_CHECKER_VERSION = "fact_checker@1.3.0";
 
 export const FactCheckOutputSchema = z.object({
   pass: z.boolean(),
@@ -22,6 +22,6 @@ export function factCheckerPrompt(input: { character: Character; slice: Facts; d
 - grading: the draft scores, grades, ranks or explicitly labels the associate's work as right or wrong.
 - invented_fact: the draft invents a named person, document, section number or figure not in the known facts.
 Be strict about amounts, dates and party names; be lenient about tone. Output JSON only.`;
-  const user = `Character: ${input.character.name} (${input.character.role_label}).\n\n${factsBlock(input.slice)}${input.readText ? `\n\nThe character has also read this forwarded email; facts stated in it count as known:\n"""\n${input.readText}\n"""` : ""}\n\nAnswer-key items this character must never state outright:\n${input.answerKeyHints.map((h) => `- ${h}`).join("\n") || "(none)"}\n\nDraft email:\n"""\n${input.draft}\n"""`;
+  const user = `Character: ${input.character.name} (${input.character.role_label}).\n\n${factsBlock(input.slice)}${input.readText ? `\n\nThe character has also read the following (a forwarded email or the associate's documents); facts, names and section numbers stated in it count as known:\n"""\n${input.readText}\n"""` : ""}\n\nAnswer-key items this character must never state outright:\n${input.answerKeyHints.map((h) => `- ${h}`).join("\n") || "(none)"}\n\nDraft email:\n"""\n${input.draft}\n"""`;
   return { system, user, version: FACT_CHECKER_VERSION };
 }

@@ -1,7 +1,7 @@
 import type { Beat, Character, Facts, NegotiationPoint } from "../deps.js";
-import { CHARACTER_HARD_RULES, characterCard, factsBlock, renderThread, type ThreadMessageForPrompt } from "../common.js";
+import { CHARACTER_HARD_RULES, characterCard, documentsBlock, factsBlock, renderThread, type AssociateReading, type ThreadMessageForPrompt } from "../common.js";
 
-export const CHARACTER_WRITER_VERSION = "character_writer@1.6.0";
+export const CHARACTER_WRITER_VERSION = "character_writer@1.8.0";
 
 export interface CharacterWriterInput {
   character: Character;
@@ -11,7 +11,13 @@ export interface CharacterWriterInput {
   thread: ThreadMessageForPrompt[];
   otherThreads?: { subject: string; messages: ThreadMessageForPrompt[] }[];
   mode:
-    | { kind: "reply"; toMessageBody: string; draftFor?: { deliverable: string; deliverToName: string } }
+    | {
+        kind: "reply";
+        toMessageBody: string;
+        draftFor?: { deliverable: string; deliverToName: string };
+        /** The associate has asked more than once and is stuck: "point" to the exact passage, or "answer" outright. */
+        help?: "point" | "answer";
+      }
     | { kind: "beat"; beat: Beat; mustIncludeFacts: Facts }
     | { kind: "interruption"; beat: Beat; mustIncludeFacts: Facts };
   negotiation?: NegotiationPoint[];
@@ -23,6 +29,34 @@ export interface CharacterWriterInput {
   storyDate: string;
   /** Titles of the documents the associate has received so far, in order. */
   associateDocuments?: string[];
+  /** Which documents the associate has, so facts are split into ones they can look up and ones they can't. */
+  reading?: AssociateReading;
+  /** Full text of the associate's documents that this character knows, for checking what they say. */
+  documents?: { title: string; text: string }[];
+  /** For the associate's own firm: the work the associate owes right now, one line each. */
+  currentWork?: string[];
+  /**
+   * Set when replying on the private side thread that follows up on work already sent. `closeNow`
+   * means the character has already followed up there and must wrap the thread up.
+   */
+  followUpThread?: { closeNow: boolean };
+}
+
+/** Once the associate is stuck, stop teaching by withholding: show them where it is, then just answer. */
+function helpText(input: CharacterWriterInput): string {
+  if (input.mode.kind !== "reply" || !input.mode.help) return "";
+  const a = input.associateFirstName;
+  if (input.mode.help === "point") return ` You have already answered ${a} once on this, and they are still asking. If they are stuck on something you pointed them toward, stop sending them to look: name the document and section and quote the passage that answers it (from the documents above, exactly as written). If it isn't in their documents, say so plainly and tell them what you know. You may ask one question about what it means for the client, but don't make them hunt again. This overrides the rule against naming the item, for this email only.`;
+  return ` ${a} has asked about this several times and is still stuck, which is frustrating for them. If that's what is happening, answer the question directly and plainly, the way a senior colleague does once someone has genuinely tried: give the answer, where it comes from, and why it matters, then move on. Ask no further questions about it. This overrides the rule against stating answers, for this email only.`;
+}
+
+/** Extra instructions for the private follow-up thread on work the associate already sent. */
+function followUp(input: CharacterWriterInput): string {
+  const f = input.followUpThread;
+  if (!f) return "";
+  const a = input.associateFirstName;
+  if (f.closeNow) return ` This private thread follows up on work ${a} already sent, and you have already followed up here. Close it now: respond to what ${a} said in a sentence or two, ask no new questions, don't ask for another pass or for anything to be sent before it goes to the client, and if ${a} owes something else right now, point them to it.`;
+  return ` This private thread follows up on work ${a} already sent. Ask at most one question, and if ${a} has answered or is stuck, let it go rather than pressing.`;
 }
 
 /** Whether the most recent email on the thread forwards another one. */
@@ -43,12 +77,13 @@ export function characterWriterPrompt(input: CharacterWriterInput) {
   const negotiation = input.negotiation?.length
     ? `\n\nNegotiation positions you may take on behalf of ${input.deal.counterpartyName} (quote or paraphrase; never go beyond them):\n${input.negotiation.map((n) => `- ${n.title}: opening: ${n.opening} | fallback (only after the ${input.deal.side} gives a reason): ${n.fallback} | walk-away: ${n.walk_away}`).join("\n")}`
     : "";
-  const system = `${characterCard(c)}\n\n${CHARACTER_HARD_RULES}\n\n${factsBlock(input.facts)}${negotiation}\n\nThe associate you write to is ${input.associateFirstName}, a junior associate at ${c.side === "own_firm" ? "your firm" : `${input.deal.firm}, ${input.deal.side}'s counsel`}.`;
+  const docText = input.documents?.length ? `\n\n${documentsBlock(input.documents, input.associateFirstName)}` : "";
+  const system = `${characterCard(c)}\n\n${CHARACTER_HARD_RULES}\n\n${factsBlock(input.facts, input.reading)}${negotiation}\n\nThe associate you write to is ${input.associateFirstName}, a junior associate at ${c.side === "own_firm" ? "your firm" : `${input.deal.firm}, ${input.deal.side}'s counsel`}.${docText}`;
 
   const noAttachments = " You cannot attach anything to this email, so never say you are attaching, sending or forwarding a document, or that one is on its way.";
   let task: string;
   if (input.mode.kind === "reply") {
-    task = `Write your reply to the most recent email on this thread. If the associate sent several emails since you last wrote, answer them together in this one reply. Respond as you would in a real deal, in your voice, within what you know.${noAttachments}${repliesToEarlier(input.thread) ? ` The most recent email answers the earlier email named in its "In reply to" line, not the one just above it, so read it in that context.` : ""} If the email asks you to decide something legal or to give the answer to the associate's assignment, do what this person would really do: ask what they think, redirect, or defer.${forwardsSomething(input.thread) ? ` The associate forwarded you the email quoted under "Forwarded message"; you have now read it and may refer to what it says.` : ""}${input.mode.draftFor ? ` The associate sent this to you only; it has not gone to ${input.mode.draftFor.deliverToName} yet. It reads as their draft of this assignment: ${input.mode.draftFor.deliverable} React the way a senior associate reviewing a draft would: keep it short, don't grade it or rewrite it, ask at most one question, and tell them to send it to ${input.mode.draftFor.deliverToName} when they're ready. Do not talk as if ${input.mode.draftFor.deliverToName} has seen it.` : ""}`;
+    task = `Write your reply to the most recent email on this thread. If the associate sent several emails since you last wrote, answer them together in this one reply. Respond as you would in a real deal, in your voice, within what you know.${noAttachments}${repliesToEarlier(input.thread) ? ` The most recent email answers the earlier email named in its "In reply to" line, not the one just above it, so read it in that context.` : ""} If the email asks you to decide something legal or to give the answer to the associate's assignment, do what this person would really do: ask what they think, redirect, or defer.${forwardsSomething(input.thread) ? ` The associate forwarded you the email quoted under "Forwarded message"; you have now read it and may refer to what it says.` : ""}${helpText(input)}${followUp(input)}${input.mode.draftFor ? ` The associate sent this to you only; it has not gone to ${input.mode.draftFor.deliverToName} yet. It reads as their draft of this assignment: ${input.mode.draftFor.deliverable} React the way a senior associate reviewing a draft would: keep it short, don't grade it or rewrite it, ask at most one question, and tell them to send it to ${input.mode.draftFor.deliverToName} when they're ready. Do not talk as if ${input.mode.draftFor.deliverToName} has seen it.` : ""}`;
   } else {
     const b = input.mode.beat;
     const must = Object.keys(input.mode.mustIncludeFacts).length ? `\nThese facts must appear accurately in the email:\n${factsBlock(input.mode.mustIncludeFacts).split("\n").slice(1).join("\n")}` : "";
@@ -61,6 +96,9 @@ export function characterWriterPrompt(input: CharacterWriterInput) {
   const docs = input.associateDocuments
     ? `\n\nDocuments ${input.associateFirstName} has received so far: ${input.associateDocuments.length ? input.associateDocuments.join("; ") : "none"}. They have nothing else yet. Don't suggest they already have, or can look at, any other document.`
     : "";
-  const user = `Today is ${input.storyDate}.${docs}${others}\n\nThe thread:\n${renderThread(input.thread) || "(new thread)"}\n\n${task}${feedback}\n\nWrite only the body of the email.`;
+  const work = input.currentWork?.length
+    ? `\n\nWhat ${input.associateFirstName} owes right now: ${input.currentWork.join("; ")}. Don't hold that up with more questions about work that is already done.`
+    : "";
+  const user = `Today is ${input.storyDate}.${docs}${work}${others}\n\nThe thread:\n${renderThread(input.thread) || "(new thread)"}\n\n${task}${feedback}\n\nWrite only the body of the email.`;
   return { system, user, version: CHARACTER_WRITER_VERSION };
 }

@@ -95,7 +95,7 @@ export function createTaskList(provider?: LlmProvider): TaskList {
  * call plus up to two regenerations is well under two minutes), so a lock older than this is
  * from a worker that is gone.
  */
-export const STALE_LOCK_MINUTES = 10;
+export const STALE_LOCK_MINUTES = 3;
 
 /** Releases jobs (and their session queues) held by workers that died mid-job. Returns how many workers it unlocked. */
 export async function unlockStaleJobs(minutes = STALE_LOCK_MINUTES): Promise<number> {

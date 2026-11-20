@@ -1,5 +1,5 @@
 import type { Character, Facts } from "./deps.js";
-import { renderFactsForPrompt } from "@rematter/scenario";
+import { partitionFactsBySource, renderFactsForPrompt } from "@rematter/scenario";
 
 /**
  * Hard rules every character prompt carries. Kept as one constant so the eval
@@ -12,6 +12,7 @@ export const CHARACTER_HARD_RULES = `Rules you must never break:
 - Legally substantive positions on behalf of the other side of the deal come only from the negotiation positions you are given. Never improvise one.
 - Never invent people, systems or logistics that aren't in the thread or your facts: no assistants, logins, portals, folders, calls or meetings. Everything in this deal happens by email. If someone proposes a call or meeting, don't accept a time or set one up; ask them to put the question in writing, or answer it by email.
 - Believe the associate about what they have and haven't received, and about today's date. Never insist they already have a document or access to something; if they say they don't, take it at face value and work with what they have.
+- Send the associate to a document only for what that document actually says. If they tell you a document doesn't contain something, believe them: never insist it's there, never send them back to reread it, and never promise to check and come back later. Say plainly that it isn't there, then either tell them what you know or move on.
 - Write a plain email: no subject line, no markdown, no bullet symbols unless the person would really use a numbered list. Sign off the way this person does.
 - Address the associate by first name.`;
 
@@ -29,9 +30,36 @@ export function characterCard(c: Character): string {
   return lines.join("\n");
 }
 
-export function factsBlock(facts: Facts): string {
-  const body = renderFactsForPrompt(facts);
-  return body ? `Deal facts you know (use nothing beyond these):\n${body}` : "You know no deal facts.";
+/** What the associate can read, so a prompt can tell facts they can look up from facts they can't. */
+export interface AssociateReading {
+  associateFirstName: string;
+  /** Ids of the documents in the associate's inbox. */
+  released: string[];
+  /** Display title for a document id. */
+  docTitle: (documentId: string) => string;
+}
+
+export function factsBlock(facts: Facts, reading?: AssociateReading): string {
+  if (!reading) {
+    const body = renderFactsForPrompt(facts);
+    return body ? `Deal facts you know (use nothing beyond these):\n${body}` : "You know no deal facts.";
+  }
+  const a = reading.associateFirstName;
+  const { inDocuments, notInDocuments, unsourced } = partitionFactsBySource(facts, (d) => reading.released.includes(d));
+  const parts: string[] = [];
+  const inDocs = renderFactsForPrompt(inDocuments, reading.docTitle);
+  if (inDocs) parts.push(`Written in documents ${a} has (the brackets say which; you may point ${a} there):\n${inDocs}`);
+  const notInDocs = renderFactsForPrompt(notInDocuments);
+  if (notInDocs) parts.push(`Not written in any document ${a} has. You know these from the deal itself, or from papers ${a} hasn't received. You may tell ${a} them in your own words, but never say or suggest they are in a document ${a} has, and never send ${a} to look for them:\n${notInDocs}`);
+  const other = renderFactsForPrompt(unsourced);
+  if (other) parts.push(other);
+  return parts.length ? `Deal facts you know (use nothing beyond these).\n\n${parts.join("\n\n")}` : "You know no deal facts.";
+}
+
+/** The full text of the documents the associate has, so a character can check what a document really says. */
+export function documentsBlock(docs: { title: string; text: string }[], associateFirstName: string): string {
+  if (!docs.length) return "";
+  return `The documents ${associateFirstName} has, in full, as ${associateFirstName} sees them. Before you say what a document does or doesn't say, check it here:\n\n${docs.map((d) => `=== ${d.title} ===\n${d.text.replace(/\n{3,}/g, "\n\n").trim()}`).join("\n\n")}`;
 }
 
 export interface ThreadMessageForPrompt {

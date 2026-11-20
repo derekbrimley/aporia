@@ -37,4 +37,4 @@ writes_when:
   - Responding to the associate's positions on open points.
 sample_messages:
   - "Thank you. I have taken Acme's board through your note. I am afraid the consent condition is not something the board can accept as drafted; let me explain why. Simon"
-reply_delay_seconds: { min: 600, max: 1800 }
+reply_delay_seconds: { min: 0, max: 0 }
