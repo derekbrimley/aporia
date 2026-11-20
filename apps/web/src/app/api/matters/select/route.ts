@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const id = url.searchParams.get("c");
   const match = id ? (await allMatters(u)).find((m) => m.cohort.id === id) : undefined;
   if (!id || !match) return Response.redirect(new URL("/matters", url), 303);
-  if (match.userId !== u.id) await signIn(match.userId);
+  if (match.userId !== u.id) await signIn(match.userId, u.impersonator);
   (await cookies()).set(MATTER_COOKIE, id, {
     path: "/",
     sameSite: "lax",

@@ -16,7 +16,7 @@ export async function GET() {
 
 /** Autosave: upserts a draft. */
 export async function PUT(req: Request) {
-  const u = await apiUser(["associate"]);
+  const u = await apiUser(["associate"], { write: true });
   if (u instanceof Response) return u;
   const s = await sessionForUser(u);
   if (!s) return Response.json({ error: "no session" }, { status: 404 });
@@ -30,7 +30,7 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const u = await apiUser(["associate"]);
+  const u = await apiUser(["associate"], { write: true });
   if (u instanceof Response) return u;
   const s = await sessionForUser(u);
   if (!s) return Response.json({ ok: true });

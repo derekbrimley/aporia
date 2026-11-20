@@ -339,5 +339,7 @@ export const authSessions = pgTable("auth_sessions", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   tokenHash: text("token_hash").notNull().unique(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  /** Set when an internal admin is viewing the app as this user ("View as tester"). Such sessions are read-only. */
+  impersonatorUserId: uuid("impersonator_user_id").references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

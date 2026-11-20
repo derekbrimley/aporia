@@ -27,6 +27,8 @@ export interface InboxView {
   writing: Record<string, { from: string; dueAt: string }[]>;
   /** Test checkpoints the associate can load, when their cohort has a source run (set by /api/inbox). */
   checkpoints?: { eventCount: number; label: string; milestoneId: string | null }[] | null;
+  /** Set when an admin is viewing as this associate (set by /api/inbox): nothing can be sent, saved or marked read. */
+  viewingAs?: string | null;
 }
 
 export function addressBook(pkg: ScenarioPackage): AddressBookEntry[] {

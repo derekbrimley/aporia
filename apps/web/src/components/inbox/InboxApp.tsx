@@ -151,7 +151,8 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
   useEffect(() => {
     if (!thread) return;
     const unread = messages.filter((m) => m.from !== "associate" && !m.readAt).map((m) => m.id);
-    if (unread.length) void fetch("/api/inbox/read", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messageIds: unread }) }).then(() => setView((v) => v && { ...v, messages: v.messages.map((m) => (unread.includes(m.id) ? { ...m, readAt: new Date().toISOString() } : m)), threads: v.threads.map((t) => (t.id === thread.id ? { ...t, unread: 0 } : t)) }));
+    // An admin viewing as the associate must not mark their mail read.
+    if (unread.length && !view?.viewingAs) void fetch("/api/inbox/read", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messageIds: unread }) }).then(() => setView((v) => v && { ...v, messages: v.messages.map((m) => (unread.includes(m.id) ? { ...m, readAt: new Date().toISOString() } : m)), threads: v.threads.map((t) => (t.id === thread.id ? { ...t, unread: 0 } : t)) }));
   }, [thread?.id, messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function openDoc(id: string, slot: 0 | 1 = 0) {
@@ -163,6 +164,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
       docCache.current.set(id, d);
     }
     setDocs((prev) => { const next = [...prev] as (DocView | null)[]; next[slot] = d!; if (slot === 1 && !next[0]) { next[0] = d!; next[1] = null; } return next; });
+    if (view?.viewingAs) { setLibrary(false); return; }
     void fetch("/api/inbox/opened", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ documentId: id }) });
     if (slot === 1 && docs[0]) void fetch("/api/inbox/compared", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ documentIds: [docs[0].id, id] }) });
     setLibrary(false);
@@ -205,6 +207,8 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
   const cols = layout === "email" ? "292px 1fr 420px" : layout === "docs" ? "292px 460px 1fr" : "292px 540px 1fr";
   const docsOpen = docs.some(Boolean);
   const milestoneTitle = view.milestones.find((m) => m.id === view.currentMilestone)?.title;
+  // Nothing can be written: the deal has closed, or an admin is viewing as the associate.
+  const locked = view.readOnly || Boolean(view.viewingAs);
 
   return (
     <main className="h-screen grid" style={{ gridTemplateColumns: docsOpen ? cols : "292px 1fr", minWidth: 1280 }}>
@@ -217,7 +221,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
               : <div className="text-[12px] font-semibold tracking-[0.08em] uppercase text-ink-muted">{view.matterLabel}</div>}
             <h1 className="display text-[28px] leading-[1.15] font-normal m-0">Inbox</h1>
           </div>
-          <button type="button" className="btn btn-primary" style={{ padding: "0 16px" }} onClick={startNew} disabled={view.readOnly}><Icon.compose />Compose</button>
+          <button type="button" className="btn btn-primary" style={{ padding: "0 16px" }} onClick={startNew} disabled={locked}><Icon.compose />Compose</button>
         </div>
         <div className="pill-input"><Icon.search /><input aria-label="Search email" placeholder="Search email" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
         <div className="flex gap-1 px-1" role="tablist" aria-label="Folders">
@@ -259,12 +263,12 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
       {/* ---------------------------------------------------------------- thread + compose */}
       {/* relative: makes this scroll box the containing block for absolutely positioned children (the composer's sr-only "Email body" label). Without it they resolve against the page, so a reply box below a long thread stretched the page and left blank space to scroll into. */}
       <section aria-label="Conversation" className="relative flex flex-col min-h-0 bg-oat-100 border-x border-oat-400 overflow-auto">
-        {view.readOnly && <div className="px-8 py-2 text-[13px] bg-plum-100 text-plum-700">The deal has closed. Your inbox stays available to read.</div>}
+        {view.readOnly && !view.viewingAs && <div className="px-8 py-2 text-[13px] bg-plum-100 text-plum-700">The deal has closed. Your inbox stays available to read.</div>}
         {thread ? (
           <>
             <div className="flex flex-col gap-3.5 border-b border-oat-400" style={{ padding: "28px 32px 18px" }}>
               <h2 className="display text-[27px] leading-[1.22] font-normal m-0">{thread.subject}</h2>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-[13.5px] text-ink-muted"><span>{messages.length} {messages.length === 1 ? "message" : "messages"}</span><FlagButton targetType="thread" targetId={thread.id} enabled={view.testerFlagsEnabled && !view.readOnly} /></div>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[13.5px] text-ink-muted"><span>{messages.length} {messages.length === 1 ? "message" : "messages"}</span><FlagButton targetType="thread" targetId={thread.id} enabled={view.testerFlagsEnabled && !locked} /></div>
             </div>
             {messages.map((m) => (
               <article key={m.id} id={`msg-${m.id}`} className="scroll-mt-4 flex flex-col gap-3.5 border-b border-oat-400" style={{ padding: "20px 32px" }} aria-label={`Message from ${name(m.from)}`}>
@@ -275,10 +279,10 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {/* Icon buttons, so the row still fits when the document panel narrows the thread. */}
-                    {!view.readOnly && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply" data-tip="Reply" onClick={() => replyToMessage(m, false)}><Icon.reply /></button>}
-                    {!view.readOnly && m.to.length + m.cc.length > 1 && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply all" data-tip="Reply all" onClick={() => replyToMessage(m, true)}><Icon.replyAll /></button>}
-                    {!view.readOnly && !m.private && <button type="button" className="btn btn-ghost btn-sm" aria-label="Forward" data-tip="Forward" data-tip-align="end" onClick={() => startForward(m)}><Icon.forward /></button>}
-                    {m.from !== "associate" && <FlagButton targetType="message" targetId={m.id} enabled={view.testerFlagsEnabled} />}
+                    {!locked && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply" data-tip="Reply" onClick={() => replyToMessage(m, false)}><Icon.reply /></button>}
+                    {!locked && m.to.length + m.cc.length > 1 && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply all" data-tip="Reply all" onClick={() => replyToMessage(m, true)}><Icon.replyAll /></button>}
+                    {!locked && !m.private && <button type="button" className="btn btn-ghost btn-sm" aria-label="Forward" data-tip="Forward" data-tip-align="end" onClick={() => startForward(m)}><Icon.forward /></button>}
+                    {m.from !== "associate" && <FlagButton targetType="message" targetId={m.id} enabled={view.testerFlagsEnabled && !view.viewingAs} />}
                   </div>
                 </div>
                 {(() => { const t = answeredEarlier(m, thread); return t && <ReplyingTo target={t} label={emailOf(t)} onShow={showMessage} />; })()}
@@ -293,15 +297,15 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
                 <span className="typing-dots" aria-hidden="true"><span /><span /><span /></span>{name(w.from).split(" ")[0]} is writing…
               </div>
             ))}
-            {!compose && !view.readOnly && <div className="border-t border-oat-400 mt-auto" style={{ padding: "16px 32px 24px" }}><button type="button" className="btn btn-primary" onClick={startReply}><Icon.reply />Reply</button></div>}
+            {!compose && !locked && <div className="border-t border-oat-400 mt-auto" style={{ padding: "16px 32px 24px" }}><button type="button" className="btn btn-primary" onClick={startReply}><Icon.reply />Reply</button></div>}
           </>
         ) : (!compose && <div className="flex-1 flex items-center justify-center text-ink-muted">Select a thread</div>)}
-        {compose && <Compose key={draftKey(compose)} state={compose} onChange={putDraft} addressBook={view.addressBook} documents={view.documents} isReply={Boolean(compose.threadId)} readOnly={view.readOnly} forwarded={messageById(compose.forwardedMessageId)} nameOf={name} focusRequested={focusDraft === draftKey(compose)} onFocused={clearFocusDraft} onDiscard={() => { if (compose.draftId) void fetch("/api/inbox/drafts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: compose.draftId }) }); dropDraft(draftKey(compose)); }} onSent={({ threadId }) => { dropDraft(draftKey(compose)); setSelected(threadId); void load(); }} />}
+        {compose && <Compose key={draftKey(compose)} state={compose} onChange={putDraft} addressBook={view.addressBook} documents={view.documents} isReply={Boolean(compose.threadId)} readOnly={locked} forwarded={messageById(compose.forwardedMessageId)} nameOf={name} focusRequested={focusDraft === draftKey(compose)} onFocused={clearFocusDraft} onDiscard={() => { if (compose.draftId) void fetch("/api/inbox/drafts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: compose.draftId }) }); dropDraft(draftKey(compose)); }} onSent={({ threadId }) => { dropDraft(draftKey(compose)); setSelected(threadId); void load(); }} />}
       </section>
 
       {/* ---------------------------------------------------------------- documents */}
       {docsOpen && <section aria-label="Documents" className="relative flex flex-col min-h-0">
-        <DocumentPanel open={docs} library={view.documents.map((d) => ({ id: d.id, shortTitle: d.shortTitle, title: d.title, from: d.from }))} layout={layout} onLayout={setLayout} onOpen={(id, slot) => void openDoc(id, slot)} onClose={(slot) => setDocs((p) => { const n = [...p] as (DocView | null)[]; n[slot] = null; if (!n[0] && n[1]) { n[0] = n[1]; n[1] = null; } return n; })} canQuote={!view.readOnly} onQuote={addQuote} flagsEnabled={view.testerFlagsEnabled} roleOf={role} nameOf={name} />
+        <DocumentPanel open={docs} library={view.documents.map((d) => ({ id: d.id, shortTitle: d.shortTitle, title: d.title, from: d.from }))} layout={layout} onLayout={setLayout} onOpen={(id, slot) => void openDoc(id, slot)} onClose={(slot) => setDocs((p) => { const n = [...p] as (DocView | null)[]; n[slot] = null; if (!n[0] && n[1]) { n[0] = n[1]; n[1] = null; } return n; })} canQuote={!locked} onQuote={addQuote} flagsEnabled={view.testerFlagsEnabled && !view.viewingAs} roleOf={role} nameOf={name} />
       </section>}
 
       {library && (
