@@ -111,7 +111,7 @@ export type JobFailedEvent = Base<"job_failed", {
 }>;
 /** An admin threw away a held email. A held scripted beat is written again rather than lost. */
 export type MessageDiscardedEvent = Base<"message_discarded", { jobKey: string; job?: Job | null }>;
-export type FlagRaisedEvent = Base<"flag_raised", { targetType: "message" | "document"; targetId: string; note: string }>;
+export type FlagRaisedEvent = Base<"flag_raised", { targetType: "message" | "document" | "thread"; targetId: string; note: string }>;
 
 export type EngineEvent =
   | SessionStartedEvent

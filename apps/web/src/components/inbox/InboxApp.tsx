@@ -241,7 +241,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
           <>
             <div className="flex flex-col gap-3.5 border-b border-oat-400" style={{ padding: "28px 32px 18px" }}>
               <h2 className="display text-[27px] leading-[1.22] font-normal m-0">{thread.subject}</h2>
-              <div className="text-[13.5px] text-ink-muted">{messages.length} {messages.length === 1 ? "message" : "messages"}</div>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[13.5px] text-ink-muted"><span>{messages.length} {messages.length === 1 ? "message" : "messages"}</span><FlagButton targetType="thread" targetId={thread.id} enabled={view.testerFlagsEnabled && !view.readOnly} /></div>
             </div>
             {messages.map((m) => (
               <article key={m.id} className="flex flex-col gap-3.5 border-b border-oat-400" style={{ padding: "20px 32px" }} aria-label={`Message from ${name(m.from)}`}>

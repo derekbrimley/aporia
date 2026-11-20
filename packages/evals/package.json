@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "tsc -p tsconfig.json",
     "playthrough": "tsx src/cli/playthrough.ts",
+    "cases": "tsx src/cli/cases.ts",
     "fast": "tsx src/cli/run-suite.ts --scenarios venture-debt-01,acme-merger-01 --paths mixed,realistic --runs 3",
     "weekly": "tsx src/cli/run-suite.ts --scenarios venture-debt-01,acme-merger-01 --paths mixed,realistic --runs 1 --judge",
     "nightly": "tsx src/cli/run-suite.ts --scenarios venture-debt-01,acme-merger-01 --paths strong,weak,mixed,answer-seeker,off-script,realistic --runs 4 --judge"

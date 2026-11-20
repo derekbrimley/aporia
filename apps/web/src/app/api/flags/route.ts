@@ -3,7 +3,7 @@ import { appendEvent, getDb, schema } from "@rematter/db";
 import { apiUser } from "@/lib/auth";
 import { sessionForUser } from "@/lib/session";
 
-const Body = z.object({ targetType: z.enum(["message", "document"]), targetId: z.string(), note: z.string().min(1).max(300) });
+const Body = z.object({ targetType: z.enum(["message", "document", "thread"]), targetId: z.string(), note: z.string().min(1).max(300) });
 
 /** Tester flag: out of fiction; sends nothing to characters. */
 export async function POST(req: Request) {

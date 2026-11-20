@@ -271,7 +271,7 @@ export const flags = pgTable("flags", {
   orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   sessionId: uuid("session_id").notNull().references(() => sessions.id, { onDelete: "cascade" }),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  targetType: text("target_type", { enum: ["message", "document"] }).notNull(),
+  targetType: text("target_type", { enum: ["message", "document", "thread"] }).notNull(),
   targetId: text("target_id").notNull(),
   note: text("note").notNull(),
   status: text("status", { enum: ["open", "triaged", "dismissed"] }).notNull().default("open"),

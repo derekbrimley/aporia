@@ -105,6 +105,10 @@ jobs:
           args=()
           [ -n "$FROM" ] && args+=(--from "$FROM")
           pnpm --filter @rematter/evals run "$script" "${args[@]}"
+      - name: Replay eval cases from tester flags
+        if: always()
+        # Committed cases in packages/evals/cases (most stay local: they hold testers' emails).
+        run: pnpm evals:cases
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: eval-runs, path: packages/evals/runs }
