@@ -1,17 +1,45 @@
 import { getPool } from "@rematter/db";
 import type { SessionState } from "@rematter/engine";
-import { JudgeOutputSchema, characterCard, judgePrompt, renderThread, type JudgeOutput } from "@rematter/prompts";
-import { ScenarioIndex, type ScenarioPackage } from "@rematter/scenario";
+import { JudgeOutputSchema, characterCard, judgePrompt, renderThread, type JudgeDocument, type JudgeOutput } from "@rematter/prompts";
+import { ScenarioIndex, dateAnchor, forSession, getScenario, type ScenarioPackage } from "@rematter/scenario";
 import { Names, threadForPrompt, type LlmProvider } from "@rematter/worker";
 
 export interface JudgedMessage { messageId: string; from: string; kind: string; rating: JudgeOutput }
 
-/** Offline judge: rates every character email in a session and stores ratings as rater_type = judge. */
-export async function judgeSession(sessionId: string, orgId: string, state: SessionState, pkg: ScenarioPackage, provider: LlmProvider): Promise<JudgedMessage[]> {
+/** The judge's flags that fail a run, by check name. */
+export const JUDGE_FLAGS = ["answer_key_leak", "fiction_break", "false_document_claim", "invented_logistics", "withholds_from_stuck_associate"] as const;
+export type JudgeFlag = (typeof JUDGE_FLAGS)[number];
+
+/**
+ * The documents the associate had received before a message arrived, in full and with the session's
+ * dates filled in: what a character could fairly point the associate to at that moment.
+ */
+export function documentsBefore(state: SessionState, pkg: ScenarioPackage, messageId: string, timeZone: string | null = null): JudgeDocument[] {
+  const { documents } = forSession(pkg, getScenario(pkg.meta.id).documents, dateAnchor(state), timeZone);
+  const seen: string[] = [];
+  for (const id of state.messageOrder) {
+    if (id === messageId) break;
+    const m = state.messages[id]!;
+    if (m.from === "associate" || !(m.to.includes("associate") || m.cc.includes("associate"))) continue;
+    for (const d of m.attachments) if (!seen.includes(d)) seen.push(d);
+  }
+  return seen.flatMap((d) => {
+    const doc = documents.get(d);
+    return doc ? [{ title: doc.title, text: doc.text }] : [];
+  });
+}
+
+/**
+ * Offline judge: rates every character email in a session and stores ratings as rater_type = judge.
+ * `onlyAfter` skips emails up to and including that message (a run loaded from a checkpoint only
+ * judges what it wrote itself).
+ */
+export async function judgeSession(sessionId: string, orgId: string, state: SessionState, pkg: ScenarioPackage, provider: LlmProvider, opts: { onlyAfter?: string | null } = {}): Promise<JudgedMessage[]> {
   const idx = new ScenarioIndex(pkg);
   const names = new Names(pkg, state.associateFirstName);
   const out: JudgedMessage[] = [];
-  for (const id of state.messageOrder) {
+  const start = opts.onlyAfter ? state.messageOrder.indexOf(opts.onlyAfter) + 1 : 0;
+  for (const id of state.messageOrder.slice(start)) {
     const m = state.messages[id]!;
     if (m.from === "associate" || m.kind === "doctrine") continue;
     const c = idx.character(m.from);
@@ -19,7 +47,11 @@ export async function judgeSession(sessionId: string, orgId: string, state: Sess
     const before = state.threads[m.threadId]?.messageIds.indexOf(m.id) ?? -1;
     const thread = threadForPrompt(state, m.threadId, names).slice(0, Math.max(0, before));
     const hints = (state.threads[m.threadId]?.assignmentIds ?? []).flatMap((a) => idx.assignment(a).issues.map((i) => `${i.title}: ${i.raised_looks_like}`));
-    const p = judgePrompt({ dealType: pkg.meta.deal_type, characterCard: characterCard(c), thread: renderThread(thread), email: m.body, answerKeyHints: hints, isSocratic: m.kind === "reflection", consequence: pkg.consequences.find((q) => q.beat && q.beat === m.beatId)?.how_it_appears });
+    const p = judgePrompt({
+      dealType: pkg.meta.deal_type, characterCard: characterCard(c), thread: renderThread(thread), email: m.body, answerKeyHints: hints, isSocratic: m.kind === "reflection",
+      consequence: pkg.consequences.find((q) => q.beat && q.beat === m.beatId)?.how_it_appears,
+      associateDocuments: documentsBefore(state, pkg, m.id),
+    });
     const res = await provider.generateJson({ role: "eval_judge", system: p.system, user: p.user, promptVersion: p.version, sessionId }, JudgeOutputSchema);
     out.push({ messageId: m.id, from: m.from, kind: m.kind, rating: res.parsed });
     await getPool().query(

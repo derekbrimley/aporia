@@ -20,6 +20,14 @@ export const PathSchema = z.object({
     doctrine_questions: z.number().int().min(0).default(0),
     off_script: z.boolean().default(false),
     gap_days: z.number().int().min(0).default(0),
+    /** After answering a reflection, keep writing on that private thread this many more times (session 6772ce0f). */
+    reflection_followups: z.number().int().min(0).default(0),
+    /** Ask the senior this many times where to look before sending each deliverable, as a stuck associate does. */
+    stuck_questions: z.number().int().min(0).default(0),
+    /** Send a second short email right behind a question, before anyone has answered (the double-reply case). */
+    quick_followup: z.boolean().default(false),
+    /** When work is due outside the firm, first send the draft to the senior on an older thread (session 259601d4). */
+    draft_to_senior_first: z.boolean().default(false),
   }),
 });
 export type PathFile = z.infer<typeof PathSchema>;

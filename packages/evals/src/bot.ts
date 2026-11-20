@@ -33,6 +33,12 @@ export class BotAssociate {
   private doctrineAsked = 0;
   private offScriptDone = new Set<string>();
   private gapDone = false;
+  /** Realistic-tester bookkeeping: follow-ups per reflection thread, stuck questions per assignment, drafts shown first. */
+  private reflected = new Set<string>();
+  private followups = new Map<string, number>();
+  private stuckAsked = new Map<string, number>();
+  private drafted = new Set<string>();
+  private quickSent = 0;
   private script: BotScript;
   log: BotRunLog = { steps: [], sent: 0, received: 0, stuck: false };
 
@@ -58,6 +64,11 @@ export class BotAssociate {
       this.plan.set(a.id, { raise, miss });
     }
     void idx;
+  }
+
+  /** Messages already in the inbox when the bot takes over (a run loaded from a checkpoint): not answered again. */
+  markSeen(ids: string[]) {
+    for (const id of ids) this.seen.add(id);
   }
 
   get issuePlan() {
@@ -131,7 +142,8 @@ export class BotAssociate {
     }
     if (m.attachments.length >= 2) await appendEvent(this.sessionId, { type: "documents_compared", payload: { documentIds: [m.attachments[0]!, m.attachments[1]!] } }, "associate", this.pkg);
     const thread = state.threads[m.threadId]!;
-    if (m.kind === "recap" || m.kind === "nudge" || m.kind === "debrief" || m.kind === "doctrine" || m.kind === "reply") return false;
+    if (m.kind === "reply") return this.reactToReply(state, idx, m);
+    if (m.kind === "recap" || m.kind === "nudge" || m.kind === "debrief" || m.kind === "doctrine") return false;
 
     // Off-script behaviors, once each.
     const sc = this.script;
@@ -172,12 +184,53 @@ export class BotAssociate {
     if (m.kind === "reflection") {
       const body = this.path.reasoning_style === "thin" ? sc.reflection_reply.thin : sc.reflection_reply.full;
       await this.send(m.threadId, [m.from], [], null, body, "question");
+      this.reflected.add(m.threadId);
       return true;
     }
     return false;
   }
 
+  /**
+   * A character answered one of our emails. Most paths leave it there; the realistic path keeps
+   * talking on follow-up threads, and picks a deliverable back up once its questions or its draft
+   * have been answered.
+   */
+  private async reactToReply(state: SessionState, idx: ScenarioIndex, m: MessageState): Promise<boolean> {
+    const b = this.path.behaviors;
+    const thread = state.threads[m.threadId]!;
+    if (thread.key?.startsWith("reflection:") && this.reflected.has(thread.id)) {
+      const n = this.followups.get(thread.id) ?? 0;
+      if (n < b.reflection_followups) {
+        this.followups.set(thread.id, n + 1);
+        await this.send(thread.id, [m.from], [], null, this.script.reflection_followup, "question");
+        return true;
+      }
+      return false;
+    }
+    for (const aid of openAssignments(state)) {
+      const asg = idx.assignment(aid);
+      if (asg.completion.kind !== "deliverable" || m.from !== asg.feedback_from) continue;
+      const onThread = state.threadIdByKey[asg.thread_key] === m.threadId;
+      const askedHere = onThread && (this.stuckAsked.get(aid) ?? 0) > 0;
+      if (askedHere || this.drafted.has(aid)) return this.deliver(state, idx, asg, m);
+    }
+    return false;
+  }
+
   private async deliver(state: SessionState, idx: ScenarioIndex, asg: Assignment, trigger: MessageState): Promise<boolean> {
+    const b = this.path.behaviors;
+    const asked = this.stuckAsked.get(asg.id) ?? 0;
+    if (asked < b.stuck_questions) {
+      this.stuckAsked.set(asg.id, asked + 1);
+      const tid = this.threadIdFor(state, asg.thread_key, trigger.threadId);
+      await this.send(tid, [asg.feedback_from], [], null, this.script.stuck_question, "question");
+      if (b.quick_followup && this.quickSent < 2) {
+        this.quickSent++;
+        await this.send(tid, [asg.feedback_from], [], null, this.script.quick_followup, "question");
+      }
+      this.step("stuck_question", `${asg.id} #${asked + 1}`);
+      return true;
+    }
     const plan = this.plan.get(asg.id)!;
     const position = asg.decision_points[0] ? this.path.positions[asg.decision_points[0].id] ?? null : null;
     const names = new Names(this.pkg, state.associateFirstName);
@@ -192,6 +245,14 @@ export class BotAssociate {
     const markers = this.provider.name === "mock"
       ? "\n\n" + [...plan.raise.map((i) => `[${i}:raised]`), ...plan.miss.map((i) => `[${i}:missed]`), ...(position && asg.decision_points[0] ? [`[${asg.decision_points[0].id}:${position}]`] : [])].join(" ")
       : "";
+    if (b.draft_to_senior_first && !this.drafted.has(asg.id) && asg.expected_recipients[0] !== asg.feedback_from) {
+      this.drafted.add(asg.id);
+      // The oldest thread from the senior, the way a tester answers on "Start here" instead of the assignment's thread.
+      const old = state.messageOrder.map((id) => state.messages[id]!).find((x) => x.from === asg.feedback_from)?.threadId ?? trigger.threadId;
+      await this.send(old, [asg.feedback_from], [], null, `Before this goes out, here is my draft. Does it look right to you?\n\n${res.parsed.body}${markers}`, null);
+      this.step("draft_to_senior", `${asg.id} on an older thread`);
+      return true;
+    }
     const to = asg.expected_recipients;
     const cc = asg.expected_recipients.includes("client_contact") && !to.includes("partner") ? ["partner"] : [];
     await this.send(this.threadIdFor(state, asg.thread_key, trigger.threadId), to, cc, null, res.parsed.body + markers, null);

@@ -22,6 +22,7 @@
     "db:seed": "pnpm --filter @rematter/db run seed",
     "playthrough": "pnpm --filter @rematter/evals run playthrough",
     "evals:fast": "pnpm --filter @rematter/evals run fast",
+    "evals:weekly": "pnpm --filter @rematter/evals run weekly",
     "evals:nightly": "pnpm --filter @rematter/evals run nightly",
     "dev:web": "pnpm --filter @rematter/web run dev",
     "dev:worker": "pnpm --filter @rematter/worker run dev"
