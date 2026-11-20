@@ -1,0 +1,15 @@
+name: realistic
+description: Plays like the human testers so far. Keeps writing on follow-up threads, asks where to look before each deliverable, sends a second email before the first is answered, shows the senior a draft on an old thread before sending work out, and takes a break.
+persona: A careful first-year who asks a lot of questions and likes to check with the senior before anything goes out.
+reasoning_style: full
+raise_rate: { expected: 0.7, strong: 0.4, expert: 0.15 }
+positions: { A2.D1: P3, A3.D1: P2, A7.D1: P3 }
+behaviors:
+  asks_for_answer: false
+  doctrine_questions: 1
+  off_script: false
+  gap_days: 3
+  reflection_followups: 3
+  stuck_questions: 2
+  quick_followup: true
+  draft_to_senior_first: true

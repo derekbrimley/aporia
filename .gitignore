@@ -12,3 +12,5 @@ packages/evals/runs/
 .DS_Store
 *.tsbuildinfo
 .playwright-mcp/
+# Eval cases hold testers' own emails; commit one only with their OK (see packages/evals/cases/README.md).
+packages/evals/cases/*.json

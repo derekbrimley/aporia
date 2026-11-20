@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { closeDb, databaseUrl, getDb, getPool, loadEnv, migrate, seedDevData } from "@rematter/db";
+import { closeDb, databaseUrl, forkSessionAtCheckpoint, getDb, getPool, getSessionState, loadEnv, migrate, seedDevData, sessionCheckpoints } from "@rematter/db";
 import { getScenario, DEFAULT_SCENARIO_ID } from "@rematter/scenario";
-import { getProvider, type LlmProvider } from "@rematter/worker";
+import { MockProvider, getProvider, type LlmProvider } from "@rematter/worker";
 import { BotAssociate } from "./bot.js";
 import { runChecks, type CheckResult } from "./checks.js";
-import { judgeSession } from "./judge.js";
+import { JUDGE_FLAGS, judgeSession, type JudgeFlag } from "./judge.js";
 import { loadPath } from "./path.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -15,15 +15,17 @@ export const RUNS_DIR = path.resolve(here, "..", "runs");
 export interface RunReport {
   path: string;
   seed: number;
+  /** The milestone the run started at, when it was loaded from a checkpoint. */
+  fromMilestone?: string;
   sessionId: string;
   provider: string;
   startedAt: string;
   durationMs: number;
   status: string;
-  /** Character emails the judge flagged for an answer-key leak or a fiction break, with its notes. */
   /** The closing debrief's text, so a failing debrief check can be read without the database. */
   debrief?: string;
-  judgeFlags?: { messageId: string; from: string; subject: string; leak: boolean; fictionBreak: boolean; notes: string }[];
+  /** Character emails the judge flagged, with the flags and its notes. */
+  judgeFlags?: { messageId: string; from: string; subject: string; flags: JudgeFlag[]; notes: string }[];
   milestonesCompleted: string[];
   consequences: Record<string, string>;
   issues: Record<string, string>;
@@ -46,7 +48,14 @@ const PRICE: Record<string, { in: number; out: number }> = {
   mock: { in: 0, out: 0 },
 };
 
-export async function runPlaythrough(opts: { pathName: string; seed?: number; scenarioId?: string; judge?: boolean; provider?: LlmProvider; quiet?: boolean }): Promise<RunReport> {
+export async function runPlaythrough(opts: {
+  pathName: string; seed?: number; scenarioId?: string; judge?: boolean; provider?: LlmProvider; quiet?: boolean;
+  /**
+   * Start at this milestone's test checkpoint instead of M1. Everything before it is played first on
+   * the mock provider (free and quick), so only the rest uses the real model and only the rest is judged.
+   */
+  fromMilestone?: string;
+}): Promise<RunReport> {
   loadEnv();
   const started = Date.now();
   const url = databaseUrl();
@@ -56,25 +65,41 @@ export async function runPlaythrough(opts: { pathName: string; seed?: number; sc
   const seed = opts.seed ?? 1;
   const pathFile = loadPath(opts.pathName);
   const seeded = await seedDevData(getDb(), pkg, { slug: `eval-${pathFile.name}-${Date.now()}-${seed}`, orgName: `Test run: ${pkg.meta.id}, ${pathFile.name} path, ${new Date().toISOString().slice(0, 10)}`, testMode: true });
-  const bot = new BotAssociate(seeded.sessionId, pkg, pathFile, provider, url, seed);
-  if (!opts.quiet) console.log(`[${pathFile.name}#${seed}] session ${seeded.sessionId} provider=${provider.name}`);
+  let sessionId = seeded.sessionId;
+  let forkedAfter: string | null = null;
+  if (opts.fromMilestone) {
+    const source = await runPlaythrough({ pathName: opts.pathName, seed, scenarioId: opts.scenarioId, provider: new MockProvider(), quiet: true });
+    const cp = (await sessionCheckpoints(source.sessionId, pkg)).find((c) => c.milestoneId === opts.fromMilestone);
+    if (!cp) throw new Error(`No checkpoint for ${opts.fromMilestone} in the mock source run ${source.sessionId}`);
+    const forked = await forkSessionAtCheckpoint({ sourceSessionId: source.sessionId, eventCount: cp.eventCount, orgId: seeded.orgId, userId: seeded.associateId, cohortId: seeded.cohortId, firstName: "Sam", pkg });
+    sessionId = forked.sessionId;
+    // The checkpoint ends where the milestone's own emails have arrived: those are the bot's to answer.
+    const entered = forked.state.milestones[opts.fromMilestone]?.enteredAt ?? "";
+    forkedAfter = forked.state.messageOrder.filter((id) => forked.state.messages[id]!.at < entered).at(-1) ?? null;
+  }
+  const bot = new BotAssociate(sessionId, pkg, pathFile, provider, url, seed);
+  if (forkedAfter) {
+    const st = await getSessionState(sessionId, pkg);
+    bot.markSeen(st.messageOrder.slice(0, st.messageOrder.indexOf(forkedAfter) + 1));
+  }
+  if (!opts.quiet) console.log(`[${pathFile.name}#${seed}] session ${sessionId} provider=${provider.name}${opts.fromMilestone ? ` from ${opts.fromMilestone}` : ""}`);
   const state = await bot.run();
-  let judgeFindings: { leaks: number; breaks: number } | undefined;
+  let judgeFindings: Record<JudgeFlag, number> | undefined;
   let judgeFlags: RunReport["judgeFlags"];
   if (opts.judge) {
-    const judged = await judgeSession(seeded.sessionId, seeded.orgId, state, pkg, provider);
-    judgeFindings = { leaks: judged.filter((j) => j.rating.answer_key_leak).length, breaks: judged.filter((j) => j.rating.fiction_break).length };
-    judgeFlags = judged.filter((j) => j.rating.answer_key_leak || j.rating.fiction_break).map((j) => ({
+    const judged = await judgeSession(sessionId, seeded.orgId, state, pkg, provider, { onlyAfter: forkedAfter });
+    judgeFindings = Object.fromEntries(JUDGE_FLAGS.map((f) => [f, judged.filter((j) => j.rating[f]).length])) as Record<JudgeFlag, number>;
+    judgeFlags = judged.filter((j) => JUDGE_FLAGS.some((f) => j.rating[f])).map((j) => ({
       messageId: j.messageId, from: j.from, subject: state.threads[state.messages[j.messageId]!.threadId]?.subject ?? "",
-      leak: j.rating.answer_key_leak, fictionBreak: j.rating.fiction_break, notes: j.rating.notes,
+      flags: JUDGE_FLAGS.filter((f) => j.rating[f]), notes: j.rating.notes,
     }));
   }
-  const checks = await runChecks(seeded.sessionId, state, pkg, judgeFindings);
-  const gens = await getPool().query<{ model: string; input_tokens: number; output_tokens: number; n: number }>(`select model, sum(input_tokens)::int as input_tokens, sum(output_tokens)::int as output_tokens, count(*)::int as n from generations where session_id = $1 group by model`, [seeded.sessionId]);
+  const checks = await runChecks(sessionId, state, pkg, judgeFindings);
+  const gens = await getPool().query<{ model: string; input_tokens: number; output_tokens: number; n: number }>(`select model, sum(input_tokens)::int as input_tokens, sum(output_tokens)::int as output_tokens, count(*)::int as n from generations where session_id = $1 group by model`, [sessionId]);
   let cost = 0, count = 0;
   for (const g of gens.rows) { const p = PRICE[g.model] ?? { in: 5, out: 25 }; cost += (g.input_tokens * p.in + g.output_tokens * p.out) / 1_000_000; count += g.n; }
   const report: RunReport = {
-    path: pathFile.name, seed, sessionId: seeded.sessionId, provider: provider.name, startedAt: new Date(started).toISOString(), durationMs: Date.now() - started,
+    path: pathFile.name, seed, sessionId: sessionId, provider: provider.name, startedAt: new Date(started).toISOString(), durationMs: Date.now() - started,
     status: state.status, judgeFlags, debrief: Object.values(state.messages).find((m) => m.kind === "debrief")?.body, milestonesCompleted: Object.entries(state.milestones).filter(([, m]) => m.completedAt).map(([id]) => id),
     consequences: state.consequences, issues: state.issues, decisions: Object.fromEntries(Object.entries(state.decisions).map(([k, v]) => [k, v.position])),
     sent: bot.log.sent, received: bot.log.received, generations: count, costEstimateUsd: Number(cost.toFixed(4)), checks, pass: checks.every((c) => c.pass), stuck: bot.log.stuck, steps: bot.log.steps,
@@ -85,7 +110,7 @@ export async function runPlaythrough(opts: { pathName: string; seed?: number; sc
   if (!opts.quiet) {
     for (const c of checks) console.log(`  ${c.pass ? "PASS" : "FAIL"} ${c.name}: ${c.detail}`);
     if (report.debrief && checks.some((c) => c.name === "debrief_references_two_fired_consequences" && !c.pass)) console.log(`    debrief:\n${report.debrief.replace(/^/gm, "      ")}`);
-    for (const f of judgeFlags ?? []) console.log(`    ${f.leak ? "leak" : "fiction break"}: ${f.from} \"${f.subject}\": ${f.notes}`);
+    for (const f of judgeFlags ?? []) console.log(`    ${f.flags.join(", ")}: ${f.from} "${f.subject}": ${f.notes}`);
     console.log(`  ${report.pass ? "RUN PASSED" : "RUN FAILED"} in ${report.durationMs}ms, ${count} generations, est. $${report.costEstimateUsd}; report ${path.relative(process.cwd(), file)}`);
   }
   return report;

@@ -1,10 +1,25 @@
 name: Real-model evals
-# Run by hand from the Actions tab (Run workflow), on main. It calls the real Anthropic API.
+# Runs every Monday on main, and by hand from the Actions tab (Run workflow), on main. It calls the
+# real Anthropic API. The weekly run is the small suite: both simulations, the mixed and realistic
+# paths, one run each, judged. Run by hand to pick the full suite or start every run at a milestone
+# (the runs before it are played on the mock model, which is free, and only the rest is judged).
 # Auth is Workload Identity Federation: the job's GitHub OIDC token is exchanged for a
 # short-lived Anthropic token, so there is no ANTHROPIC_API_KEY secret. The federation
 # rule only matches runs on refs/heads/main, so running this from another branch fails auth.
 on:
+  schedule:
+    - cron: "0 14 * * 1" # Mondays 14:00 UTC (7 or 8 AM in Denver)
   workflow_dispatch:
+    inputs:
+      suite:
+        description: "weekly: both sims x mixed, realistic x 1 run. full: both sims x all six paths x 4 runs (much more expensive)."
+        type: choice
+        options: [weekly, full]
+        default: weekly
+      from:
+        description: "Optional milestone to start every run at, e.g. M3 (earlier milestones are played on the mock model)"
+        type: string
+        default: ""
 permissions:
   id-token: write
   contents: read
@@ -80,7 +95,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm scenario:build-docs
       - run: pnpm db:migrate
-      - run: pnpm evals:nightly
+      - name: Run evals
+        env:
+          SUITE: ${{ inputs.suite || 'weekly' }}
+          FROM: ${{ inputs.from }}
+        run: |
+          script=weekly
+          [ "$SUITE" = "full" ] && script=nightly
+          args=()
+          [ -n "$FROM" ] && args+=(--from "$FROM")
+          pnpm --filter @rematter/evals run "$script" "${args[@]}"
+      - name: Replay eval cases from tester flags
+        if: always()
+        # Committed cases in packages/evals/cases (most stay local: they hold testers' emails).
+        run: pnpm evals:cases
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: eval-runs, path: packages/evals/runs }

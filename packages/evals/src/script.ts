@@ -21,6 +21,11 @@ export const BotScriptSchema = z.object({
   replies: z.object({ first: z.string(), later: z.string() }),
   interruption_reply: z.string(),
   reflection_reply: z.object({ thin: z.string(), full: z.string() }),
+  /** Realistic-tester lines. Deal-neutral defaults, so a scenario only overrides them to sound like itself. */
+  // Long enough (60+ words) to look like work, as Austin's follow-ups did, so the follow-up-thread rules are exercised.
+  reflection_followup: z.string().default("Thanks, that's helpful. Picking up your point about where the client stands: I think most of the risk is in the timing, since nothing protects us if the other side drags its feet before signing, and the documents don't give us a clean way out if they do. I could add a paragraph on that and on what we would ask for in return. Should I revise the note and send it to you again before it goes out, or is it fine as it is?"),
+  stuck_question: z.string().default("I've been through the documents a couple of times and I'm still not sure what I should be focusing on for this. Can you point me in the right direction?"),
+  quick_followup: z.string().default("One more thing, sorry: is there a deadline I should be working to?"),
 });
 export type BotScript = z.infer<typeof BotScriptSchema>;
 

@@ -13,6 +13,7 @@ export type LlmRole =
   | "fact_checker"
   | "recap_debrief"
   | "eval_judge"
+  | "flag_judge"
   | "bot_associate";
 
 /**
@@ -44,6 +45,7 @@ export const MODELS: Record<LlmRole, ModelSpec> = {
   fact_checker: { anthropic: HAIKU, bedrock: `anthropic.${HAIKU}`, maxTokens: 1000 },
   recap_debrief: { anthropic: OPUS, bedrock: `anthropic.${OPUS}`, maxTokens: 8000, effort: "high" },
   eval_judge: { anthropic: OPUS, bedrock: `anthropic.${OPUS}`, maxTokens: 8000, effort: "high" },
+  flag_judge: { anthropic: OPUS, bedrock: `anthropic.${OPUS}`, maxTokens: 8000, effort: "high" },
   bot_associate: { anthropic: SONNET, bedrock: `anthropic.${SONNET}`, maxTokens: 8000, effort: "medium" },
 };
 

@@ -7,10 +7,12 @@ const get = (flag: string, def: string) => { const i = args.indexOf(flag); retur
 const paths = get("--paths", "mixed").split(",");
 const runs = Number(get("--runs", "1"));
 const judge = args.includes("--judge");
+// Start every run at this milestone's checkpoint (played up to there on the mock provider).
+const fromMilestone = args.includes("--from") ? get("--from", "") : undefined;
 // Comma-separated scenario ids; defaults to the default scenario only.
 const scenarios = args.includes("--scenarios") ? get("--scenarios", "").split(",") : [undefined];
 const reports: RunReport[] = [];
-for (const scenarioId of scenarios) for (const p of paths) for (let seed = 1; seed <= runs; seed++) reports.push(await runPlaythrough({ pathName: p, seed, scenarioId, judge }));
+for (const scenarioId of scenarios) for (const p of paths) for (let seed = 1; seed <= runs; seed++) reports.push(await runPlaythrough({ pathName: p, seed, scenarioId, judge, fromMilestone }));
 const passed = reports.filter((r) => r.pass && !r.stuck).length;
 const summary = {
   at: new Date().toISOString(), total: reports.length, passed, failed: reports.length - passed,

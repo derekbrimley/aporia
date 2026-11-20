@@ -4,8 +4,8 @@ import { cohensKappa } from "../judge.js";
 import { listPaths, loadPath } from "../path.js";
 
 describe("evals utilities", () => {
-  it("ships the five required paths and they parse", () => {
-    expect(listPaths().sort()).toEqual(["answer-seeker", "mixed", "off-script", "strong", "weak"]);
+  it("ships the six paths and they parse", () => {
+    expect(listPaths().sort()).toEqual(["answer-seeker", "mixed", "off-script", "realistic", "strong", "weak"]);
     for (const p of listPaths()) expect(loadPath(p).name).toBe(p);
   });
   it("measures question similarity", () => {

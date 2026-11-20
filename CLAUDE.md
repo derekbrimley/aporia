@@ -22,13 +22,15 @@ pnpm db:migrate                 # applies packages/db/migrations/*.sql, then gra
 pnpm db:seed
 pnpm dev:worker / pnpm dev:web  # run both for the app (http://localhost:3000/sign-in)
 
-pnpm playthrough -- --path mixed   # one headless bot run through closing
-pnpm evals:fast                 # 3 × mixed path (CI runs this)
-pnpm evals:nightly              # 4 × each of the 5 paths + judge
-pnpm --filter @rematter/web e2e   # Playwright smoke test
+pnpm playthrough -- --path mixed   # one headless bot run through closing (--from M3 starts at a milestone)
+pnpm evals:fast                 # both sims × mixed, realistic × 3 runs, mock model (CI runs this)
+pnpm evals:weekly               # both sims × mixed, realistic × 1 run + judge (real model, Mondays in GitHub Actions)
+pnpm evals:nightly              # both sims × all 6 paths × 4 runs + judge (by hand; expensive)
+pnpm --filter @rematter/web e2e   # Playwright smoke tests (needs web + worker running; see the e2e job in ci.yml)
+pnpm evals:cases                # replay eval cases made from tester flags (packages/evals/cases/README.md)
 ```
 
-CI (`.github/workflows/ci.yml`) runs validate → build-docs → typecheck → test:unit → db:migrate → test:db → evals:fast, with `LLM_PROVIDER=mock` and `REMATTER_TEST_MODE=1`.
+CI (`.github/workflows/ci.yml`) runs validate → build-docs → typecheck → test:unit → db:migrate → test:db → evals:fast, with `LLM_PROVIDER=mock` and `REMATTER_TEST_MODE=1`, and a separate `e2e` job that seeds a database, starts the worker and web app on the mock model and runs the Playwright specs in `apps/web/e2e`.
 
 Don't run `pnpm format`: most files predate Prettier and it rewrites the whole repo. Format only the files you touch with `pnpm exec prettier --write <files>`, and only if they were already clean.
 
@@ -47,7 +49,7 @@ Dependency direction: `scenario` ← `engine` ← `db` ← `worker` / `prompts` 
 - **`packages/db`** contains the Drizzle schema, with every table org-scoped. Migrations are hand-written SQL in `migrations/` and applied by the custom runner in `src/migrate.ts`. The `events` table is append-only, enforced by a DB trigger. `appendEvent` in `src/runtime.ts` is **the only write path for events**. In one transaction it locks the session row, checks the scenario version pin, handles the idempotency key, loads the snapshot, calls `step`, inserts the event, upserts `session_snapshots`, writes projections (`projections.ts`) and enqueues jobs through graphile-worker's SQL `add_job`. Every job for a session goes on queue `session:<id>`, so a session's jobs run one at a time in order.
 - **`packages/prompts`** holds pinned model config per role (`models.ts`) and versioned prompt builders in `roles/`, one per LLM role plus the bot associate. Each builder returns `{ system, user, version }`. Bump the `*_VERSION` constant when you change a prompt, because generations are recorded with that version.
 - **`apps/worker`** has the LLM providers in `llm/` (anthropic, bedrock, deterministic mock), job handlers in `jobs/`, a two-layer fact checker in `factcheck/` (rules first, then a model check, with up to two regenerations; after that the email is held for admin release), and the graphile-worker runner. Every LLM call is written to the `generations` table. `telemetry.ts` also sends generations to Langfuse and errors to Sentry, each only when its keys are set.
-- **`packages/evals`** is a bot-associate harness driven by the path files in `src/paths/*.yaml` (strong, weak, mixed, answer-seeker, off-script). It adds automatic checks, an offline judge and Cohen's kappa. Reports go to `packages/evals/runs/` (gitignored).
+- **`packages/evals`** is a bot-associate harness driven by the path files in `src/paths/*.yaml` (strong, weak, mixed, answer-seeker, off-script, realistic). `realistic` plays the way human testers have: it keeps writing on follow-up threads, asks where to look before each deliverable, double-sends, and shows the senior a draft on an old thread first. `checks.ts` has the automatic checks; the deterministic ones (`invariantChecks`: double replies, runaway threads, probes on follow-up threads, gated facts reaching a prompt early) hold on the mock model, and the judge adds document-grounding, invented-logistics and withholding flags on a real one. When a tester reports a new failure, add a check here that would have caught it. Reports go to `packages/evals/runs/` (gitignored).
 - **`apps/web`** is a Next.js 15 app covering the inbox, the "Your matters" picker (an associate in several cohorts chooses one at `/matters`; the choice is the `rematter_matter` cookie read by `activeMatter` in `lib/matters.ts`, and `sessionForUser` only loads that cohort's session), the PD roster, the admin console and the rater view. `next.config.ts` transpiles the workspace packages and aliases `.js` imports to `.ts`. Live updates are SSE backed by 2-second Postgres polling.
 
 ### How a send becomes state
