@@ -107,28 +107,6 @@ describe("acme-merger-01 fact sources", () => {
     return out;
   };
 
-  it("says where every fact lives", () => {
-    for (const [k, v] of Object.entries(pkg.facts)) expect(v.source, k).toBeDefined();
-  });
-
-  it("only cites documents the associate is actually sent", () => {
-    const sent = new Set(pkg.beats.flatMap((b) => b.attachments));
-    for (const [k, v] of Object.entries(pkg.facts)) if (Array.isArray(v.source)) for (const d of v.source) expect(sent.has(d), `${k} -> ${d}`).toBe(true);
-  });
-
-  // Amounts, percentages and dates must appear, as written, in a document the fact cites.
-  it("finds each sourced amount, percentage and date in one of its documents", () => {
-    for (const [k, v] of Object.entries(pkg.facts)) {
-      if (!Array.isArray(v.source)) continue;
-      const texts = v.source.map((d) => docs.get(d)!.text);
-      const needles: string[] = [];
-      if ((v.type === "money" && v.value !== 0) || v.type === "percent") needles.push(formatFact(v));
-      if (v.type === "date") needles.push(`{{${k}}}`);
-      if (v.type === "text") needles.push(...(v.value.match(/\$\d[\d,]*\d|\d+%/g) ?? []));
-      for (const n of needles) expect(texts.some((t) => t.includes(n)), `${k}: "${n}" not in ${v.source.join(", ")}`).toBe(true);
-    }
-  });
-
   it("puts BigBank's liquidation estimate in the term sheet Grace sends at M2", () => {
     expect(pkg.facts["debt.liquidation_recovery"]!.source).toEqual(["bigbank-term-sheet"]);
     expect(releasedBy("B-M2-loi").has("bigbank-term-sheet")).toBe(true);
@@ -152,4 +130,32 @@ describe("acme-merger-01 fact sources", () => {
     expect(Object.keys(parts.notInDocuments)).toContain("cap.larchmont_voting_pct");
     expect(Object.keys(parts.notInDocuments)).toContain("structure.hsr");
   });
+});
+
+describe.each(["acme-merger-01", "venture-debt-01"])("%s fact sources", (id) => {
+  const { pkg, dir } = loadScenario(scenarioDir(id));
+  const docs = new Map(buildAllDocuments(dir, pkg.documents).map((d) => [d.id, d]));
+
+  it("says where every fact lives", () => {
+    for (const [k, v] of Object.entries(pkg.facts)) expect(v.source, k).toBeDefined();
+  });
+
+  it("only cites documents the associate is actually sent", () => {
+    const sent = new Set(pkg.beats.flatMap((b) => b.attachments));
+    for (const [k, v] of Object.entries(pkg.facts)) if (Array.isArray(v.source)) for (const d of v.source) expect(sent.has(d), `${k} -> ${d}`).toBe(true);
+  });
+
+  // Amounts, percentages and dates must appear, as written, in a document the fact cites.
+  it("finds each sourced amount, percentage and date in one of its documents", () => {
+    for (const [k, v] of Object.entries(pkg.facts)) {
+      if (!Array.isArray(v.source)) continue;
+      const texts = v.source.map((d) => docs.get(d)!.text);
+      const needles: string[] = [];
+      if ((v.type === "money" && v.value !== 0) || v.type === "percent") needles.push(formatFact(v));
+      if (v.type === "date") needles.push(`{{${k}}}`);
+      if (v.type === "text") needles.push(...(v.value.match(/\$\d[\d,]*\d|\d+%/g) ?? []));
+      for (const n of needles) expect(texts.some((t) => t.includes(n)), `${k}: "${n}" not in ${v.source.join(", ")}`).toBe(true);
+    }
+  });
+
 });
