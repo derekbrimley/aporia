@@ -26,7 +26,7 @@ const Body = z.object({
  * (assessing a question-shaped one first) and who in the world responds.
  */
 export async function POST(req: Request) {
-  const u = await apiUser(["associate"]);
+  const u = await apiUser(["associate"], { write: true });
   if (u instanceof Response) return u;
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) return Response.json({ error: "invalid", issues: parsed.error.issues }, { status: 400 });

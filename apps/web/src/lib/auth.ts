@@ -6,11 +6,20 @@ import { getDb, schema } from "@rematter/db";
 import { env } from "./env.js";
 
 export type Role = "associate" | "pd_admin" | "internal_admin" | "internal_rater";
-export interface CurrentUser { id: string; orgId: string; email: string; name: string; firstName: string; role: Role }
+export interface CurrentUser {
+  id: string; orgId: string; email: string; name: string; firstName: string; role: Role;
+  /** The internal admin viewing the app as this user ("View as tester"), if any. Everything is read-only then. */
+  impersonator?: Impersonator;
+}
+export interface Impersonator { id: string; orgId: string; email: string; name: string; firstName: string; role: Role }
 
 const COOKIE = "rematter_session";
 const SESSION_DAYS = 14;
 const LINK_MINUTES = 20;
+/** "View as tester": the admin's own session token waits here, and the page to go back to. */
+const ADMIN_COOKIE = "rematter_admin_session";
+const RETURN_COOKIE = "rematter_admin_return";
+const IMPERSONATION_HOURS = 2;
 
 function hash(token: string): string {
   return crypto.createHmac("sha256", env.authSecret).update(token).digest("hex");
@@ -65,12 +74,16 @@ export async function consumeMagicLink(token: string): Promise<CurrentUser | nul
   return signIn(link.userId);
 }
 
-export async function signIn(userId: string): Promise<CurrentUser> {
+/**
+ * Starts a browser session as `userId`. With `impersonator`, it is an admin's short, read-only
+ * "View as tester" session, which doesn't count as the user being seen.
+ */
+export async function signIn(userId: string, impersonator?: Impersonator): Promise<CurrentUser> {
   const db = getDb();
   const token = crypto.randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + SESSION_DAYS * 86_400_000);
-  await db.insert(schema.authSessions).values({ userId, tokenHash: hash(token), expiresAt });
-  await db.update(schema.users).set({ lastSeenAt: new Date() }).where(eq(schema.users.id, userId));
+  const expiresAt = new Date(Date.now() + (impersonator ? IMPERSONATION_HOURS * 3_600_000 : SESSION_DAYS * 86_400_000));
+  await db.insert(schema.authSessions).values({ userId, tokenHash: hash(token), expiresAt, impersonatorUserId: impersonator?.id ?? null });
+  if (!impersonator) await db.update(schema.users).set({ lastSeenAt: new Date() }).where(eq(schema.users.id, userId));
   (await cookies()).set(COOKIE, token, { httpOnly: true, sameSite: "lax", secure: env.isProd, expires: expiresAt, path: "/" });
   return (await getCurrentUser())!;
 }
@@ -80,6 +93,57 @@ export async function signOut(): Promise<void> {
   const token = jar.get(COOKIE)?.value;
   if (token) await getDb().delete(schema.authSessions).where(eq(schema.authSessions.tokenHash, hash(token)));
   jar.delete(COOKIE);
+  // Signing out while viewing as someone ends the admin's own session too.
+  const adminToken = jar.get(ADMIN_COOKIE)?.value;
+  if (adminToken) await getDb().delete(schema.authSessions).where(eq(schema.authSessions.tokenHash, hash(adminToken)));
+  jar.delete(ADMIN_COOKIE);
+  jar.delete(RETURN_COOKIE);
+}
+
+/**
+ * "View as tester": signs this browser in as `targetUserId`, read-only, and parks the admin's own
+ * session so `stopImpersonating` can bring it back. `returnTo` is the admin page to go back to.
+ */
+export async function startImpersonating(admin: CurrentUser, targetUserId: string, returnTo: string): Promise<CurrentUser> {
+  if (admin.role !== "internal_admin" || admin.impersonator) throw new Error("only an admin signed in as themselves can view as someone else");
+  const jar = await cookies();
+  const adminToken = jar.get(COOKIE)?.value;
+  if (!adminToken) throw new Error("no admin session");
+  const expires = new Date(Date.now() + IMPERSONATION_HOURS * 3_600_000);
+  // The admin's own session lasts longer than this one; keep its cookie until it comes back.
+  jar.set(ADMIN_COOKIE, adminToken, { httpOnly: true, sameSite: "lax", secure: env.isProd, maxAge: SESSION_DAYS * 86_400, path: "/" });
+  jar.set(RETURN_COOKIE, safeAdminPath(returnTo), { httpOnly: true, sameSite: "lax", secure: env.isProd, expires, path: "/" });
+  const { impersonator: _, ...self } = admin;
+  return signIn(targetUserId, self);
+}
+
+/**
+ * Ends "View as tester": drops the borrowed session and restores the admin's own. Returns the page
+ * to go back to, or null when there was nothing to restore (the caller then sends them to sign in).
+ */
+export async function stopImpersonating(): Promise<string | null> {
+  const jar = await cookies();
+  const token = jar.get(COOKIE)?.value;
+  const db = getDb();
+  if (token) await db.delete(schema.authSessions).where(and(eq(schema.authSessions.tokenHash, hash(token)), sql`${schema.authSessions.impersonatorUserId} is not null`));
+  const adminToken = jar.get(ADMIN_COOKIE)?.value;
+  const back = safeAdminPath(jar.get(RETURN_COOKIE)?.value);
+  jar.delete(ADMIN_COOKIE);
+  jar.delete(RETURN_COOKIE);
+  if (!adminToken) { jar.delete(COOKIE); return null; }
+  const [row] = await db.select({ expiresAt: schema.authSessions.expiresAt }).from(schema.authSessions).where(and(eq(schema.authSessions.tokenHash, hash(adminToken)), gt(schema.authSessions.expiresAt, new Date())));
+  if (!row) { jar.delete(COOKIE); return null; }
+  jar.set(COOKIE, adminToken, { httpOnly: true, sameSite: "lax", secure: env.isProd, expires: row.expiresAt, path: "/" });
+  return back;
+}
+
+/** True when this browser has an admin session parked behind a "View as tester" one, even an expired one. */
+export async function hasParkedAdminSession(): Promise<boolean> {
+  return Boolean((await cookies()).get(ADMIN_COOKIE)?.value);
+}
+
+function safeAdminPath(p: string | undefined): string {
+  return p && /^\/admin(\/[A-Za-z0-9/_-]*)?$/.test(p) ? p : "/admin";
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
@@ -87,18 +151,27 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!token) return null;
   const db = getDb();
   const rows = await db
-    .select({ id: schema.users.id, orgId: schema.users.orgId, email: schema.users.email, name: schema.users.name, firstName: schema.users.firstName, role: schema.users.role, removedAt: schema.users.removedAt })
+    .select({ id: schema.users.id, orgId: schema.users.orgId, email: schema.users.email, name: schema.users.name, firstName: schema.users.firstName, role: schema.users.role, removedAt: schema.users.removedAt, impersonatorUserId: schema.authSessions.impersonatorUserId })
     .from(schema.authSessions)
     .innerJoin(schema.users, eq(schema.users.id, schema.authSessions.userId))
     .where(and(eq(schema.authSessions.tokenHash, hash(token)), gt(schema.authSessions.expiresAt, new Date())));
   const u = rows[0];
   if (!u || u.removedAt) return null;
-  return { id: u.id, orgId: u.orgId, email: u.email, name: u.name, firstName: u.firstName, role: u.role as Role };
+  const user: CurrentUser = { id: u.id, orgId: u.orgId, email: u.email, name: u.name, firstName: u.firstName, role: u.role as Role };
+  if (!u.impersonatorUserId) return user;
+  // A borrowed session only holds while the admin behind it is still an admin.
+  const [a] = await db
+    .select({ id: schema.users.id, orgId: schema.users.orgId, email: schema.users.email, name: schema.users.name, firstName: schema.users.firstName, role: schema.users.role, removedAt: schema.users.removedAt })
+    .from(schema.users)
+    .where(eq(schema.users.id, u.impersonatorUserId));
+  if (!a || a.removedAt || a.role !== "internal_admin") return null;
+  return { ...user, impersonator: { id: a.id, orgId: a.orgId, email: a.email, name: a.name, firstName: a.firstName, role: a.role as Role } };
 }
 
 export async function requireUser(roles?: Role[]): Promise<CurrentUser> {
   const u = await getCurrentUser();
-  if (!u) redirect("/sign-in");
+  // A "View as tester" session ran out: go back to the admin account rather than to sign-in.
+  if (!u) redirect((await hasParkedAdminSession()) ? "/api/auth/view-as/stop" : "/sign-in");
   if (roles && !roles.includes(u.role)) redirect(homeFor(u.role));
   return u;
 }
@@ -107,15 +180,19 @@ export function homeFor(role: Role): string {
   return role === "associate" ? "/" : role === "pd_admin" ? "/pd" : role === "internal_rater" ? "/rater" : "/admin";
 }
 
-/** API-route variant: returns a 401/403 Response instead of redirecting. */
-export async function apiUser(roles?: Role[]): Promise<CurrentUser | Response> {
+/**
+ * API-route variant: returns a 401/403 Response instead of redirecting. Pass `{ write: true }` from
+ * any route that changes something: an admin viewing as a tester can look but never act for them.
+ */
+export async function apiUser(roles?: Role[], opts?: { write?: boolean }): Promise<CurrentUser | Response> {
   const u = await getCurrentUser();
   if (!u) return Response.json({ error: "unauthenticated" }, { status: 401 });
   if (roles && !roles.includes(u.role)) return Response.json({ error: "forbidden" }, { status: 403 });
+  if (opts?.write && u.impersonator) return Response.json({ error: `Read-only: you are viewing as ${u.name}.`, readOnly: true }, { status: 403 });
   return u;
 }
 
-export async function audit(actor: CurrentUser, action: string, target?: string, details?: unknown) {
+export async function audit(actor: CurrentUser | Impersonator, action: string, target?: string, details?: unknown) {
   await getDb().insert(schema.auditLog).values({ orgId: actor.orgId, actorUserId: actor.id, action, target: target ?? null, details: details ?? null });
 }
 
