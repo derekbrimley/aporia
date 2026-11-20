@@ -135,6 +135,37 @@ export function followUpThreadFor(state: SessionState, threadId: string, charact
 }
 
 /**
+ * How many times in a row this character has already answered the associate's questions on this
+ * thread, counting back from the newest email to the last time the associate sent anything other than
+ * a question (or someone else wrote). Two rounds of hints without progress means the associate is
+ * stuck, and the reply should stop withholding (see `helpFor`).
+ */
+export function questionRounds(state: SessionState, threadId: string, characterId: string): number {
+  const msgs = (state.threads[threadId]?.messageIds ?? []).map((id) => state.messages[id]!);
+  let rounds = 0;
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i]!;
+    if (m.from === "associate") {
+      if (m.intent && m.intent !== "question") break;
+      continue;
+    }
+    if (m.from === characterId && m.kind === "reply") rounds++;
+    else break;
+  }
+  return rounds;
+}
+
+/**
+ * For a character who teaches by asking: after one round of hints the reply points to the exact place
+ * in the document, and after two it simply answers. Pushing longer reads as withholding.
+ */
+export function helpFor(state: SessionState, threadId: string, character: Character): "point" | "answer" | undefined {
+  if (!character.gives_socratic_feedback) return undefined;
+  const rounds = questionRounds(state, threadId, character.id);
+  return rounds >= 2 ? "answer" : rounds >= 1 ? "point" : undefined;
+}
+
+/**
  * Whether this character has already written on the thread since the given email arrived. Their
  * reply then saw the email (prompts include the whole thread), so a second reply would repeat it.
  */

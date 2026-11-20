@@ -1,7 +1,7 @@
 import type { Beat, Character, Facts, NegotiationPoint } from "../deps.js";
 import { CHARACTER_HARD_RULES, characterCard, documentsBlock, factsBlock, renderThread, type AssociateReading, type ThreadMessageForPrompt } from "../common.js";
 
-export const CHARACTER_WRITER_VERSION = "character_writer@1.6.0";
+export const CHARACTER_WRITER_VERSION = "character_writer@1.7.0";
 
 export interface CharacterWriterInput {
   character: Character;
@@ -11,7 +11,13 @@ export interface CharacterWriterInput {
   thread: ThreadMessageForPrompt[];
   otherThreads?: { subject: string; messages: ThreadMessageForPrompt[] }[];
   mode:
-    | { kind: "reply"; toMessageBody: string; draftFor?: { deliverable: string; deliverToName: string } }
+    | {
+        kind: "reply";
+        toMessageBody: string;
+        draftFor?: { deliverable: string; deliverToName: string };
+        /** The associate has asked more than once and is stuck: "point" to the exact passage, or "answer" outright. */
+        help?: "point" | "answer";
+      }
     | { kind: "beat"; beat: Beat; mustIncludeFacts: Facts }
     | { kind: "interruption"; beat: Beat; mustIncludeFacts: Facts };
   negotiation?: NegotiationPoint[];
@@ -34,6 +40,14 @@ export interface CharacterWriterInput {
    * means the character has already followed up there and must wrap the thread up.
    */
   followUpThread?: { closeNow: boolean };
+}
+
+/** Once the associate is stuck, stop teaching by withholding: show them where it is, then just answer. */
+function helpText(input: CharacterWriterInput): string {
+  if (input.mode.kind !== "reply" || !input.mode.help) return "";
+  const a = input.associateFirstName;
+  if (input.mode.help === "point") return ` You have already answered ${a} once on this, and they are still asking. If they are stuck on something you pointed them toward, stop sending them to look: name the document and section and quote the passage that answers it (from the documents above, exactly as written). If it isn't in their documents, say so plainly and tell them what you know. You may ask one question about what it means for the client, but don't make them hunt again. This overrides the rule against naming the item, for this email only.`;
+  return ` ${a} has asked about this several times and is still stuck, which is frustrating for them. If that's what is happening, answer the question directly and plainly, the way a senior colleague does once someone has genuinely tried: give the answer, where it comes from, and why it matters, then move on. Ask no further questions about it. This overrides the rule against stating answers, for this email only.`;
 }
 
 /** Extra instructions for the private follow-up thread on work the associate already sent. */
@@ -65,7 +79,7 @@ export function characterWriterPrompt(input: CharacterWriterInput) {
   const noAttachments = " You cannot attach anything to this email, so never say you are attaching, sending or forwarding a document, or that one is on its way.";
   let task: string;
   if (input.mode.kind === "reply") {
-    task = `Write your reply to the most recent email on this thread. If the associate sent several emails since you last wrote, answer them together in this one reply. Respond as you would in a real deal, in your voice, within what you know.${noAttachments} If the email asks you to decide something legal or to give the answer to the associate's assignment, do what this person would really do: ask what they think, redirect, or defer.${forwardsSomething(input.thread) ? ` The associate forwarded you the email quoted under "Forwarded message"; you have now read it and may refer to what it says.` : ""}${followUp(input)}${input.mode.draftFor ? ` The associate sent this to you only; it has not gone to ${input.mode.draftFor.deliverToName} yet. It reads as their draft of this assignment: ${input.mode.draftFor.deliverable} React the way a senior associate reviewing a draft would: keep it short, don't grade it or rewrite it, ask at most one question, and tell them to send it to ${input.mode.draftFor.deliverToName} when they're ready. Do not talk as if ${input.mode.draftFor.deliverToName} has seen it.` : ""}`;
+    task = `Write your reply to the most recent email on this thread. If the associate sent several emails since you last wrote, answer them together in this one reply. Respond as you would in a real deal, in your voice, within what you know.${noAttachments} If the email asks you to decide something legal or to give the answer to the associate's assignment, do what this person would really do: ask what they think, redirect, or defer.${forwardsSomething(input.thread) ? ` The associate forwarded you the email quoted under "Forwarded message"; you have now read it and may refer to what it says.` : ""}${helpText(input)}${followUp(input)}${input.mode.draftFor ? ` The associate sent this to you only; it has not gone to ${input.mode.draftFor.deliverToName} yet. It reads as their draft of this assignment: ${input.mode.draftFor.deliverable} React the way a senior associate reviewing a draft would: keep it short, don't grade it or rewrite it, ask at most one question, and tell them to send it to ${input.mode.draftFor.deliverToName} when they're ready. Do not talk as if ${input.mode.draftFor.deliverToName} has seen it.` : ""}`;
   } else {
     const b = input.mode.beat;
     const must = Object.keys(input.mode.mustIncludeFacts).length ? `\nThese facts must appear accurately in the email:\n${factsBlock(input.mode.mustIncludeFacts).split("\n").slice(1).join("\n")}` : "";

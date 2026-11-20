@@ -5,7 +5,7 @@ import {
 import { openAssignments, workText } from "@rematter/engine";
 import type { Job, JobPayload } from "@rematter/engine";
 import { formatFact, type Facts } from "@rematter/scenario";
-import { answeredSince, associateDocuments, associateReading, currentWorkFor, documentTextsFor, followUpThreadFor, forwardedForPrompt, otherThreadsFor, storyDate, threadForPrompt } from "../context.js";
+import { answeredSince, associateDocuments, associateReading, currentWorkFor, documentTextsFor, followUpThreadFor, forwardedForPrompt, helpFor, otherThreadsFor, storyDate, threadForPrompt } from "../context.js";
 import { beatSubject, deliverFixed, generateAndDeliver, threadIdForKey } from "./deliver.js";
 import { factsFor, type JobContext, type JobOutcome } from "./types.js";
 
@@ -86,21 +86,25 @@ async function characterReply(ctx: JobContext, messageId: string, characterId: s
   // A reply that already went out after this email saw it and answered the thread; don't write a second one.
   if (answeredSince(ctx.state, threadId, messageId, characterId)) return { events: [], generations: [] };
   const facts = factsFor(ctx, c);
-  const hints = answerKeyHints(ctx, threadId);
+  const help = helpFor(ctx.state, threadId, c);
+  // Once the associate is stuck, pointing at the passage or giving the answer is the point, so the
+  // checker no longer treats it as a leak.
+  const hints = help ? [] : answerKeyHints(ctx, threadId);
+  const documents = documentTextsFor(ctx.state, ctx.documents, c);
   const negotiation = c.negotiates ? ctx.pkg.negotiation : undefined;
   const to = [msg.from === "associate" ? "associate" : msg.from];
   const cc = [...msg.to, ...msg.cc].filter((x) => x !== c.id && x !== "associate" && !ctx.idx.character(x).is_doctrine_assistant);
   return generateAndDeliver(ctx, { from: c, to, cc, threadId, threadKey: thread.key, subject: thread.subject, attachments: [], kind: "reply", inReplyTo: messageId }, {
     role: "character_writer",
     build: (feedback) => {
-      const p = characterWriterPrompt({ deal: dealFor(ctx), character: c, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), otherThreads: otherThreadsFor(ctx.state, c.id, threadId, ctx.names), associateDocuments: associateDocuments(ctx.state, ctx.names), reading: associateReading(ctx.state, ctx.names), documents: documentTextsFor(ctx.state, ctx.documents, c), currentWork: currentWorkFor(ctx.state, ctx.pkg, c), followUpThread: followUpThreadFor(ctx.state, threadId, c.id), mode: { kind: "reply", toMessageBody: msg.body, draftFor: draftFor ? { deliverable: ctx.idx.assignment(draftFor.assignmentId).deliverable, deliverToName: ctx.names.name(draftFor.deliverTo) } : undefined }, negotiation, feedback, storyDate: storyDate(ctx.now, ctx.session.timeZone) });
+      const p = characterWriterPrompt({ deal: dealFor(ctx), character: c, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), otherThreads: otherThreadsFor(ctx.state, c.id, threadId, ctx.names), associateDocuments: associateDocuments(ctx.state, ctx.names), reading: associateReading(ctx.state, ctx.names), documents, currentWork: currentWorkFor(ctx.state, ctx.pkg, c), followUpThread: followUpThreadFor(ctx.state, threadId, c.id), mode: { kind: "reply", toMessageBody: msg.body, help, draftFor: draftFor ? { deliverable: ctx.idx.assignment(draftFor.assignmentId).deliverable, deliverToName: ctx.names.name(draftFor.deliverTo) } : undefined }, negotiation, feedback, storyDate: storyDate(ctx.now, ctx.session.timeZone) });
       return { ...p, mockContext: { mode: "reply", associateFirstName: ctx.state.associateFirstName, characterFirstName: c.first_name, signoff: signoff(c), replyHint: c.id === "client_contact" ? "That's helpful, though I'm not sure I follow all of it." : undefined } };
     },
     parse: (res) => ({ body: res.text }),
     check: "full",
     answerKeyHints: hints,
-    isSocratic: c.gives_socratic_feedback,
-    readText: forwardedText(ctx, msg.forwardedMessageId),
+    isSocratic: c.gives_socratic_feedback && !help,
+    readText: [forwardedText(ctx, msg.forwardedMessageId), ...documents.map((d) => `${d.title}\n${d.text}`)].filter(Boolean).join("\n\n") || undefined,
     inputRefs: { messageId, characterId, threadId },
   });
 }

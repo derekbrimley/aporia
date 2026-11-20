@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { SessionState } from "@rematter/engine";
 import { ScenarioIndex, loadScenario, scenarioDir } from "@rematter/scenario";
-import { Names, answeredSince, associateDocuments, currentWorkFor, followUpThreadFor, sentAt, storyDate } from "../context.js";
+import { Names, answeredSince, associateDocuments, currentWorkFor, followUpThreadFor, helpFor, sentAt, storyDate } from "../context.js";
 import { factsFor } from "../jobs/types.js";
 
 const { pkg } = loadScenario(scenarioDir("acme-merger-01"));
@@ -74,5 +74,20 @@ describe("worker context helpers", () => {
     expect(factsFor({ pkg, state: early }, idx.character("senior_associate"))["cap.series_b_class_vote"]).toBeUndefined();
     expect(factsFor({ pkg, state: early }, idx.character("target_counsel"))["cap.series_b_class_vote"]).toBeDefined();
     expect(factsFor({ pkg, state: late }, idx.character("senior_associate"))["cap.series_b_class_vote"]).toBeDefined();
+  });
+
+  it("points to the passage after one round of hints and answers after two", () => {
+    const idx = new ScenarioIndex(pkg);
+    const daniel = idx.character("senior_associate");
+    const q = (id: string) => ({ ...msg(id, "associate", ["senior_associate"], "associate"), intent: "question" });
+    const r = (id: string) => msg(id, "senior_associate", ["associate"], "reply");
+    expect(helpFor(stateWith([q("a1")]), "t1", daniel)).toBeUndefined();
+    expect(helpFor(stateWith([q("a1"), r("d1"), q("a2")]), "t1", daniel)).toBe("point");
+    expect(helpFor(stateWith([q("a1"), r("d1"), q("a2"), r("d2"), q("a3")]), "t1", daniel)).toBe("answer");
+    // Sending actual work resets the count.
+    const work = { ...msg("w1", "associate", ["senior_associate"], "associate"), intent: "deliverable" };
+    expect(helpFor(stateWith([q("a1"), r("d1"), q("a2"), r("d2"), work, r("d3"), q("a4")]), "t1", daniel)).toBe("point");
+    // The client doesn't teach by asking, so she just answers as usual.
+    expect(helpFor(stateWith([q("a1"), r("d1"), q("a2"), r("d2"), q("a3")]), "t1", idx.character("client_contact"))).toBeUndefined();
   });
 });

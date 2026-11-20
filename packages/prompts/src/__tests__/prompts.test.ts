@@ -96,4 +96,12 @@ describe("character writer: what the associate can read", () => {
     expect(later.user).toMatch(/Close it now/);
     expect(later.user).toMatch(/ask no new questions/);
   });
+
+  it("stops withholding once the associate is stuck", () => {
+    const point = characterWriterPrompt({ ...base, mode: { kind: "reply", toMessageBody: "I still can't find it", help: "point" } });
+    expect(point.user).toMatch(/name the document and section and quote the passage/);
+    const answer = characterWriterPrompt({ ...base, mode: { kind: "reply", toMessageBody: "I still can't find it", help: "answer" } });
+    expect(answer.user).toMatch(/answer the question directly and plainly/);
+    expect(characterWriterPrompt(base).user).not.toMatch(/quote the passage|directly and plainly/);
+  });
 });
