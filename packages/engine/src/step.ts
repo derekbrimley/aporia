@@ -240,7 +240,10 @@ class Ctx {
 
     // A substantive email that reads like a question may still be the work (comments phrased as
     // questions). Assess it first; onAssessment decides whether it is the deliverable or gets a reply.
-    const probe = answersReflection ? undefined : likelyDeliverable(this.state, this.idx.pkg, msg.threadId, [...msg.to, ...msg.cc], workText(this.state, msg), intent);
+    // Nor is anything on the private follow-up thread a reflection opens: it is a conversation about
+    // work already sent, so it never gets a silent probe against whatever assignment is open next.
+    const onFollowUpThread = thread.key?.startsWith("reflection:") ?? false;
+    const probe = answersReflection || onFollowUpThread ? undefined : likelyDeliverable(this.state, this.idx.pkg, msg.threadId, [...msg.to, ...msg.cc], workText(this.state, msg), intent);
     if (probe) {
       this.enqueue({ key: `assess:${msg.id}`, kind: "assess", delaySeconds: 0, payload: { kind: "assess", messageId: msg.id, assignmentId: probe.id, probe: true } });
       return;

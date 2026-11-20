@@ -4,9 +4,11 @@
 
 **Borrower:** Acme Pharmaceuticals, Inc. ("Acme"). **Lender:** BigBank, N.A. ("BigBank"). **Guarantor:** Beta Pharma, Inc. ("Beta").
 
-## 1. Existing obligations
+## 1. Existing obligations and BigBank's position
 
 Term loans of $80,000,000 are outstanding under the Credit Agreement between Acme and BigBank, secured by a first-priority lien on substantially all of Acme's assets. Acme is in default and BigBank is forbearing under the Forbearance Agreement.
+
+BigBank estimates that a liquidation of Acme's assets would recover only $35,000,000 to $40,000,000. BigBank is proposing the restructuring below because it expects the Merger, with Beta's guaranty of the remaining debt, to produce a better recovery than enforcement.
 
 ## 2. Forgiveness
 

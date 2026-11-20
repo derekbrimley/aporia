@@ -60,9 +60,10 @@
     it. The question must not rest on a wrong legal premise or hint at the
     answer. In particular, never suggest that zero consideration removes or
     weakens the need for Acme's stockholders to approve the merger; if you ask
-    about approvals, ask how the approval will actually be obtained. Then tell them Grace is about to send over the signed letter of intent
-    and BigBank's term sheet, and that they should read both and send her their
-    thoughts, copying you and Ruth. Keep it under 120 words.
+    about approvals, ask how the approval will actually be obtained. Then tell
+    them Grace is about to send over the signed letter of intent and BigBank's
+    term sheet, and that you'll follow up with what you need once they land.
+    Don't ask for anything on them yet. Keep it under 120 words.
 
 # ---------------------------------------------------------------- M2 LOI
 - id: B-M2-loi
@@ -101,6 +102,21 @@
     and wants to know what each point means for Beta. Do not list the issues
     yourself. Under 90 words.
 
+- id: B-M2-client-thanks
+  title: Grace acknowledges the associate's note
+  trigger: { assignment_complete: A2 }
+  sender: client_contact
+  to: [associate]
+  cc: [senior_associate, partner]
+  thread_key: loi
+  mode: generated
+  brief: >
+    Reply on the thread to the associate's note on the letter of intent and the
+    term sheet. Thank them briefly and react, as a non-lawyer, to the one point
+    in their note that matters most to you, in a sentence. Say you'll take it
+    to Beta's CEO. Ask no legal questions, raise no new issues, and promise no
+    documents. Under 60 words.
+
 # ---------------------------------------------------------------- M3 Data room
 - id: B-M3-data-room
   title: Acme's counsel opens the data room
@@ -112,7 +128,7 @@
   mode: fixed
   attachments: [data-room-index, dr-capitalization, dr-forbearance-agreement, dr-halvorsen-supply, dr-unity-gpo, dr-corvane-license, dr-durham-lease, dr-fda-warning-letter, dr-litigation-summary]
   body: |
-    Good morning. The Acme data room is now open to your team. I attach the index and the documents posted so far. We will add materials as they are located, but I would ask for patience: Acme's legal and finance staff are very thin at the moment.
+    The Acme data room is now open to your team. I attach the index and the documents posted so far. We will add materials as they are located, but I would ask for patience: Acme's legal and finance staff are very thin at the moment.
 
     Given BigBank's timetable, Acme's board would like to sign by {{dates.target_signing}}. Please send any requests to me rather than to the company directly.
 

@@ -127,6 +127,14 @@ export function crossValidate(pkg: ScenarioPackage, dir?: string): ValidationIss
     if (sender?.is_doctrine_assistant) err(`Beat ${b.id}: the doctrine assistant never initiates email`);
   }
   for (const [k, v] of Object.entries(pkg.facts)) if (v.available_from) checkRef("milestone", v.available_from, `Fact ${k} available_from`);
+  // Sources are all-or-nothing: once a scenario says where its facts live, every fact must say so.
+  const sourced = Object.entries(pkg.facts).filter(([, v]) => v.source !== undefined);
+  if (sourced.length) {
+    for (const [k, v] of Object.entries(pkg.facts)) {
+      if (v.source === undefined) err(`Fact ${k} has no source: name the documents that state it, or "background"`);
+      else if (Array.isArray(v.source)) for (const d of v.source) checkRef("document", d, `Fact ${k} source`);
+    }
+  }
   for (const c of pkg.characters) {
     for (const d of c.knows.documents) checkRef("document", d, `Character ${c.id} knows.documents`);
     for (const fk of c.knows.facts) {

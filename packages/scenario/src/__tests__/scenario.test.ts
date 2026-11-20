@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { loadScenario, ScenarioIndex, sliceFactsFor, scenarioDir, DEFAULT_SCENARIO_ID, buildAllDocuments, listScenarioIds } from "../index.js";
+import { loadScenario, ScenarioIndex, sliceFactsFor, scenarioDir, DEFAULT_SCENARIO_ID, buildAllDocuments, listScenarioIds, formatFact, partitionFactsBySource } from "../index.js";
 
 describe("venture-debt-01 package", () => {
   const { pkg, dir, issues } = loadScenario(scenarioDir(DEFAULT_SCENARIO_ID));
@@ -91,5 +91,65 @@ describe("acme-merger-01 fact availability", () => {
   it("tells characters the forbearance ends early if the signing deadline is missed", () => {
     const f = pkg.facts["debt.forbearance"] as { value: string };
     expect(f.value).toMatch(/earlier if a definitive merger agreement is not signed by the target signing date/);
+  });
+});
+
+describe("acme-merger-01 fact sources", () => {
+  const { pkg, dir } = loadScenario(scenarioDir("acme-merger-01"));
+  const docs = new Map(buildAllDocuments(dir, pkg.documents).map((d) => [d.id, d]));
+  const idx = new ScenarioIndex(pkg);
+  const releasedBy = (beatId: string) => {
+    const out = new Set<string>();
+    for (const b of pkg.beats) {
+      for (const d of b.attachments) out.add(d);
+      if (b.id === beatId) break;
+    }
+    return out;
+  };
+
+  it("says where every fact lives", () => {
+    for (const [k, v] of Object.entries(pkg.facts)) expect(v.source, k).toBeDefined();
+  });
+
+  it("only cites documents the associate is actually sent", () => {
+    const sent = new Set(pkg.beats.flatMap((b) => b.attachments));
+    for (const [k, v] of Object.entries(pkg.facts)) if (Array.isArray(v.source)) for (const d of v.source) expect(sent.has(d), `${k} -> ${d}`).toBe(true);
+  });
+
+  // Amounts, percentages and dates must appear, as written, in a document the fact cites.
+  it("finds each sourced amount, percentage and date in one of its documents", () => {
+    for (const [k, v] of Object.entries(pkg.facts)) {
+      if (!Array.isArray(v.source)) continue;
+      const texts = v.source.map((d) => docs.get(d)!.text);
+      const needles: string[] = [];
+      if ((v.type === "money" && v.value !== 0) || v.type === "percent") needles.push(formatFact(v));
+      if (v.type === "date") needles.push(`{{${k}}}`);
+      if (v.type === "text") needles.push(...(v.value.match(/\$\d[\d,]*\d|\d+%/g) ?? []));
+      for (const n of needles) expect(texts.some((t) => t.includes(n)), `${k}: "${n}" not in ${v.source.join(", ")}`).toBe(true);
+    }
+  });
+
+  it("puts BigBank's liquidation estimate in the term sheet Grace sends at M2", () => {
+    expect(pkg.facts["debt.liquidation_recovery"]!.source).toEqual(["bigbank-term-sheet"]);
+    expect(releasedBy("B-M2-loi").has("bigbank-term-sheet")).toBe(true);
+    expect(docs.get("bigbank-term-sheet")!.text).toContain("$35,000,000 to $40,000,000");
+  });
+
+  it("keeps Series B facts from Daniel until the capitalization summary arrives, even inside M3", () => {
+    const daniel = idx.character("senior_associate");
+    const simon = idx.character("target_counsel");
+    const inM3 = (m: string) => ["M1", "M2", "M3"].includes(m);
+    const access = (released: string[], who: string) => ({ released: (d: string) => released.includes(d), ownedBy: (d: string) => idx.document(d).from === who });
+    const early = sliceFactsFor(daniel, pkg.facts, inM3, access(["letter-of-intent", "bigbank-term-sheet"], daniel.id));
+    expect(Object.keys(early)).not.toContain("cap.series_b_class_vote");
+    // Ungated facts stay known; they are only labelled as not yet in the associate's documents.
+    expect(Object.keys(early)).toContain("cap.larchmont_voting_pct");
+    expect(Object.keys(sliceFactsFor(simon, pkg.facts, inM3, access([], simon.id)))).toContain("cap.series_b_class_vote");
+    const late = sliceFactsFor(daniel, pkg.facts, inM3, access(["letter-of-intent", "bigbank-term-sheet", "dr-capitalization"], daniel.id));
+    expect(Object.keys(late)).toContain("cap.series_b_class_vote");
+    const parts = partitionFactsBySource(early, (d) => ["letter-of-intent", "bigbank-term-sheet"].includes(d));
+    expect(Object.keys(parts.inDocuments)).toContain("debt.liquidation_recovery");
+    expect(Object.keys(parts.notInDocuments)).toContain("cap.larchmont_voting_pct");
+    expect(Object.keys(parts.notInDocuments)).toContain("structure.hsr");
   });
 });

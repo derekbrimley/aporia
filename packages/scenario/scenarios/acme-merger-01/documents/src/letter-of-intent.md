@@ -8,7 +8,7 @@ This letter sets out the principal terms on which Beta Pharma, Inc. ("Beta") pro
 
 ## 1. Transaction structure
 
-A newly formed, wholly owned subsidiary of Beta ("Merger Sub") will merge with and into Acme, with Acme surviving as a wholly owned subsidiary of Beta (the "Merger"). Beta intends that Acme's corporate existence, contracts, licenses, permits, abbreviated new drug applications and regulatory relationships remain in place. Beta will not assume any liabilities of Acme.
+A newly formed, wholly owned subsidiary of Beta ("Merger Sub") will merge with and into Acme, with Acme surviving as a wholly owned subsidiary of Beta (the "Merger"). Beta intends that Acme's corporate existence, contracts, licenses, permits, its eleven abbreviated new drug applications and its regulatory relationships remain in place. Beta will not assume any liabilities of Acme.
 
 ## 2. Consideration
 

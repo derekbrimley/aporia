@@ -5,7 +5,7 @@ import {
 import { openAssignments, workText } from "@rematter/engine";
 import type { Job, JobPayload } from "@rematter/engine";
 import { formatFact, type Facts } from "@rematter/scenario";
-import { answeredSince, associateDocuments, forwardedForPrompt, otherThreadsFor, storyDate, threadForPrompt } from "../context.js";
+import { answeredSince, associateDocuments, associateReading, currentWorkFor, documentTextsFor, followUpThreadFor, forwardedForPrompt, otherThreadsFor, storyDate, threadForPrompt } from "../context.js";
 import { beatSubject, deliverFixed, generateAndDeliver, threadIdForKey } from "./deliver.js";
 import { factsFor, type JobContext, type JobOutcome } from "./types.js";
 
@@ -93,7 +93,7 @@ async function characterReply(ctx: JobContext, messageId: string, characterId: s
   return generateAndDeliver(ctx, { from: c, to, cc, threadId, threadKey: thread.key, subject: thread.subject, attachments: [], kind: "reply", inReplyTo: messageId }, {
     role: "character_writer",
     build: (feedback) => {
-      const p = characterWriterPrompt({ deal: dealFor(ctx), character: c, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), otherThreads: otherThreadsFor(ctx.state, c.id, threadId, ctx.names), associateDocuments: associateDocuments(ctx.state, ctx.names), mode: { kind: "reply", toMessageBody: msg.body, draftFor: draftFor ? { deliverable: ctx.idx.assignment(draftFor.assignmentId).deliverable, deliverToName: ctx.names.name(draftFor.deliverTo) } : undefined }, negotiation, feedback, storyDate: storyDate(ctx.now, ctx.session.timeZone) });
+      const p = characterWriterPrompt({ deal: dealFor(ctx), character: c, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), otherThreads: otherThreadsFor(ctx.state, c.id, threadId, ctx.names), associateDocuments: associateDocuments(ctx.state, ctx.names), reading: associateReading(ctx.state, ctx.names), documents: documentTextsFor(ctx.state, ctx.documents, c), currentWork: currentWorkFor(ctx.state, ctx.pkg, c), followUpThread: followUpThreadFor(ctx.state, threadId, c.id), mode: { kind: "reply", toMessageBody: msg.body, draftFor: draftFor ? { deliverable: ctx.idx.assignment(draftFor.assignmentId).deliverable, deliverToName: ctx.names.name(draftFor.deliverTo) } : undefined }, negotiation, feedback, storyDate: storyDate(ctx.now, ctx.session.timeZone) });
       return { ...p, mockContext: { mode: "reply", associateFirstName: ctx.state.associateFirstName, characterFirstName: c.first_name, signoff: signoff(c), replyHint: c.id === "client_contact" ? "That's helpful, though I'm not sure I follow all of it." : undefined } };
     },
     parse: (res) => ({ body: res.text }),
@@ -119,7 +119,7 @@ async function beat(ctx: JobContext, beatId: string): Promise<JobOutcome> {
   return generateAndDeliver(ctx, spec, {
     role: "character_writer",
     build: (feedback) => {
-      const p = characterWriterPrompt({ deal: dealFor(ctx), character: sender, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: sender.id }), otherThreads: otherThreadsFor(ctx.state, sender.id, threadId, ctx.names), associateDocuments: associateDocuments(ctx.state, ctx.names), mode: { kind: b.is_interruption ? "interruption" : "beat", beat: b, mustIncludeFacts: must }, negotiation: sender.negotiates ? ctx.pkg.negotiation : undefined, feedback, storyDate: storyDate(ctx.now, ctx.session.timeZone) });
+      const p = characterWriterPrompt({ deal: dealFor(ctx), character: sender, facts, associateFirstName: ctx.state.associateFirstName, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: sender.id }), otherThreads: otherThreadsFor(ctx.state, sender.id, threadId, ctx.names), associateDocuments: associateDocuments(ctx.state, ctx.names), reading: associateReading(ctx.state, ctx.names), documents: documentTextsFor(ctx.state, ctx.documents, sender), mode: { kind: b.is_interruption ? "interruption" : "beat", beat: b, mustIncludeFacts: must }, negotiation: sender.negotiates ? ctx.pkg.negotiation : undefined, feedback, storyDate: storyDate(ctx.now, ctx.session.timeZone) });
       return { ...p, mockContext: { mode: "beat", brief: b.brief, associateFirstName: ctx.state.associateFirstName, characterFirstName: sender.first_name, signoff: signoff(sender), mustIncludeDisplay: factsDisplay(must) } };
     },
     parse: (res) => ({ body: res.text }),
@@ -159,7 +159,7 @@ async function reflection(ctx: JobContext, job: Extract<JobPayload, { kind: "ref
   return generateAndDeliver(ctx, { from: c, to: ["associate"], ...spec, attachments: [], kind: "reflection", inReplyTo: messageId, assignmentId }, {
     role: "reflection_engine",
     build: (feedback) => {
-      const p = reflectionPrompt({ character: c, facts, associateFirstName: ctx.state.associateFirstName, assignment: a, assessment, decisions, privateNote: side !== null, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), priorQuestions: ctx.state.reflectionQuestionsAsked, storyDate: storyDate(ctx.now, ctx.session.timeZone), feedback });
+      const p = reflectionPrompt({ character: c, facts, associateFirstName: ctx.state.associateFirstName, assignment: a, assessment, decisions, privateNote: side !== null, thread: threadForPrompt(ctx.state, threadId, ctx.names, { viewerId: c.id }), priorQuestions: ctx.state.reflectionQuestionsAsked, storyDate: storyDate(ctx.now, ctx.session.timeZone), feedback, reading: associateReading(ctx.state, ctx.names), documents: documentTextsFor(ctx.state, ctx.documents, c) });
       return { ...p, mockContext: { socraticAngles: a.socratic_angles, priorQuestions: ctx.state.reflectionQuestionsAsked, associateFirstName: ctx.state.associateFirstName, signoff: signoff(c), assignmentTitle: a.title, decisionLabel: decisions[0]?.positionLabel ?? null } };
     },
     parse: (res) => {

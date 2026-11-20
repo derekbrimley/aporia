@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { SessionState } from "@rematter/engine";
-import { loadScenario, scenarioDir } from "@rematter/scenario";
-import { Names, answeredSince, associateDocuments, sentAt, storyDate } from "../context.js";
+import { ScenarioIndex, loadScenario, scenarioDir } from "@rematter/scenario";
+import { Names, answeredSince, associateDocuments, currentWorkFor, followUpThreadFor, sentAt, storyDate } from "../context.js";
+import { factsFor } from "../jobs/types.js";
 
 const { pkg } = loadScenario(scenarioDir("acme-merger-01"));
 const names = new Names(pkg, "Austin");
@@ -43,5 +44,35 @@ describe("worker context helpers", () => {
     expect(storyDate(at, "Bogus/Zone")).toBe("November 13, 2026");
     expect(sentAt(at, null)).toBe("2026-11-13 00:07");
     expect(sentAt(at, "America/Denver")).toBe("2026-11-12 17:07");
+  });
+
+  it("closes the private follow-up thread once the character has replied there", () => {
+    const side = (msgs: ReturnType<typeof msg>[]) => {
+      const st = stateWith(msgs);
+      (st.threads.t1 as { key: string }).key = "reflection:m1";
+      return st;
+    };
+    expect(followUpThreadFor(stateWith([msg("r1", "senior_associate", ["associate"], "reflection")]), "t1", "senior_associate")).toBeUndefined();
+    expect(followUpThreadFor(side([msg("r1", "senior_associate", ["associate"], "reflection"), msg("a1", "associate", ["senior_associate"], "associate")]), "t1", "senior_associate")).toEqual({ closeNow: false });
+    expect(followUpThreadFor(side([msg("r1", "senior_associate", ["associate"], "reflection"), msg("d1", "senior_associate", ["associate"], "reply")]), "t1", "senior_associate")).toEqual({ closeNow: true });
+  });
+
+  it("tells the associate's own firm what work is open, and nobody else", () => {
+    const idx = new ScenarioIndex(pkg);
+    const s = { assignments: { A3: { status: "open" }, A2: { status: "complete" } } } as unknown as SessionState;
+    const work = currentWorkFor(s, pkg, idx.character("senior_associate"))!;
+    expect(work).toHaveLength(1);
+    expect(work[0]).toMatch(new RegExp(`^${idx.assignment("A3").title}`));
+    expect(currentWorkFor(s, pkg, idx.character("target_counsel"))).toBeUndefined();
+  });
+
+  it("keeps the Series B class vote from Daniel until the capitalization summary arrives, not just until M3 starts", () => {
+    const idx = new ScenarioIndex(pkg);
+    const inM3 = { milestones: { M1: { enteredAt: "x" }, M2: { enteredAt: "x" }, M3: { enteredAt: "x" } } };
+    const early = { ...inM3, documentsReleased: ["letter-of-intent", "bigbank-term-sheet"] } as unknown as SessionState;
+    const late = { ...inM3, documentsReleased: ["letter-of-intent", "bigbank-term-sheet", "dr-capitalization"] } as unknown as SessionState;
+    expect(factsFor({ pkg, state: early }, idx.character("senior_associate"))["cap.series_b_class_vote"]).toBeUndefined();
+    expect(factsFor({ pkg, state: early }, idx.character("target_counsel"))["cap.series_b_class_vote"]).toBeDefined();
+    expect(factsFor({ pkg, state: late }, idx.character("senior_associate"))["cap.series_b_class_vote"]).toBeDefined();
   });
 });

@@ -14,7 +14,7 @@ Filed in the U.S. District Court for the Middle District of North Carolina by th
 
 ## 2. Insurance
 
-Acme's product liability insurer has acknowledged notice of both claims and has reserved its rights, citing the policy's exclusion for known manufacturing deficiencies.
+Together the two suits claim damages of about $6,000,000. Acme's product liability insurer has acknowledged notice of both claims and has reserved its rights, citing the policy's exclusion for known manufacturing deficiencies.
 
 ## 3. Other matters
 

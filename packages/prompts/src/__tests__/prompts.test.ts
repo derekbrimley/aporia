@@ -65,3 +65,35 @@ describe("deal-neutral prompts", () => {
     expect(`${p.system}\n${p.user}`).not.toContain("Marcus");
   });
 });
+
+describe("character writer: what the associate can read", () => {
+  const acme = loadScenario(scenarioDir("acme-merger-01")).pkg;
+  const daniel = new ScenarioIndex(acme).character("senior_associate");
+  const titles = new Map(acme.documents.map((d) => [d.id, d.title]));
+  const reading = { associateFirstName: "Austin", released: ["letter-of-intent", "bigbank-term-sheet"], docTitle: (d: string) => titles.get(d) ?? d };
+  const base = { deal: { firm: "Thornbury Vale LLP", side: "buyer", counterpartyName: "Acme" }, character: daniel, facts: sliceFactsFor(daniel, acme.facts), associateFirstName: "Austin", thread: [], storyDate: "November 16, 2026", mode: { kind: "reply" as const, toMessageBody: "x" } };
+
+  it("separates facts in the associate's documents from facts they can't look up", () => {
+    const p = characterWriterPrompt({ ...base, reading });
+    const [inDocs, notInDocs] = p.system.split("Not written in any document Austin has");
+    expect(inDocs).toMatch(/debt\.liquidation_recovery: .*\[in: BigBank Restructuring Term Sheet\]/);
+    expect(notInDocs).toMatch(/structure\.hsr:/);
+    expect(notInDocs).toMatch(/cap\.larchmont_voting_pct:/); // in the cap table, which Austin doesn't have yet
+    expect(p.system).toMatch(/never say or suggest they are in a document/);
+    expect(CHARACTER_HARD_RULES).toMatch(/If they tell you a document doesn't contain something, believe them/);
+  });
+
+  it("includes the text of the associate's documents so the character can check them", () => {
+    const p = characterWriterPrompt({ ...base, reading, documents: [{ title: "BigBank Restructuring Term Sheet", text: "1. Existing obligations\n\n\n\nBigBank estimates..." }] });
+    expect(p.system).toContain("=== BigBank Restructuring Term Sheet ===\n1. Existing obligations\n\nBigBank estimates...");
+  });
+
+  it("closes the private follow-up thread after one follow-up and points to the work owed now", () => {
+    const first = characterWriterPrompt({ ...base, followUpThread: { closeNow: false }, currentWork: ["Data room triage note: a short plan"] });
+    expect(first.user).toMatch(/Ask at most one question/);
+    expect(first.user).toMatch(/What Austin owes right now: Data room triage note/);
+    const later = characterWriterPrompt({ ...base, followUpThread: { closeNow: true } });
+    expect(later.user).toMatch(/Close it now/);
+    expect(later.user).toMatch(/ask no new questions/);
+  });
+});
