@@ -24,7 +24,7 @@ pnpm dev:worker / pnpm dev:web  # run both for the app (http://localhost:3000/si
 
 pnpm playthrough -- --path mixed   # one headless bot run through closing (--from M3 starts at a milestone)
 pnpm evals:fast                 # both sims × mixed, realistic × 3 runs, mock model (CI runs this)
-pnpm evals:weekly               # both sims × mixed, realistic × 1 run + judge (real model, Mondays in GitHub Actions)
+pnpm evals:weekly               # both sims × mixed, realistic × 1 run + judge (real model; Monday schedule paused, run by hand in GitHub Actions)
 pnpm evals:nightly              # both sims × all 6 paths × 4 runs + judge (by hand; expensive)
 pnpm --filter @rematter/web e2e   # Playwright smoke tests (needs web + worker running; see the e2e job in ci.yml)
 pnpm evals:cases                # replay eval cases made from tester flags (packages/evals/cases/README.md)
