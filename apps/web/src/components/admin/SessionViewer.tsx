@@ -2,13 +2,14 @@
 import { useState } from "react";
 import { LocalTime } from "@/components/LocalTime";
 
-type Detail = { state: Record<string, any>; events: { id: string; seq: number; type: string; actor: string; at: string; payload: unknown }[]; generations: Record<string, any>[]; checkpoints: { eventCount: number; label: string }[]; pkg: { id: string; version: string; characters: { id: string; name: string; role_label: string }[] } };
+type Detail = { state: Record<string, any>; events: { id: string; seq: number; type: string; actor: string; at: string; payload: unknown }[]; generations: Record<string, any>[]; checkpoints: { eventCount: number; label: string }[]; pkg: { id: string; version: string; characters: { id: string; name: string; role_label: string }[]; assignments?: ScorecardAssignment[] } };
+type ScorecardAssignment = { id: string; milestone: string; title: string; deliverable: string; threadKey?: string | null; issues: { id: string; tier: string; title: string; description: string; raisedLooksLike: string }[] };
 
 /** Read-only session viewer: state summary, message transcript, event log with replay, per-message generation details. */
 type SourceCohort = { id: string; name: string; orgName: string; isSource: boolean };
 
 export function SessionViewer({ id, detail, cohorts }: { id: string; detail: Detail; cohorts: SourceCohort[] }) {
-  const [tab, setTab] = useState<"messages" | "events" | "generations" | "state">("messages");
+  const [tab, setTab] = useState<"scorecard" | "messages" | "events" | "generations" | "state">("scorecard");
   const [replayed, setReplayed] = useState<string | null>(null);
   const s = detail.state;
   const name = (p: string) => (p === "associate" ? s.associateFirstName || "associate" : detail.pkg.characters.find((c) => c.id === p)?.name ?? p);
@@ -27,7 +28,8 @@ export function SessionViewer({ id, detail, cohorts }: { id: string; detail: Det
         {replayed && <span className="text-ink-muted">{replayed}</span>}
       </div>
       <CheckpointSource id={id} checkpoints={detail.checkpoints} cohorts={cohorts} />
-      <div className="flex flex-wrap gap-1">{(["messages", "events", "generations", "state"] as const).map((t) => <button key={t} type="button" className="btn btn-sm btn-ghost" aria-pressed={tab === t} style={tab === t ? { background: "var(--color-plum-100)" } : {}} onClick={() => setTab(t)}>{t}</button>)}</div>
+      <div className="flex flex-wrap gap-1">{(["scorecard", "messages", "events", "generations", "state"] as const).map((t) => <button key={t} type="button" className="btn btn-sm btn-ghost" aria-pressed={tab === t} style={tab === t ? { background: "var(--color-plum-100)" } : {}} onClick={() => setTab(t)}>{t}</button>)}</div>
+      {tab === "scorecard" && <Scorecard detail={detail} name={name} />}
       {tab === "messages" && <div className="flex flex-col gap-3">{msgs.map((m: any) => <article key={m.id} className="card" style={{ padding: 16 }}><div className="text-[13px] text-ink-muted flex gap-3 flex-wrap"><b className="text-ink">{name(m.from)}</b><span>to {m.to.map(name).join(", ")}{m.cc.length ? ` · cc ${m.cc.map(name).join(", ")}` : ""}</span><span>{m.kind}{m.intent ? ` · ${m.intent}` : ""}{m.beatId ? ` · ${m.beatId}` : ""}{m.assignmentId ? ` · ${m.assignmentId}` : ""}</span><span><LocalTime iso={m.at} /></span></div><div className="display text-[16px] mt-1">{m.subject}</div><div className="email-body mt-2 text-[14px]">{m.body}</div>{m.rationale && <div className="quote mt-2 text-[13.5px]"><b>Rationale (private):</b> {m.rationale}</div>}{m.reflectionQuestions?.length > 0 && <div className="mt-2 text-[13px] text-ink-muted">Reflection questions: {m.reflectionQuestions.join(" | ")}</div>}<GenDetails gens={detail.generations.filter((g) => g.inputRefs?.messageId === m.id || (m.beatId && g.inputRefs?.beatId === m.beatId) || (g.jobKey && m.kind !== "associate" && genByJob.get(g.jobKey)?.length && detail.events.some((e: any) => e.type === "message_delivered" && e.payload.messageId === m.id && e.payload.jobKey === g.jobKey)))} /></article>)}</div>}
       {tab === "events" && <div className="card table-card"><table className="admin-table"><thead><tr><th>Seq</th><th>Type</th><th>Actor</th><th>At</th><th>Payload</th></tr></thead><tbody>{detail.events.map((e) => <tr key={e.id}><td>{e.seq}</td><td>{e.type}</td><td>{e.actor}</td><td><LocalTime iso={e.at} /></td><td><pre className="m-0 text-[12px] whitespace-pre-wrap max-w-[700px]">{JSON.stringify(e.payload, null, 1).slice(0, 800)}</pre></td></tr>)}</tbody></table></div>}
       {tab === "generations" && <div className="flex flex-col gap-2">{detail.generations.map((g) => <details key={g.id} className="card" style={{ padding: 14 }}><summary className="cursor-pointer text-sm">{g.role} · {g.model} · {g.promptVersion} · attempt {g.attempt} · {g.latencyMs}ms · in {g.inputTokens} / out {g.outputTokens} / cached {g.cacheReadTokens} · checker {g.checkerResult ? (g.checkerResult.pass ? "pass" : "FAIL") : "—"} · {g.jobKey}</summary><h4 className="text-[12px] uppercase text-ink-muted mt-3">System</h4><pre className="text-[12px] whitespace-pre-wrap">{g.systemPrompt}</pre><h4 className="text-[12px] uppercase text-ink-muted">User</h4><pre className="text-[12px] whitespace-pre-wrap">{g.userPrompt}</pre><h4 className="text-[12px] uppercase text-ink-muted">Output</h4><pre className="text-[12px] whitespace-pre-wrap">{g.output}</pre>{g.checkerResult && <><h4 className="text-[12px] uppercase text-ink-muted">Checker</h4><pre className="text-[12px] whitespace-pre-wrap">{JSON.stringify(g.checkerResult, null, 1)}</pre></>}</details>)}</div>}
@@ -62,6 +64,90 @@ function CheckpointSource({ id, checkpoints, cohorts }: { id: string; checkpoint
         </div>
       )}
       {msg && <span className="text-ink-muted">{msg}</span>}
+    </div>
+  );
+}
+
+const RESULT_STYLE: Record<string, { label: string; color: string }> = {
+  raised: { label: "Raised", color: "#1e7a46" },
+  partial: { label: "Partial", color: "#9a6700" },
+  missed: { label: "Missed", color: "#b42318" },
+};
+
+/**
+ * One card per assignment: what was asked, which email was graded as the deliverable, the
+ * assessor's summary, and each answer-key issue with its result. Reads the scenario's
+ * assignments.yaml (sent with the detail) and the session's assessment events.
+ */
+export function Scorecard({ detail, name }: { detail: Detail; name: (p: string) => string }) {
+  const s = detail.state;
+  const assignments = detail.pkg.assignments ?? [];
+  if (!assignments.length) return <p className="text-ink-muted text-sm">This scenario has no assignments.</p>;
+  // The assessment that completed each assignment (not probes or late second deliverables).
+  const assessed = new Map<string, { summary?: string; reasoningQuality?: string; at: string }>();
+  for (const e of detail.events) {
+    if (e.type !== "assessment_recorded") continue;
+    const p = e.payload as { messageId: string; assignmentId: string; summary?: string; reasoningQuality?: string; probe?: boolean };
+    if (s.assignments[p.assignmentId]?.deliverableMessageId === p.messageId) assessed.set(p.assignmentId, { summary: p.summary, reasoningQuality: p.reasoningQuality, at: e.at });
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-ink-muted text-[13px] m-0">The answer key comes from the scenario&apos;s assignments.yaml. &quot;Graded email&quot; is the message the engine took as the deliverable; if it looks like the wrong email, the score reflects that email, not the associate&apos;s best work.</p>
+      {assignments.map((a) => {
+        const st = s.assignments[a.id] as { status: string; deliverableMessageId: string | null } | undefined;
+        const msg = st?.deliverableMessageId ? s.messages[st.deliverableMessageId] : undefined;
+        const info = assessed.get(a.id);
+        const gradedThreadKey = msg ? (s.threads[msg.threadId] as { key: string | null } | undefined)?.key ?? null : null;
+        const offThread = Boolean(msg && a.threadKey && gradedThreadKey !== a.threadKey);
+        const counts = { raised: 0, partial: 0, missed: 0 } as Record<string, number>;
+        for (const i of a.issues) { const r = s.issues[i.id]; if (r && r in counts) counts[r]! += 1; }
+        return (
+          <details key={a.id} className="card" style={{ padding: 16 }} open={st?.status === "complete" && a.issues.length > 0}>
+            <summary className="cursor-pointer flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <b className="text-ink">{a.id}</b>
+              <span className="display text-[16px]">{a.title}</span>
+              <span className="text-ink-muted text-[13px]">{a.milestone} · {st?.status ?? "pending"}</span>
+              {a.issues.length > 0 && st?.status === "complete" && (
+                <span className="text-[13px] ml-auto">
+                  {(["raised", "partial", "missed"] as const).map((k) => <span key={k} style={{ color: RESULT_STYLE[k]!.color, marginLeft: 10 }}>{counts[k]} {k}</span>)}
+                </span>
+              )}
+            </summary>
+            <div className="mt-3 text-[14px] flex flex-col gap-2">
+              <div><span className="text-ink-muted text-[12px] uppercase">Asked for</span><div>{a.deliverable}</div></div>
+              <div>
+                <span className="text-ink-muted text-[12px] uppercase">Graded email</span>
+                {msg ? (
+                  <div>
+                    {offThread && <div className="text-[13px]" style={{ color: RESULT_STYLE.partial!.color }}>Graded from another thread, not this assignment&apos;s own: check it is the email the associate meant as this deliverable.</div>}
+                    <b>{msg.subject}</b> <span className="text-ink-muted">· to {(msg.to as string[]).map(name).join(", ")} · <LocalTime iso={msg.at} /></span>
+                    <div className="email-body text-[13px] text-ink-muted mt-1" style={{ maxHeight: 96, overflow: "hidden" }}>{String(msg.body).slice(0, 400)}{String(msg.body).length > 400 ? "…" : ""}</div>
+                  </div>
+                ) : <div className="text-ink-muted">{st?.status === "complete" ? "Completed without a graded email." : "Not submitted yet."}</div>}
+              </div>
+              {info?.summary && <div><span className="text-ink-muted text-[12px] uppercase">Assessor summary{info.reasoningQuality ? ` · reasoning ${info.reasoningQuality}` : ""}</span><div>{info.summary}</div></div>}
+              {a.issues.length > 0 && (
+                <table className="admin-table mt-1">
+                  <thead><tr><th>Issue</th><th>Result</th><th>What a strong answer catches</th></tr></thead>
+                  <tbody>
+                    {a.issues.map((i) => {
+                      const r = s.issues[i.id] as string | undefined;
+                      const style = r ? RESULT_STYLE[r] : undefined;
+                      return (
+                        <tr key={i.id}>
+                          <td style={{ whiteSpace: "nowrap", verticalAlign: "top" }}><b>{i.id}</b><div className="text-ink-muted text-[12px]">{i.tier}</div></td>
+                          <td style={{ verticalAlign: "top", color: style?.color }}>{style?.label ?? "—"}</td>
+                          <td style={{ verticalAlign: "top" }}><div><b>{i.title}.</b> {i.description}</div><div className="text-ink-muted text-[12.5px] mt-1">Raised looks like: {i.raisedLooksLike}</div></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </details>
+        );
+      })}
     </div>
   );
 }
