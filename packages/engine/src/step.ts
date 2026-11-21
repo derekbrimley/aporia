@@ -148,6 +148,20 @@ class Ctx {
     if (job?.kind === "beat") this.replan(job, 0);
   }
 
+  /**
+   * A beat whose every try failed or was discarded stays "enqueued" with nothing queued, and the
+   * beats that follow it wait forever (an API outage once left a session in M2 with no LOI). The
+   * associate writing again is the cue to try it once more: it is bounded by what they do, so it
+   * does not count against MAX_REPLANS.
+   */
+  private retryStuckBeats() {
+    for (const beatId of stuckBeats(this.state)) {
+      const base = `beat:${beatId}`;
+      const tries = Object.keys(this.state.jobs).filter((k) => k === base || k.startsWith(`${base}#`)).length;
+      this.enqueue({ key: `${base}#${tries + 1}`, kind: "beat", delaySeconds: 0, payload: { kind: "beat", beatId } });
+    }
+  }
+
   private replan(job: Job, delaySeconds: number) {
     const base = job.key.split("#")[0]!;
     const attempts = Object.keys(this.state.jobs).filter((k) => k === base || k.startsWith(`${base}#`)).length;
@@ -181,6 +195,7 @@ class Ctx {
     };
     this.addMessage(msg);
     thread.associateMessageCount += 1;
+    this.retryStuckBeats();
     thread.lastIntent = intent;
 
     // Answering the feedback character's questions: that answer is the associate's reasoning.
@@ -677,6 +692,18 @@ export function attemptsWork(asg: Assignment, issues: Record<string, IssueStatus
   const raised = asg.issues.filter((i) => issues[i.id] === "raised").length;
   const touched = asg.issues.filter((i) => issues[i.id] === "raised" || issues[i.id] === "partial").length;
   return raised >= 1 && touched >= 2;
+}
+
+/** Beats still waiting to arrive with no try left in the queue: every job for them failed or was discarded. */
+export function stuckBeats(state: SessionState): string[] {
+  const out: string[] = [];
+  for (const [beatId, status] of Object.entries(state.beats)) {
+    if (status !== "enqueued") continue;
+    const base = `beat:${beatId}`;
+    const tries = Object.entries(state.jobs).filter(([k]) => k === base || k.startsWith(`${base}#`));
+    if (tries.length && tries.every(([, v]) => v === "failed" || v === "discarded")) out.push(beatId);
+  }
+  return out;
 }
 
 export function openAssignments(state: SessionState): string[] {
