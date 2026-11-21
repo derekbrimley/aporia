@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { loadScenario, scenarioDir, DEFAULT_SCENARIO_ID, ScenarioIndex, sliceFactsFor } from "@rematter/scenario";
-import { characterWriterPrompt, debriefPrompt, doctrinePrompt, intentClassifierPrompt, renderThread, MODELS, CHARACTER_HARD_RULES } from "../index.js";
+import { characterWriterPrompt, debriefPrompt, doctrinePrompt, factCheckerPrompt, intentClassifierPrompt, renderThread, MODELS, CHARACTER_HARD_RULES } from "../index.js";
 
 const { pkg } = loadScenario(scenarioDir(DEFAULT_SCENARIO_ID));
 const idx = new ScenarioIndex(pkg);
@@ -103,5 +103,17 @@ describe("character writer: what the associate can read", () => {
     const answer = characterWriterPrompt({ ...base, mode: { kind: "reply", toMessageBody: "I still can't find it", help: "answer" } });
     expect(answer.user).toMatch(/answer the question directly and plainly/);
     expect(characterWriterPrompt(base).user).not.toMatch(/quote the passage|directly and plainly/);
+  });
+});
+
+describe("fact checker: debrief after closing", () => {
+  const partner = new ScenarioIndex(pkg).character("partner");
+  const base = { character: partner, slice: sliceFactsFor(partner, pkg.facts), draft: "Now that we have closed, a short walk back.", answerKeyHints: [], isSocratic: false };
+
+  it("tells the checker the deal has closed only for the debrief", () => {
+    const debrief = factCheckerPrompt({ ...base, dealClosed: true });
+    expect(debrief.system).toMatch(/debrief sent after the deal has closed/);
+    expect(debrief.system).toMatch(/not a fiction_break/);
+    expect(factCheckerPrompt(base).system).not.toMatch(/deal has closed/);
   });
 });

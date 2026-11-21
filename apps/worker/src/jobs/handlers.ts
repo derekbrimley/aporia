@@ -284,6 +284,7 @@ async function debrief(ctx: JobContext): Promise<JobOutcome> {
     check: "full",
     answerKeyHints: [],
     isSocratic: false,
+    dealClosed: true,
     inputRefs: { fired: fired.map((f) => f.consequence.id) },
   });
 }
