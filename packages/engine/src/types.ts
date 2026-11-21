@@ -81,6 +81,12 @@ export type AssessmentRecordedEvent = Base<"assessment_recorded", {
   probe?: boolean;
   /** How well the deliverable itself explains its reasoning. Aims the reflection. */
   reasoningQuality?: ReasoningQuality;
+  /**
+   * The assessor's read of whether the email sets out to do this assignment at all. False means it
+   * answers something else (a side request, a different thread's question): it is ordinary mail and
+   * the assignment stays open. Absent on older events, which counts as true.
+   */
+  doesAssignment?: boolean;
 }>;
 export type MessageDeliveredEvent = Base<"message_delivered", {
   messageId: string;

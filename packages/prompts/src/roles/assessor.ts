@@ -1,9 +1,10 @@
 import { z } from "zod";
 import type { Assignment, Delta } from "../deps.js";
 
-export const ASSESSOR_VERSION = "assessor@1.2.0";
+export const ASSESSOR_VERSION = "assessor@1.3.0";
 
 export const AssessmentOutputSchema = z.object({
+  does_assignment: z.boolean().describe("Whether this email sets out to do the expected deliverable at all (even thinly or wrongly), rather than answering a different question, a side request, or saying something is done without the work"),
   issues: z.array(z.object({
     id: z.string(),
     status: z.enum(["raised", "partial", "missed"]),
@@ -26,7 +27,7 @@ export type AssessmentOutput = z.infer<typeof AssessmentOutputSchema>;
  */
 export function assessorPrompt(input: { assignment: Assignment; deltas: Delta[]; deliverable: string; quotedRefs: { documentId: string; ref: string }[] }) {
   const a = input.assignment;
-  const system = `You map a junior lawyer's deliverable onto an assignment's answer key. You are precise and literal: an issue is "raised" only if the deliverable actually makes the point described under "raised looks like" (in any words); "partial" if it matches "partial looks like" or gestures at the issue without the substance; otherwise "missed". You also judge reasoning_quality: whether the deliverable explains why its points matter and why it makes the call it makes, not just what they are. You never score, grade or comment on quality beyond the fields requested. Output JSON matching the schema exactly; include every issue id and every decision point id from the answer key.`;
+  const system = `You map a junior lawyer's deliverable onto an assignment's answer key. You are precise and literal: an issue is "raised" only if the deliverable actually makes the point described under "raised looks like" (in any words); "partial" if it matches "partial looks like" or gestures at the issue without the substance; otherwise "missed". You also judge reasoning_quality: whether the deliverable explains why its points matter and why it makes the call it makes, not just what they are. First decide does_assignment: true if the email sets out to do the deliverable described under "Deliverable expected", even if it is thin, incomplete or wrong; false if it is about something else (a reply to a different request or a side question, even on a related topic or the same email thread), or only says the work is done, will follow, or asks a question without doing it. When does_assignment is false, still fill in the other fields, but they will not be used. You never score, grade or comment on quality beyond the fields requested. Output JSON matching the schema exactly; include every issue id and every decision point id from the answer key.`;
   const issues = a.issues.map((i) => `- ${i.id} [${i.tier}] ${i.title}\n  Description: ${i.description}\n  Raised looks like: ${i.raised_looks_like}${i.partial_looks_like ? `\n  Partial looks like: ${i.partial_looks_like}` : ""}${i.delta ? `\n  Related delta: ${i.delta}` : ""}`).join("\n");
   const dps = a.decision_points.map((d) => `- ${d.id} ${d.title}: ${d.question}\n${d.positions.map((p) => `    ${p.id}: ${p.label}. ${p.description}`).join("\n")}`).join("\n");
   const deltas = input.deltas.length ? `\nWhere the documents depart from the agreed deal terms (relevant here):\n${input.deltas.map((d) => `- ${d.id} ${d.provision} (${d.section_ref ?? d.document}): agreed terms say "${d.baseline_says}"; document says "${d.document_says}".`).join("\n")}` : "";

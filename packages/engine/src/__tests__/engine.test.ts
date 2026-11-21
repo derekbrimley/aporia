@@ -498,6 +498,28 @@ describe("engine: state-machine edges", () => {
     expect(h.state.beats["B-M2-term-sheet"]).toBe("enqueued");
   });
 
+  it("treats an email the assessor says is about something else as ordinary mail and keeps the assignment open", () => {
+    const h = toTermSheet();
+    const a2 = idx.assignment("A2");
+    const side = h.send("term-sheet", ["client_contact", "senior_associate"], "Answering your CEO's side question in full.", { intent: "deliverable" });
+    const assessJob = h.jobs.shift()!;
+    expect(assessJob.key).toBe(`assess:${side.messageId}`);
+    h.apply({ type: "assessment_recorded", payload: { messageId: side.messageId, assignmentId: "A2", issues: Object.fromEntries(a2.issues.map((i) => [i.id, "missed"])), decisions: {}, doesAssignment: false } });
+    expect(h.state.assignments.A2).toMatchObject({ status: "open", deliverableMessageId: null });
+    for (const i of a2.issues) expect(h.state.issues[i.id]).toBeUndefined();
+    expect(h.state.consequences).toEqual({});
+    expect(h.state.messages[side.messageId]?.assignmentId).toBeNull();
+    expect(h.jobs.some((j) => j.kind === "character_reply" && j.key.startsWith(`reply:${side.messageId}`))).toBe(true);
+    expect(h.jobs.some((j) => j.kind === "reflection")).toBe(false);
+    h.jobs = [];
+
+    // The real work, sent next, is graded and completes the assignment.
+    h.raise = new Set(a2.issues.map((i) => i.id));
+    const work = h.send("term-sheet", ["client_contact", "senior_associate"], "My comments on the term sheet.", { intent: "deliverable" });
+    h.run(h.jobs.shift()!);
+    expect(h.state.assignments.A2).toMatchObject({ status: "complete", deliverableMessageId: work.messageId });
+  });
+
   it("records only the first of two deliverables in flight for the same assignment", () => {
     const h = toTermSheet();
     const a2 = idx.assignment("A2");

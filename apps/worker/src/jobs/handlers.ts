@@ -72,7 +72,7 @@ async function assess(ctx: JobContext, messageId: string, assignmentId: string, 
   const decisions: Record<string, string> = {};
   for (const d of res.parsed.decisions) if (d.position && d.position !== "none") decisions[d.id] = d.position;
   return {
-    events: [{ event: { type: "assessment_recorded", payload: { messageId, assignmentId, issues, decisions, summary: res.parsed.summary, shadow: ctx.session.assessorShadowMode, probe, reasoningQuality: res.parsed.reasoning_quality } }, idempotencyKey: `${ctx.session.id}:assess:${messageId}` }],
+    events: [{ event: { type: "assessment_recorded", payload: { messageId, assignmentId, issues, decisions, summary: res.parsed.summary, shadow: ctx.session.assessorShadowMode, probe, reasoningQuality: res.parsed.reasoning_quality, doesAssignment: res.parsed.does_assignment } }, idempotencyKey: `${ctx.session.id}:assess:${messageId}` }],
     generations: [{ role: "assessor", model: res.model, provider: res.provider, promptVersion: p.version, inputRefs: { messageId, assignmentId }, systemPrompt: p.system, userPrompt: p.user, output: res.text, parsedOutput: res.parsed, usage: res.usage, latencyMs: res.latencyMs, attempt: ctx.attempt }],
   };
 }
@@ -145,6 +145,7 @@ async function reflection(ctx: JobContext, job: Extract<JobPayload, { kind: "ref
   if (!msg || !thread) throw new Error(`reflection: unknown message or thread`);
   const facts = factsFor(ctx, c);
   const assessment: AssessmentOutput = {
+    does_assignment: true,
     issues: a.issues.map((i) => ({ id: i.id, status: ctx.state.issues[i.id] ?? "missed", evidence: "" })),
     decisions: a.decision_points.map((d) => ({ id: d.id, position: ctx.state.decisions[d.id]?.position ?? "none", evidence: "" })),
     reasoning_quality: job.reasoningQuality ?? "absent",

@@ -57,6 +57,8 @@ export class MockProvider implements LlmProvider {
             return { id: d.id, position: forced ? forced[1]!.toUpperCase() : byLabel?.id ?? "none", evidence: forced ? "marker" : byLabel?.label ?? "none" };
           }),
           reasoning_quality: ((n) => (n === 0 ? "absent" : n === 1 ? "thin" : n < 4 ? "adequate" : "strong"))(deliverable.split(/\bbecause\b/).length - 1),
+          // "[not-the-deliverable]" in the email lets tests send work that is about something else.
+          does_assignment: !deliverable.includes("[not-the-deliverable]"),
           summary: "Mock assessment: matched issue keywords in the deliverable.",
         };
       }

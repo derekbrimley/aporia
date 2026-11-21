@@ -353,6 +353,16 @@ class Ctx {
       return;
     }
 
+    // The assessor says this email is about something else: it is ordinary mail, not the work.
+    // Nothing is scored and the assignment stays open, so the associate can still hand it in.
+    if (p.doesAssignment === false) {
+      if (msg) {
+        if (msg.assignmentId === assignmentId) msg.assignmentId = null;
+        this.replyOrNudge(msg);
+      }
+      return;
+    }
+
     if (p.probe) {
       // Not the work after all: answer it as the question it was classified as.
       const thread = msg ? s.threads[msg.threadId] : undefined;
