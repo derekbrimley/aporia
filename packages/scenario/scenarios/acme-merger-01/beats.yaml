@@ -383,8 +383,10 @@
   sender: client_contact
   to: [associate]
   cc: [senior_associate]
-  thread_key: closing
+  thread_key: halvorsen-rights
+  subject: "Halvorsen is \"evaluating their rights\""
   mode: generated
+  is_interruption: true
   after: [B-M8-checklist]
   must_include_facts: [contracts.halvorsen.party, dates.target_closing]
   brief: >
@@ -401,8 +403,10 @@
   sender: client_contact
   to: [associate]
   cc: [senior_associate]
-  thread_key: closing
+  thread_key: layoff-plan
+  subject: "Durham packaging line: CEO's announcement plan"
   mode: generated
+  is_interruption: true
   after: [B-M8-checklist]
   must_include_facts: [employees.affected]
   brief: >
