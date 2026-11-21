@@ -35,6 +35,8 @@ export interface GenerateArgs {
   extraFacts?: Facts;
   /** Text the character has read beyond their slice (a forwarded email); the checker accepts facts from it. */
   readText?: string;
+  /** The debrief: the checker reads the deal as closed. */
+  dealClosed?: boolean;
   inputRefs: Record<string, unknown>;
 }
 
@@ -61,7 +63,7 @@ export async function generateAndDeliver(ctx: JobContext, spec: DeliverySpec, ge
     let pass = true;
     if (gen.check !== "none" && lastBody) {
       const result = gen.check === "full"
-        ? await checkDraft({ draft: lastBody, character: spec.from, slice, allFacts: ctx.pkg.facts, answerKeyHints: gen.answerKeyHints, isSocratic: gen.isSocratic, readText: gen.readText, provider: ctx.provider, sessionId: ctx.session.id, jobKey: ctx.job.key })
+        ? await checkDraft({ draft: lastBody, character: spec.from, slice, allFacts: ctx.pkg.facts, answerKeyHints: gen.answerKeyHints, isSocratic: gen.isSocratic, readText: gen.readText, dealClosed: gen.dealClosed, provider: ctx.provider, sessionId: ctx.session.id, jobKey: ctx.job.key })
         : rulesOnly(lastBody, spec.from, slice, ctx.pkg.facts, gen.readText);
       pass = result.pass;
       checker = { pass: result.pass, violations: result.violations, layers: result.layers };
