@@ -23,7 +23,11 @@ export async function sessionDetail(sessionId: string) {
     getPool().query(`select id, job_key as "jobKey", role, model, provider, prompt_version as "promptVersion", input_refs as "inputRefs", system_prompt as "systemPrompt", user_prompt as "userPrompt", output, parsed_output as "parsedOutput", input_tokens as "inputTokens", output_tokens as "outputTokens", cache_read_tokens as "cacheReadTokens", latency_ms as "latencyMs", attempt, checker_result as "checkerResult", created_at as "createdAt" from generations where session_id = $1 order by created_at asc`, [sessionId]),
     sessionCheckpoints(sessionId, pkg),
   ]);
-  return { state, events, generations: generations.rows, checkpoints, pkg: { id: pkg.meta.id, version: pkg.meta.version, characters: pkg.characters.map((c) => ({ id: c.id, name: c.name, role_label: c.role_label })) } };
+  const assignments = pkg.assignments.map((a) => ({
+    id: a.id, milestone: a.milestone, title: a.title, deliverable: a.deliverable, threadKey: a.thread_key ?? null,
+    issues: a.issues.map((i) => ({ id: i.id, tier: i.tier, title: i.title, description: i.description, raisedLooksLike: i.raised_looks_like })),
+  }));
+  return { state, events, generations: generations.rows, checkpoints, pkg: { id: pkg.meta.id, version: pkg.meta.version, characters: pkg.characters.map((c) => ({ id: c.id, name: c.name, role_label: c.role_label })), assignments } };
 }
 
 export async function replaySession(sessionId: string) {
