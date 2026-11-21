@@ -34,6 +34,7 @@ export default defineRailway(() => {
       POSTMARK_SERVER_TOKEN: preserve(),
       WORKOS_API_KEY: preserve(),
       WORKOS_CLIENT_ID: preserve(),
+      EXPORT_API_TOKEN: preserve(), // optional: read-only session export API (Bearer token)
     },
   });
   const worker = service("worker", {
