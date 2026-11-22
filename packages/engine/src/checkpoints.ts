@@ -98,3 +98,37 @@ export function forkEvents(events: EngineEvent[], eventCount: number, opts: Fork
     return { ...e, at, payload: walk(e.payload) } as EngineEvent;
   });
 }
+
+/**
+ * Admin rollback: places a session's own log can be cut back to.
+ *
+ * Every prefix of the log is a state the session really had, except two kinds: one that ends halfway
+ * through a worker job (its result is in but its `job_completed` isn't, so replaying it would run the job
+ * a second time on top of its own result), and one where an email is waiting in the held queue (the held
+ * row belongs to the old session and can't follow). Those cuts are left out.
+ */
+export interface RollbackPoint {
+  /** Number of events the rolled-back session keeps. */
+  eventCount: number;
+  /** The email this point comes just before: the first thing the rollback undoes. Null for a milestone start. */
+  beforeMessageId: string | null;
+  /** Set when this point is a milestone's checkpoint (see `findCheckpoints`). */
+  milestoneId: string | null;
+}
+
+/** Worker results that are always followed by their job's `job_completed` (or, for a release, a delivery). */
+const MID_JOB = new Set<EngineEvent["type"]>(["intent_classified", "assessment_recorded", "message_released"]);
+
+export function rollbackPoints(events: EngineEvent[], pkg: ScenarioPackage, opts: StepOptions = {}): RollbackPoint[] {
+  const milestoneAt = new Map(findCheckpoints(events, pkg, opts).filter((c) => c.milestoneId).map((c) => [c.eventCount, c.milestoneId!]));
+  const out: RollbackPoint[] = [];
+  let state: SessionState = initialState(pkg);
+  // Before event i, the session has kept i events; `state` is the state after them.
+  events.forEach((e, i) => {
+    const safe = i > 0 && !MID_JOB.has(events[i - 1]!.type) && !Object.values(state.jobs).includes("held");
+    const creates = e.type === "email_sent" || e.type === "message_delivered" ? e.payload.messageId : null;
+    if (safe && (creates || milestoneAt.has(i))) out.push({ eventCount: i, beforeMessageId: creates, milestoneId: milestoneAt.get(i) ?? null });
+    state = step(state, e, pkg, opts).state;
+  });
+  return out;
+}

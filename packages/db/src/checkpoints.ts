@@ -22,6 +22,56 @@ export async function sessionCheckpoints(sourceSessionId: string, pkg: ScenarioP
   return findCheckpoints(await sourceEvents(pool, sourceSessionId), pkg, { zeroDelays: sess.test_mode });
 }
 
+export interface ReplayArgs {
+  orgId: string;
+  userId: string;
+  cohortId: string;
+  pkg: ScenarioPackage;
+  testMode: boolean;
+  timeZone: string | null;
+  /** Already made safe for a new session (`forkEvents`). */
+  events: EngineEvent[];
+  /** Written as each event's actor. */
+  actor: string;
+  forkedFrom: { sessionId: string; eventCount: number };
+}
+
+/**
+ * Creates a session from a list of events inside the caller's transaction: every event goes through the
+ * engine, so projections, snapshot and pending jobs are exactly what a live session would have. Jobs still
+ * in flight at the last event are planned again for the new session. The caller archives whatever session
+ * this one replaces first (one live session per associate per cohort).
+ */
+export async function replayIntoNewSession(client: pg.PoolClient, args: ReplayArgs): Promise<{ sessionId: string; state: SessionState }> {
+  const opts = { zeroDelays: args.testMode };
+  const sessionId = (await client.query<{ id: string }>(
+    `insert into sessions (org_id, user_id, cohort_id, scenario_id, scenario_version, engine_version, test_mode, time_zone, forked_from_session_id, forked_from_event_count)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning id`,
+    [args.orgId, args.userId, args.cohortId, args.pkg.meta.id, args.pkg.meta.version, ENGINE_VERSION, args.testMode, args.timeZone, args.forkedFrom.sessionId, args.forkedFrom.eventCount],
+  )).rows[0]!.id;
+
+  let state = initialState(args.pkg);
+  const planned = new Map<string, { job: Job; at: string }>();
+  let seq = 0;
+  for (const ev of args.events) {
+    const res = step(state, ev, args.pkg, opts);
+    state = res.state;
+    seq += 1;
+    await client.query(
+      `insert into events (org_id, session_id, seq, type, payload, actor, occurred_at) values ($1, $2, $3, $4, $5, $6, $7)`,
+      [args.orgId, sessionId, seq, ev.type, JSON.stringify(ev.payload), args.actor, ev.at],
+    );
+    await applyProjection(client, { sessionId, orgId: args.orgId, seq }, ev, state, res.effects);
+    for (const e of res.effects) if (e.type === "enqueue_job") planned.set(e.job.key, { job: e.job, at: ev.at });
+  }
+  await client.query(
+    `insert into session_snapshots (session_id, org_id, event_seq, engine_version, state, updated_at) values ($1, $2, $3, $4, $5, now())`,
+    [sessionId, args.orgId, seq, state.engineVersion, JSON.stringify(state)],
+  );
+  for (const [key, p] of planned) if (state.jobs[key] === "enqueued") await enqueueJob(client, sessionId, p.job, p.at);
+  return { sessionId, state };
+}
+
 export interface ForkArgs {
   sourceSessionId: string;
   /** Must be one of the source's checkpoints. */
@@ -59,32 +109,11 @@ export async function forkSessionAtCheckpoint(args: ForkArgs): Promise<{ session
     const events = forkEvents(all, args.eventCount, { now: now.toISOString(), newId: randomUUID, firstName: args.firstName });
 
     await client.query(`update sessions set archived_at = $3 where user_id = $1 and cohort_id = $2 and archived_at is null`, [args.userId, args.cohortId, now]);
-    const sessionId = (await client.query<{ id: string }>(
-      // The fork keeps the source's date anchor, so it keeps the source's time zone too: its dates then match the source's emails.
-      `insert into sessions (org_id, user_id, cohort_id, scenario_id, scenario_version, engine_version, test_mode, time_zone) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`,
-      [args.orgId, args.userId, args.cohortId, args.pkg.meta.id, args.pkg.meta.version, ENGINE_VERSION, src.test_mode, src.time_zone],
-    )).rows[0]!.id;
-
-    let state = initialState(args.pkg);
-    const planned = new Map<string, { job: Job; at: string }>();
-    let seq = 0;
-    for (const ev of events) {
-      const res = step(state, ev, args.pkg, opts);
-      state = res.state;
-      seq += 1;
-      await client.query(
-        `insert into events (org_id, session_id, seq, type, payload, actor, occurred_at) values ($1, $2, $3, $4, $5, $6, $7)`,
-        [args.orgId, sessionId, seq, ev.type, JSON.stringify(ev.payload), "checkpoint", ev.at],
-      );
-      await applyProjection(client, { sessionId, orgId: args.orgId, seq }, ev, state, res.effects);
-      for (const e of res.effects) if (e.type === "enqueue_job") planned.set(e.job.key, { job: e.job, at: ev.at });
-    }
-    await client.query(
-      `insert into session_snapshots (session_id, org_id, event_seq, engine_version, state, updated_at) values ($1, $2, $3, $4, $5, now())`,
-      [sessionId, args.orgId, seq, state.engineVersion, JSON.stringify(state)],
-    );
-    // Jobs the source run still had in flight at the checkpoint are planned again for this session.
-    for (const [key, p] of planned) if (state.jobs[key] === "enqueued") await enqueueJob(client, sessionId, p.job, p.at);
+    // The fork keeps the source's date anchor, so it keeps the source's time zone too: its dates then match the source's emails.
+    const { sessionId, state } = await replayIntoNewSession(client, {
+      orgId: args.orgId, userId: args.userId, cohortId: args.cohortId, pkg: args.pkg, testMode: src.test_mode, timeZone: src.time_zone,
+      events, actor: "checkpoint", forkedFrom: { sessionId: args.sourceSessionId, eventCount: args.eventCount },
+    });
 
     // Everything before the current milestone reads as already opened, so the inbox starts where the
     // associate would be: earlier threads read, this milestone's emails new.

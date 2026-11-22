@@ -26,7 +26,7 @@ export async function runSessionJob(payload: SessionJobPayload, opts: { provider
     [payload.sessionId],
   )).rows[0];
   if (!row) throw new Error(`session ${payload.sessionId} not found`);
-  // A test checkpoint load replaced this session; its leftover jobs do nothing.
+  // A test checkpoint load or an admin rollback/reset replaced this session; its leftover jobs do nothing.
   if (row.archived_at) return { events: [], generations: [] };
   const { pkg, documents } = getScenario(row.scenario_id, row.scenario_version);
   const client = await pool.connect();
@@ -44,7 +44,7 @@ export async function runSessionJob(payload: SessionJobPayload, opts: { provider
   for (const g of outcome.generations) await recordGeneration(row.id, row.org_id, payload.job.key, g);
   if (outcome.held) {
     await pool.query(
-      `insert into held_emails (org_id, session_id, job_key, job_payload, proposed_delivery, violations) values ($1, $2, $3, $4, $5, $6) on conflict (job_key) do nothing`,
+      `insert into held_emails (org_id, session_id, job_key, job_payload, proposed_delivery, violations) values ($1, $2, $3, $4, $5, $6) on conflict (session_id, job_key) do nothing`,
       [row.org_id, row.id, outcome.held.jobKey, JSON.stringify(outcome.held.jobPayload), JSON.stringify(outcome.held.proposedDelivery), JSON.stringify(outcome.held.violations)],
     );
   }

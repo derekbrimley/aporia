@@ -1,4 +1,4 @@
-import { getPool, listEvents, getSessionState, rebuildProjections, sessionCheckpoints } from "@rematter/db";
+import { getPool, listEvents, getSessionState, rebuildProjections, sessionCheckpoints, sessionRollbackPoints } from "@rematter/db";
 import { getScenario } from "./scenario.js";
 
 export async function listSessions() {
@@ -17,17 +17,24 @@ export async function sessionDetail(sessionId: string) {
   const s = (await getPool().query<{ scenario_id: string; scenario_version: string; org_id: string }>(`select scenario_id, scenario_version, org_id from sessions where id = $1`, [sessionId])).rows[0];
   if (!s) return null;
   const { pkg } = getScenario(s.scenario_id, s.scenario_version);
-  const [state, events, generations, checkpoints] = await Promise.all([
+  const [state, events, generations, checkpoints, rollbackPoints, lineage] = await Promise.all([
     getSessionState(sessionId, pkg),
     listEvents(sessionId),
     getPool().query(`select id, job_key as "jobKey", role, model, provider, prompt_version as "promptVersion", input_refs as "inputRefs", system_prompt as "systemPrompt", user_prompt as "userPrompt", output, parsed_output as "parsedOutput", input_tokens as "inputTokens", output_tokens as "outputTokens", cache_read_tokens as "cacheReadTokens", latency_ms as "latencyMs", attempt, checker_result as "checkerResult", created_at as "createdAt" from generations where session_id = $1 order by created_at asc`, [sessionId]),
     sessionCheckpoints(sessionId, pkg),
+    sessionRollbackPoints(sessionId, pkg),
+    getPool().query<{ archivedAt: Date | null; forkedFromSessionId: string | null; forkedFromEventCount: number | null; replacedBy: string | null }>(
+      `select s.archived_at as "archivedAt", s.forked_from_session_id as "forkedFromSessionId", s.forked_from_event_count as "forkedFromEventCount",
+              (select n.id from sessions n where n.forked_from_session_id = s.id and n.user_id = s.user_id order by n.created_at desc limit 1) as "replacedBy"
+         from sessions s where s.id = $1`,
+      [sessionId],
+    ),
   ]);
   const assignments = pkg.assignments.map((a) => ({
     id: a.id, milestone: a.milestone, title: a.title, deliverable: a.deliverable, threadKey: a.thread_key ?? null,
     issues: a.issues.map((i) => ({ id: i.id, tier: i.tier, title: i.title, description: i.description, raisedLooksLike: i.raised_looks_like })),
   }));
-  return { state, events, generations: generations.rows, checkpoints, pkg: { id: pkg.meta.id, version: pkg.meta.version, characters: pkg.characters.map((c) => ({ id: c.id, name: c.name, role_label: c.role_label })), assignments } };
+  return { state, events, generations: generations.rows, checkpoints, rollbackPoints, lineage: lineage.rows[0]!, pkg: { id: pkg.meta.id, version: pkg.meta.version, characters: pkg.characters.map((c) => ({ id: c.id, name: c.name, role_label: c.role_label })), assignments } };
 }
 
 export async function replaySession(sessionId: string) {
@@ -37,7 +44,7 @@ export async function replaySession(sessionId: string) {
 }
 
 export async function listHeld() {
-  const r = await getPool().query(`select h.id, h.session_id as "sessionId", h.job_key as "jobKey", h.proposed_delivery as "proposedDelivery", h.violations, h.status, h.created_at as "createdAt", u.name as "userName" from held_emails h join sessions s on s.id = h.session_id join users u on u.id = s.user_id where h.status = 'held' order by h.created_at asc`);
+  const r = await getPool().query(`select h.id, h.session_id as "sessionId", h.job_key as "jobKey", h.proposed_delivery as "proposedDelivery", h.violations, h.status, h.created_at as "createdAt", u.name as "userName" from held_emails h join sessions s on s.id = h.session_id join users u on u.id = s.user_id where h.status = 'held' and s.archived_at is null order by h.created_at asc`);
   return r.rows;
 }
 

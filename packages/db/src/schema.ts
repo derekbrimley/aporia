@@ -85,10 +85,14 @@ export const sessions = pgTable(
     completedAt: timestamp("completed_at", { withTimezone: true }),
     /** Seconds of activity, accumulated from activity events (gaps over 15 minutes are not counted). */
     activeSeconds: integer("active_seconds").notNull().default(0),
-    /** Set when a test checkpoint load replaced this session. Archived sessions are kept but never loaded. */
+    /** Set when a test checkpoint load or an admin rollback/reset replaced this session. Archived sessions are kept but never loaded. */
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     /** The associate's IANA time zone when the session started; story and deal dates follow it. Null means UTC. */
     timeZone: text("time_zone"),
+    /** The session this one was copied from: a test checkpoint's source run, or the run an admin rolled back. */
+    forkedFromSessionId: uuid("forked_from_session_id"),
+    /** How many of that session's events were kept. */
+    forkedFromEventCount: integer("forked_from_event_count"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("sessions_user_cohort_idx").on(t.userId, t.cohortId).where(sql`${t.archivedAt} is null`)],
@@ -255,7 +259,8 @@ export const heldEmails = pgTable("held_emails", {
   id: uuid("id").primaryKey().defaultRandom(),
   orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   sessionId: uuid("session_id").notNull().references(() => sessions.id, { onDelete: "cascade" }),
-  jobKey: text("job_key").notNull().unique(),
+  /** Unique per session: a rolled-back run plays the same beats again under the same keys. */
+  jobKey: text("job_key").notNull(),
   jobPayload: jsonb("job_payload").notNull(),
   /** The delivery payload as it would have been appended; an admin can edit body before release. */
   proposedDelivery: jsonb("proposed_delivery").notNull(),
@@ -264,7 +269,7 @@ export const heldEmails = pgTable("held_emails", {
   reviewedBy: uuid("reviewed_by"),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [uniqueIndex("held_emails_session_job_key_idx").on(t.sessionId, t.jobKey)]);
 
 export const flags = pgTable("flags", {
   id: uuid("id").primaryKey().defaultRandom(),

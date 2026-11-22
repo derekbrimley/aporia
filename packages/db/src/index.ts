@@ -7,3 +7,4 @@ export * from "./seed.js";
 export * from "./env.js";
 export * from "./checkpoints.js";
 export * from "./export.js";
+export * from "./rollback.js";
