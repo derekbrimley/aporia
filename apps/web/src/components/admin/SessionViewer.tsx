@@ -2,8 +2,11 @@
 import { useState } from "react";
 import { LocalTime } from "@/components/LocalTime";
 
-type Detail = { state: Record<string, any>; events: { id: string; seq: number; type: string; actor: string; at: string; payload: unknown }[]; generations: Record<string, any>[]; checkpoints: { eventCount: number; label: string }[]; pkg: { id: string; version: string; characters: { id: string; name: string; role_label: string }[]; assignments?: ScorecardAssignment[] } };
+type Detail = { state: Record<string, any>; events: { id: string; seq: number; type: string; actor: string; at: string; payload: unknown }[]; generations: Record<string, any>[]; checkpoints: { eventCount: number; label: string }[]; rollbackPoints: RollbackPoint[]; lineage: Lineage; pkg: { id: string; version: string; characters: { id: string; name: string; role_label: string }[]; assignments?: ScorecardAssignment[] } };
 type ScorecardAssignment = { id: string; milestone: string; title: string; deliverable: string; threadKey?: string | null; issues: { id: string; tier: string; title: string; description: string; raisedLooksLike: string }[] };
+
+type RollbackPoint = { eventCount: number; beforeMessageId: string | null; milestoneId: string | null };
+type Lineage = { archivedAt: string | null; forkedFromSessionId: string | null; forkedFromEventCount: number | null; replacedBy: string | null };
 
 /** Read-only session viewer: state summary, message transcript, event log with replay, per-message generation details. */
 type SourceCohort = { id: string; name: string; orgName: string; isSource: boolean };
@@ -11,9 +14,11 @@ type SourceCohort = { id: string; name: string; orgName: string; isSource: boole
 export function SessionViewer({ id, detail, cohorts }: { id: string; detail: Detail; cohorts: SourceCohort[] }) {
   const [tab, setTab] = useState<"scorecard" | "messages" | "events" | "generations" | "state">("scorecard");
   const [replayed, setReplayed] = useState<string | null>(null);
+  const [rollbackTo, setRollbackTo] = useState<number | null>(null);
   const s = detail.state;
   const name = (p: string) => (p === "associate" ? s.associateFirstName || "associate" : detail.pkg.characters.find((c) => c.id === p)?.name ?? p);
   const msgs = (s.messageOrder as string[]).map((m) => s.messages[m]);
+  const rollbackBefore = new Map(detail.rollbackPoints.filter((p) => p.beforeMessageId).map((p) => [p.beforeMessageId!, p.eventCount] as const));
   const genByJob = new Map<string, Record<string, any>[]>();
   for (const g of detail.generations) { const k = g.jobKey ?? "-"; genByJob.set(k, [...(genByJob.get(k) ?? []), g]); }
   return (
@@ -27,10 +32,11 @@ export function SessionViewer({ id, detail, cohorts }: { id: string; detail: Det
         <button type="button" className="btn btn-sm ml-auto" onClick={async () => { const r = await fetch(`/api/admin/sessions/${id}`, { method: "POST" }); setReplayed(r.ok ? "Projections rebuilt from the event log." : "Replay failed."); }}>Replay events</button>
         {replayed && <span className="text-ink-muted">{replayed}</span>}
       </div>
+      <Rollback id={id} detail={detail} name={name} selected={rollbackTo} onSelect={setRollbackTo} />
       <CheckpointSource id={id} checkpoints={detail.checkpoints} cohorts={cohorts} />
       <div className="flex flex-wrap gap-1">{(["scorecard", "messages", "events", "generations", "state"] as const).map((t) => <button key={t} type="button" className="btn btn-sm btn-ghost" aria-pressed={tab === t} style={tab === t ? { background: "var(--color-plum-100)" } : {}} onClick={() => setTab(t)}>{t}</button>)}</div>
       {tab === "scorecard" && <Scorecard detail={detail} name={name} />}
-      {tab === "messages" && <div className="flex flex-col gap-3">{msgs.map((m: any) => <article key={m.id} className="card" style={{ padding: 16 }}><div className="text-[13px] text-ink-muted flex gap-3 flex-wrap"><b className="text-ink">{name(m.from)}</b><span>to {m.to.map(name).join(", ")}{m.cc.length ? ` · cc ${m.cc.map(name).join(", ")}` : ""}</span><span>{m.kind}{m.intent ? ` · ${m.intent}` : ""}{m.beatId ? ` · ${m.beatId}` : ""}{m.assignmentId ? ` · ${m.assignmentId}` : ""}</span><span><LocalTime iso={m.at} /></span></div><div className="display text-[16px] mt-1">{m.subject}</div><div className="email-body mt-2 text-[14px]">{m.body}</div>{m.rationale && <div className="quote mt-2 text-[13.5px]"><b>Rationale (private):</b> {m.rationale}</div>}{m.reflectionQuestions?.length > 0 && <div className="mt-2 text-[13px] text-ink-muted">Reflection questions: {m.reflectionQuestions.join(" | ")}</div>}<GenDetails gens={detail.generations.filter((g) => g.inputRefs?.messageId === m.id || (m.beatId && g.inputRefs?.beatId === m.beatId) || (g.jobKey && m.kind !== "associate" && genByJob.get(g.jobKey)?.length && detail.events.some((e: any) => e.type === "message_delivered" && e.payload.messageId === m.id && e.payload.jobKey === g.jobKey)))} /></article>)}</div>}
+      {tab === "messages" && <div className="flex flex-col gap-3">{msgs.map((m: any) => <article key={m.id} className="card" style={{ padding: 16 }}><div className="text-[13px] text-ink-muted flex gap-3 flex-wrap"><b className="text-ink">{name(m.from)}</b><span>to {m.to.map(name).join(", ")}{m.cc.length ? ` · cc ${m.cc.map(name).join(", ")}` : ""}</span><span>{m.kind}{m.intent ? ` · ${m.intent}` : ""}{m.beatId ? ` · ${m.beatId}` : ""}{m.assignmentId ? ` · ${m.assignmentId}` : ""}</span><span><LocalTime iso={m.at} /></span>{rollbackBefore.has(m.id) && <button type="button" className="btn btn-sm btn-ghost ml-auto" title="Undo this email and everything after it" onClick={() => { setRollbackTo(rollbackBefore.get(m.id)!); document.getElementById("rollback")?.scrollIntoView({ behavior: "smooth" }); }}>Roll back to before this</button>}</div><div className="display text-[16px] mt-1">{m.subject}</div><div className="email-body mt-2 text-[14px]">{m.body}</div>{m.rationale && <div className="quote mt-2 text-[13.5px]"><b>Rationale (private):</b> {m.rationale}</div>}{m.reflectionQuestions?.length > 0 && <div className="mt-2 text-[13px] text-ink-muted">Reflection questions: {m.reflectionQuestions.join(" | ")}</div>}<GenDetails gens={detail.generations.filter((g) => g.inputRefs?.messageId === m.id || (m.beatId && g.inputRefs?.beatId === m.beatId) || (g.jobKey && m.kind !== "associate" && genByJob.get(g.jobKey)?.length && detail.events.some((e: any) => e.type === "message_delivered" && e.payload.messageId === m.id && e.payload.jobKey === g.jobKey)))} /></article>)}</div>}
       {tab === "events" && <div className="card table-card"><table className="admin-table"><thead><tr><th>Seq</th><th>Type</th><th>Actor</th><th>At</th><th>Payload</th></tr></thead><tbody>{detail.events.map((e) => <tr key={e.id}><td>{e.seq}</td><td>{e.type}</td><td>{e.actor}</td><td><LocalTime iso={e.at} /></td><td><pre className="m-0 text-[12px] whitespace-pre-wrap max-w-[700px]">{JSON.stringify(e.payload, null, 1).slice(0, 800)}</pre></td></tr>)}</tbody></table></div>}
       {tab === "generations" && <div className="flex flex-col gap-2">{detail.generations.map((g) => <details key={g.id} className="card" style={{ padding: 14 }}><summary className="cursor-pointer text-sm">{g.role} · {g.model} · {g.promptVersion} · attempt {g.attempt} · {g.latencyMs}ms · in {g.inputTokens} / out {g.outputTokens} / cached {g.cacheReadTokens} · checker {g.checkerResult ? (g.checkerResult.pass ? "pass" : "FAIL") : "—"} · {g.jobKey}</summary><h4 className="text-[12px] uppercase text-ink-muted mt-3">System</h4><pre className="text-[12px] whitespace-pre-wrap">{g.systemPrompt}</pre><h4 className="text-[12px] uppercase text-ink-muted">User</h4><pre className="text-[12px] whitespace-pre-wrap">{g.userPrompt}</pre><h4 className="text-[12px] uppercase text-ink-muted">Output</h4><pre className="text-[12px] whitespace-pre-wrap">{g.output}</pre>{g.checkerResult && <><h4 className="text-[12px] uppercase text-ink-muted">Checker</h4><pre className="text-[12px] whitespace-pre-wrap">{JSON.stringify(g.checkerResult, null, 1)}</pre></>}</details>)}</div>}
       {tab === "state" && <pre className="card text-[12px] whitespace-pre-wrap">{JSON.stringify(s, null, 1)}</pre>}
@@ -41,6 +47,81 @@ export function SessionViewer({ id, detail, cohorts }: { id: string; detail: Det
 function GenDetails({ gens }: { gens: Record<string, any>[] }) {
   if (!gens.length) return null;
   return <details className="mt-2"><summary className="cursor-pointer text-[12.5px] text-ink-muted">{gens.length} generation{gens.length > 1 ? "s" : ""}</summary>{gens.map((g) => <div key={g.id} className="text-[12px] text-ink-muted mt-1">{g.role} · {g.model} · {g.promptVersion} · attempt {g.attempt} · {g.latencyMs}ms · checker {g.checkerResult ? (g.checkerResult.pass ? "pass" : "FAIL: " + JSON.stringify(g.checkerResult.violations)) : "—"}</div>)}</details>;
+}
+
+/**
+ * Roll the tester's session back to an earlier point, or start them over. Nothing is deleted: this run is
+ * archived (it stays here and in exports) and the kept part is replayed into a new session.
+ */
+function Rollback({ id, detail, name, selected, onSelect }: { id: string; detail: Detail; name: (p: string) => string; selected: number | null; onSelect: (n: number | null) => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const s = detail.state;
+  const { lineage } = detail;
+  const total = detail.events.length;
+  const milestoneLabel = new Map(detail.checkpoints.map((c) => [c.eventCount, c.label]));
+  const label = (p: RollbackPoint) => {
+    const m = p.beforeMessageId ? s.messages[p.beforeMessageId] : null;
+    const n = m ? (s.messageOrder as string[]).indexOf(m.id) + 1 : 0;
+    const before = m ? `before email ${n}: ${m.from === "associate" ? `${name("associate")}'s email` : `${name(m.from)}'s ${m.kind === "beat" ? "email" : m.kind}`} "${m.subject}"` : "";
+    const start = p.milestoneId ? `Start of ${milestoneLabel.get(p.eventCount) ?? p.milestoneId}` : "";
+    return [start, start && before ? `(${before})` : before.charAt(0).toUpperCase() + before.slice(1)].filter(Boolean).join(" ");
+  };
+  const undone = (n: number) => detail.events.filter((e) => e.seq > n && (e.type === "email_sent" || e.type === "message_delivered")).length;
+  const value = selected ?? "";
+  async function go() {
+    if (selected == null) return;
+    setBusy(true);
+    const r = await fetch(`/api/admin/sessions/${id}/rollback`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventCount: selected }) });
+    const b = (await r.json().catch(() => ({}))) as { error?: string; sessionId?: string | null };
+    setBusy(false);
+    setConfirming(false);
+    if (!r.ok) return setMsg(b.error ?? "Rollback failed.");
+    if (b.sessionId) window.location.href = `/admin/sessions/${b.sessionId}`;
+    else { setMsg("Reset. This run is archived; the tester gets a fresh session the next time they open their inbox."); setTimeout(() => window.location.reload(), 1500); }
+  }
+  return (
+    <div id="rollback" className="card flex flex-col gap-2 text-sm" style={{ padding: 18 }}>
+      <div className="text-ink-muted text-[12px] uppercase">Roll back</div>
+      {lineage.forkedFromSessionId && (
+        <div>
+          Copied from <a className="underline" href={`/admin/sessions/${lineage.forkedFromSessionId}`}>session {lineage.forkedFromSessionId.slice(0, 8)}</a>
+          {lineage.forkedFromEventCount != null ? ` (its first ${lineage.forkedFromEventCount} events)` : ""}.
+        </div>
+      )}
+      {lineage.archivedAt && (
+        <div>
+          This run is archived (<LocalTime iso={lineage.archivedAt} />).{" "}
+          {lineage.replacedBy ? <>Replaced by <a className="underline" href={`/admin/sessions/${lineage.replacedBy}`}>session {lineage.replacedBy.slice(0, 8)}</a>. </> : null}
+          Rolling it back replaces the tester&apos;s current run in this matter.
+        </div>
+      )}
+      <p className="m-0 text-ink-muted">
+        Pick a point: the tester&apos;s inbox goes back to just before it. This run is archived, not deleted, so it stays here and in exports. Replies and scripted emails after the point are written again by the model as the tester plays on. The tester gets no email about it.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <select className="text-input" style={{ maxWidth: 640 }} value={value} onChange={(e) => { onSelect(e.target.value === "" ? null : Number(e.target.value)); setConfirming(false); setMsg(null); }}>
+          <option value="">Choose a point…</option>
+          <option value={0}>Start over: archive this run, fresh session on their next visit</option>
+          {detail.rollbackPoints.map((p) => <option key={p.eventCount} value={p.eventCount}>{label(p)}</option>)}
+        </select>
+        {selected != null && !confirming && <button type="button" className="btn btn-sm" onClick={() => setConfirming(true)}>Roll back…</button>}
+      </div>
+      {selected != null && confirming && (
+        <div className="flex flex-wrap items-center gap-3 bg-plum-50" style={{ padding: 12, borderRadius: 8 }}>
+          <span>
+            {selected === 0
+              ? `Archive this run (${total} events, ${undone(0)} emails) and start ${name("associate")} over from the welcome email?`
+              : `Keep ${selected} of ${total} events and undo ${undone(selected)} email${undone(selected) === 1 ? "" : "s"}?`}
+          </span>
+          <button type="button" className="btn btn-sm btn-primary" disabled={busy} onClick={() => void go()}>{busy ? "Rolling back…" : selected === 0 ? "Start over" : "Roll back"}</button>
+          <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={() => setConfirming(false)}>Cancel</button>
+        </div>
+      )}
+      {msg && <span className="text-ink-muted">{msg}</span>}
+    </div>
+  );
 }
 
 /** Test checkpoints this run offers, and which cohorts load from it. */
