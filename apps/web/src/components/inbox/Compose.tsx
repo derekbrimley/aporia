@@ -137,7 +137,7 @@ export function Compose(props: {
   }, [focusRequested, onFocused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div ref={rootRef} className="flex flex-col flex-1 scroll-mt-4" style={{ padding: "0 28px 24px" }}>
+    <div ref={rootRef} className="flex flex-col flex-1 scroll-mt-14 md:scroll-mt-4 px-3 pb-[calc(16px_+_env(safe-area-inset-bottom))] md:px-7 md:pb-6">
       <div className="flex items-center justify-between h-10 px-1 border-t-2 border-ink text-[12px] font-bold tracking-[0.1em] uppercase">
         <span>{props.isReply ? "Your reply" : state.forwardedMessageId ? "Forward" : "New email"}</span>
         {saved && <span className="text-ink-muted font-medium normal-case tracking-normal">{saved === "saving" ? "Saving draft…" : "Draft saved"}</span>}
@@ -168,12 +168,12 @@ export function Compose(props: {
         {state.attachments.length > 0 && <div className="flex flex-wrap gap-2">{state.attachments.map((d) => <span key={d} className="btn btn-sm"><Icon.file />{props.documents.find((x) => x.id === d)?.shortTitle ?? d}<button type="button" aria-label="Remove attachment" data-tip="Remove attachment" className="btn btn-ghost" style={{ height: 24, width: 24, padding: 0 }} onClick={() => onChange({ ...state, attachments: state.attachments.filter((x) => x !== d) })}><Icon.close /></button></span>)}</div>}
       </div>
       {error && <p role="alert" className="m-0 mb-2 text-sm text-plum-700">{error}</p>}
-      <div className="flex items-center justify-between gap-2.5">
-        <select aria-label="Attach a deal document" className="btn btn-sm" value="" onChange={(e) => e.target.value && onChange({ ...state, attachments: [...new Set([...state.attachments, e.target.value])] })} disabled={props.readOnly || !props.documents.length}>
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <select aria-label="Attach a deal document" className="btn btn-sm w-full md:w-auto" value="" onChange={(e) => e.target.value && onChange({ ...state, attachments: [...new Set([...state.attachments, e.target.value])] })} disabled={props.readOnly || !props.documents.length}>
           <option value="">Attach a document…</option>
           {props.documents.filter((d) => !state.attachments.includes(d.id)).map((d) => <option key={d.id} value={d.id}>{d.shortTitle}</option>)}
         </select>
-        <div className="flex gap-2.5">
+        <div className="flex gap-2.5 ml-auto">
           <button type="button" className="btn" onClick={discard} disabled={busy}>Discard</button>
           <button type="button" className="btn btn-primary" style={{ padding: "0 22px" }} onClick={() => send()} disabled={busy || props.readOnly || !state.to.length || (!fullBody.trim() && !props.forwarded)}>Send<Icon.send /></button>
         </div>

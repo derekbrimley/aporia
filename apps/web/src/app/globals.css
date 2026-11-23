@@ -117,3 +117,12 @@ textarea { resize: none; }
 .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes typing-dot { 0%, 80%, 100% { opacity: 0.35; } 40% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .typing-dots span { animation: none; } }
+
+/* The associate's inbox on a phone (one pane at a time, see InboxApp). */
+.inbox-mobile .btn-sm { height: 44px; min-width: 44px; }
+.inbox-mobile .pill-input { height: 44px; }
+/* iOS zooms into any field under 16px when it takes focus. */
+.inbox-mobile input, .inbox-mobile select, .inbox-mobile textarea { font-size: 16px !important; }
+.inbox-mobile .thread-item { border-radius: 18px; }
+/* No hover on a phone, and a hidden tooltip near the edge still widens the page. */
+.inbox-mobile [data-tip]::after { display: none; }

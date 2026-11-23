@@ -7,8 +7,12 @@ import { FlagButton } from "./FlagButton";
 import { Compose, emptyCompose, forwardCompose, markDraftSaved, type ComposeState } from "./Compose";
 import { Forwarded } from "./Forwarded";
 import { DocumentPanel } from "./DocumentPanel";
+import { MOBILE_QUERY, useMobile } from "./useMobile";
 
 type Folder = "inbox" | "sent";
+/** On a phone the inbox shows one pane at a time, deepest last: list, then conversation, then documents. */
+type Pane = "list" | "thread" | "docs";
+const DEPTH: Record<Pane, number> = { list: 0, thread: 1, docs: 2 };
 
 /** Drafts are keyed by thread id; a new email that has no thread yet uses this key. */
 const NEW = "new";
@@ -33,6 +37,29 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
   const [layout, setLayout] = useState<Layout>("even");
   const [library, setLibrary] = useState(false);
   const docCache = useRef(new Map<string, DocView>());
+  const mobile = useMobile();
+  const [pane, setPaneState] = useState<Pane>("list");
+  const paneRef = useRef<Pane>("list");
+  const setPane = useCallback((p: Pane) => { paneRef.current = p; setPaneState(p); }, []);
+
+  // Each step deeper on a phone is a history entry, so the browser's back button and the Android
+  // back gesture return to the previous pane instead of leaving the app.
+  const goPane = useCallback((p: Pane) => {
+    if (!window.matchMedia(MOBILE_QUERY).matches) return;
+    const cur = paneRef.current;
+    if (DEPTH[p] > DEPTH[cur]) window.history.pushState({ ...window.history.state, rmPane: p }, "");
+    else if (p !== cur) window.history.replaceState({ ...window.history.state, rmPane: p }, "");
+    setPane(p);
+  }, [setPane]);
+  const backPane = useCallback((fallback: Pane) => {
+    if ((window.history.state as { rmPane?: Pane } | null)?.rmPane) window.history.back();
+    else setPane(fallback);
+  }, [setPane]);
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => setPane((e.state as { rmPane?: Pane } | null)?.rmPane ?? "list");
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [setPane]);
 
   const load = useCallback(async () => {
     const r = await fetch("/api/inbox", { cache: "no-store" });
@@ -118,6 +145,13 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
   // The draft whose composer should scroll into view and take focus on its next render.
   const [focusDraft, setFocusDraft] = useState<string | null>(null);
   const clearFocusDraft = useCallback(() => setFocusDraft(null), []);
+  // A draft to bring into view once the conversation pane is showing again (a hidden pane can't scroll).
+  const focusOnReturn = useRef<string | null>(null);
+  useEffect(() => {
+    if (pane !== "thread" || !focusOnReturn.current) return;
+    setFocusDraft(focusOnReturn.current);
+    focusOnReturn.current = null;
+  }, [pane]);
   const dropDraft = (key: string) => setDrafts(({ [key]: _, ...rest }) => rest);
   const hasText = (c: ComposeState | undefined) => Boolean(c && (c.body.trim() || c.quotes.length || c.forwardedMessageId));
   const messageById = useCallback((id: string | null) => (id ? view?.messages.find((m) => m.id === id) ?? null : null), [view]);
@@ -164,6 +198,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
       docCache.current.set(id, d);
     }
     setDocs((prev) => { const next = [...prev] as (DocView | null)[]; next[slot] = d!; if (slot === 1 && !next[0]) { next[0] = d!; next[1] = null; } return next; });
+    goPane("docs");
     if (view?.viewingAs) { setLibrary(false); return; }
     void fetch("/api/inbox/opened", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ documentId: id }) });
     if (slot === 1 && docs[0]) void fetch("/api/inbox/compared", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ documentIds: [docs[0].id, id] }) });
@@ -192,13 +227,15 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
     putDraft(forwardCompose(m));
     setSelected(null); setSelectedRow(null); setFocusDraft(NEW);
   }
-  function startNew() { if (!drafts[NEW]) putDraft(emptyCompose()); setSelected(null); setSelectedRow(null); setFocusDraft(NEW); }
+  function startNew() { if (!drafts[NEW]) putDraft(emptyCompose()); setSelected(null); setSelectedRow(null); setFocusDraft(NEW); goPane("thread"); }
   function addQuote(q: Quote) {
     const key = thread?.id ?? NEW;
     setDrafts((d) => {
       const c = d[key] ?? (thread ? replyTo(thread) : emptyCompose());
       return { ...d, [key]: { ...c, quotes: [...c.quotes, q] } };
     });
+    // On a phone the document covers the email: go back to it, with the reply in view.
+    if (pane === "docs") { focusOnReturn.current = key; backPane("thread"); }
   }
 
   if (error) return <main className="min-h-screen flex items-center justify-center p-6"><div className="card max-w-[520px]"><h1 className="display text-[26px] font-normal m-0 mb-2">Nothing here yet</h1><p className="m-0 text-ink-muted">{error}</p><form action="/api/auth/sign-out" method="post" className="mt-4"><button className="btn">Sign out</button></form></div></main>;
@@ -206,14 +243,17 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
 
   const cols = layout === "email" ? "292px 1fr 420px" : layout === "docs" ? "292px 460px 1fr" : "292px 540px 1fr";
   const docsOpen = docs.some(Boolean);
+  // On a phone only the current pane is shown; a closed document panel falls back to the email.
+  const shown: Pane = mobile ? (pane === "docs" && !docsOpen ? "thread" : pane) : "list";
+  const hide = (p: Pane) => (mobile && shown !== p ? " hidden" : "");
   const milestoneTitle = view.milestones.find((m) => m.id === view.currentMilestone)?.title;
   // Nothing can be written: the deal has closed, or an admin is viewing as the associate.
   const locked = view.readOnly || Boolean(view.viewingAs);
 
   return (
-    <main className="h-screen grid" style={{ gridTemplateColumns: docsOpen ? cols : "292px 1fr", minWidth: 1280 }}>
+    <main className={mobile ? "inbox-mobile h-dvh flex flex-col" : "h-screen grid"} style={mobile ? undefined : { gridTemplateColumns: docsOpen ? cols : "292px 1fr", minWidth: 1280 }}>
       {/* ---------------------------------------------------------------- thread list */}
-      <section aria-label="Threads" className="flex flex-col gap-3.5 min-h-0" style={{ padding: "24px 14px 0" }}>
+      <section aria-label="Threads" className={`flex flex-col gap-3.5 min-h-0 flex-1${hide("list")}`} style={{ padding: mobile ? "16px 12px 0" : "24px 14px 0" }}>
         <div className="flex items-center justify-between gap-2 px-1.5">
           <div className="flex flex-col gap-0.5">
             {(view.matterCount ?? 1) > 1
@@ -230,7 +270,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
         </div>
         <div className="flex flex-col gap-1 overflow-auto flex-1 min-h-0" role="list">
           {drafts[NEW] && (
-            <button type="button" role="listitem" className="thread-item" aria-current={selected === null} onClick={() => { setSelected(null); setSelectedRow(null); }}>
+            <button type="button" role="listitem" className="thread-item" aria-current={selected === null} onClick={() => { setSelected(null); setSelectedRow(null); goPane("thread"); }}>
               <span className="flex items-center justify-between gap-2 w-full"><span className="text-[15px] font-medium text-plum-700">Draft</span><span className="role-chip">New email</span></span>
               <span className="display text-[16px] leading-[1.35]">{drafts[NEW].subject || "(no subject)"}</span>
               <span className="snippet">{drafts[NEW].body.replace(/\s+/g, " ").slice(0, 90)}</span>
@@ -244,7 +284,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
             const who = outgoing ? `To ${r.message.to.map(name).join(", ")}` : group ? [...r.people.map((p) => name(p).split(" ")[0]), "You"].join(", ") : name(r.message.from);
             const current = r.threadId === selected && (!sent || selectedRow === null || selectedRow === r.key);
             return (
-              <button key={r.key} type="button" role="listitem" className="thread-item" aria-current={current} onClick={() => { setSelected(r.threadId); setSelectedRow(sent ? r.key : null); }}>
+              <button key={r.key} type="button" role="listitem" className="thread-item" aria-current={current} onClick={() => { setSelected(r.threadId); setSelectedRow(sent ? r.key : null); goPane("thread"); }}>
                 <span className="flex items-center justify-between gap-2 w-full"><span className={`flex items-center gap-2 text-[15px] min-w-0 ${r.unread ? "font-bold" : "font-medium"}`} title={group ? r.people.map(name).join(", ") : undefined}>{r.unread > 0 && <span className="unread-dot" aria-label="Unread" />}<span className="truncate">{who}</span></span>{outgoing || group ? <span className="text-[12.5px] text-ink-muted whitespace-nowrap">{fmt(r.at)}</span> : <span className={`role-chip ${r.unread ? "role-chip-accent" : ""}`}>{role(r.message.from)}</span>}</span>
                 <span className="display text-[16px] leading-[1.35]">{r.subject}</span>
                 <span className="snippet">{!sent && view.writing?.[r.threadId]?.[0] && <span className="text-plum-700">{name(view.writing[r.threadId]![0]!.from).split(" ")[0]} is writing… · </span>}{!sent && hasText(drafts[r.threadId]) && <span className="text-plum-700">Draft · </span>}{(r.message.body.trim() || (r.message.forwardedMessageId ? "Forwarded message" : "")).replace(/\s+/g, " ").slice(0, 90)}</span>
@@ -253,7 +293,7 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
           })}
           {!rows.length && <p className="text-ink-muted text-sm px-3">{folder === "inbox" && !view.messages.length ? "Your first email is on its way. It will appear here in a moment." : "Nothing here yet."}</p>}
         </div>
-        <div style={{ padding: "0 0 20px" }}>
+        <div style={{ padding: mobile ? "0 0 calc(12px + env(safe-area-inset-bottom))" : "0 0 20px" }}>
           {view.checkpoints && view.checkpoints.length > 0 && <CheckpointPicker checkpoints={view.checkpoints} />}
           <button type="button" className="btn w-full" style={{ height: 48, justifyContent: "flex-start" }} onClick={() => setLibrary(true)} disabled={!view.documents.length}><span className="flex text-plum-600"><Icon.library /></span><span className="flex-1 text-left">Document library</span>{view.documents.length > 0 && <span className="text-ink-muted text-[13px]">{view.documents.length}</span>}</button>
           <form action="/api/auth/sign-out" method="post" className="mt-2 px-1"><button className="btn btn-ghost btn-sm text-ink-muted">Sign out, {userName}</button></form>
@@ -262,27 +302,28 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
 
       {/* ---------------------------------------------------------------- thread + compose */}
       {/* relative: makes this scroll box the containing block for absolutely positioned children (the composer's sr-only "Email body" label). Without it they resolve against the page, so a reply box below a long thread stretched the page and left blank space to scroll into. */}
-      <section aria-label="Conversation" className="relative flex flex-col min-h-0 bg-oat-100 border-x border-oat-400 overflow-auto">
-        {view.readOnly && !view.viewingAs && <div className="px-8 py-2 text-[13px] bg-plum-100 text-plum-700">The deal has closed. Your inbox stays available to read.</div>}
+      <section aria-label="Conversation" className={`relative flex flex-col min-h-0 flex-1 bg-oat-100 border-x border-oat-400 overflow-auto${hide("thread")}`}>
+        {mobile && <MobileBar label="Inbox" onBack={() => backPane("list")} />}
+        {view.readOnly && !view.viewingAs && <div className="px-4 md:px-8 py-2 text-[13px] bg-plum-100 text-plum-700">The deal has closed. Your inbox stays available to read.</div>}
         {thread ? (
           <>
-            <div className="flex flex-col gap-3.5 border-b border-oat-400" style={{ padding: "28px 32px 18px" }}>
-              <h2 className="display text-[27px] leading-[1.22] font-normal m-0">{thread.subject}</h2>
+            <div className="flex flex-col gap-3.5 border-b border-oat-400 px-4 pt-4 pb-4 md:px-8 md:pt-7 md:pb-[18px]">
+              <h2 className="display text-[23px] md:text-[27px] leading-[1.22] font-normal m-0">{thread.subject}</h2>
               <div className="flex flex-wrap items-center justify-between gap-2 text-[13.5px] text-ink-muted"><span>{messages.length} {messages.length === 1 ? "message" : "messages"}</span><FlagButton targetType="thread" targetId={thread.id} enabled={view.testerFlagsEnabled && !locked} /></div>
             </div>
             {messages.map((m) => (
-              <article key={m.id} id={`msg-${m.id}`} className="scroll-mt-4 flex flex-col gap-3.5 border-b border-oat-400" style={{ padding: "20px 32px" }} aria-label={`Message from ${name(m.from)}`}>
-                <div className="flex items-start justify-between gap-3">
+              <article key={m.id} id={`msg-${m.id}`} className="scroll-mt-16 md:scroll-mt-4 flex flex-col gap-3.5 border-b border-oat-400 px-4 py-4 md:px-8 md:py-5" aria-label={`Message from ${name(m.from)}`}>
+                <div className="flex flex-wrap md:flex-nowrap items-start justify-between gap-x-3 gap-y-1">
                   <div className="flex flex-col gap-0.5 text-[13.5px] text-ink-muted min-w-0">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5"><span className="text-[14.5px] font-semibold text-ink whitespace-nowrap">{m.from === "associate" ? "You" : name(m.from)}</span><span className="role-chip">{role(m.from)}</span><span className="text-[12.5px] whitespace-nowrap">{fmt(m.at)}</span></div>
                     <div>To {m.to.map(name).join(", ")}{m.cc.length > 0 && <> · Cc {m.cc.map(name).join(", ")}</>}</div>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex flex-wrap items-center gap-1 shrink-0 ml-auto -mr-2 md:mr-0">
                     {/* Icon buttons, so the row still fits when the document panel narrows the thread. */}
                     {!locked && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply" data-tip="Reply" onClick={() => replyToMessage(m, false)}><Icon.reply /></button>}
                     {!locked && m.to.length + m.cc.length > 1 && <button type="button" className="btn btn-ghost btn-sm" aria-label="Reply all" data-tip="Reply all" onClick={() => replyToMessage(m, true)}><Icon.replyAll /></button>}
                     {!locked && !m.private && <button type="button" className="btn btn-ghost btn-sm" aria-label="Forward" data-tip="Forward" data-tip-align="end" onClick={() => startForward(m)}><Icon.forward /></button>}
-                    {m.from !== "associate" && <FlagButton targetType="message" targetId={m.id} enabled={view.testerFlagsEnabled && !view.viewingAs} />}
+                    {m.from !== "associate" && <FlagButton targetType="message" targetId={m.id} enabled={view.testerFlagsEnabled && !view.viewingAs} compact={mobile} />}
                   </div>
                 </div>
                 {(() => { const t = answeredEarlier(m, thread); return t && <ReplyingTo target={t} label={emailOf(t)} onShow={showMessage} />; })()}
@@ -293,33 +334,34 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
               </article>
             ))}
             {(view.writing?.[thread.id] ?? []).map((w) => (
-              <div key={w.from} className="flex items-center gap-2 text-[13.5px] text-ink-muted" style={{ padding: "14px 32px" }} role="status" aria-live="polite">
+              <div key={w.from} className="flex items-center gap-2 text-[13.5px] text-ink-muted" style={{ padding: mobile ? "14px 16px" : "14px 32px" }} role="status" aria-live="polite">
                 <span className="typing-dots" aria-hidden="true"><span /><span /><span /></span>{name(w.from).split(" ")[0]} is writing…
               </div>
             ))}
-            {!compose && !locked && <div className="border-t border-oat-400 mt-auto" style={{ padding: "16px 32px 24px" }}><button type="button" className="btn btn-primary" onClick={startReply}><Icon.reply />Reply</button></div>}
+            {!compose && !locked && <div className="border-t border-oat-400 mt-auto" style={{ padding: mobile ? "12px 16px calc(16px + env(safe-area-inset-bottom))" : "16px 32px 24px" }}><button type="button" className="btn btn-primary" onClick={startReply}><Icon.reply />Reply</button></div>}
           </>
         ) : (!compose && <div className="flex-1 flex items-center justify-center text-ink-muted">Select a thread</div>)}
-        {compose && <Compose key={draftKey(compose)} state={compose} onChange={putDraft} addressBook={view.addressBook} documents={view.documents} isReply={Boolean(compose.threadId)} readOnly={locked} forwarded={messageById(compose.forwardedMessageId)} nameOf={name} focusRequested={focusDraft === draftKey(compose)} onFocused={clearFocusDraft} onDiscard={() => { if (compose.draftId) void fetch("/api/inbox/drafts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: compose.draftId }) }); dropDraft(draftKey(compose)); }} onSent={({ threadId }) => { dropDraft(draftKey(compose)); setSelected(threadId); void load(); }} />}
+        {compose && <Compose key={draftKey(compose)} state={compose} onChange={putDraft} addressBook={view.addressBook} documents={view.documents} isReply={Boolean(compose.threadId)} readOnly={locked} forwarded={messageById(compose.forwardedMessageId)} nameOf={name} focusRequested={focusDraft === draftKey(compose)} onFocused={clearFocusDraft} onDiscard={() => { if (compose.draftId) void fetch("/api/inbox/drafts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: compose.draftId }) }); dropDraft(draftKey(compose)); if (!compose.threadId) backPane("list"); }} onSent={({ threadId }) => { dropDraft(draftKey(compose)); setSelected(threadId); void load(); }} />}
       </section>
 
       {/* ---------------------------------------------------------------- documents */}
-      {docsOpen && <section aria-label="Documents" className="relative flex flex-col min-h-0">
-        <DocumentPanel open={docs} library={view.documents.map((d) => ({ id: d.id, shortTitle: d.shortTitle, title: d.title, from: d.from }))} layout={layout} onLayout={setLayout} onOpen={(id, slot) => void openDoc(id, slot)} onClose={(slot) => setDocs((p) => { const n = [...p] as (DocView | null)[]; n[slot] = null; if (!n[0] && n[1]) { n[0] = n[1]; n[1] = null; } return n; })} canQuote={!locked} onQuote={addQuote} flagsEnabled={view.testerFlagsEnabled && !view.viewingAs} roleOf={role} nameOf={name} />
+      {docsOpen && <section aria-label="Documents" className={`relative flex flex-col min-h-0 flex-1${hide("docs")}`}>
+        {mobile && <MobileBar label={thread || compose ? "Back to email" : "Inbox"} onBack={() => backPane(thread || compose ? "thread" : "list")} />}
+        <DocumentPanel open={docs} library={view.documents.map((d) => ({ id: d.id, shortTitle: d.shortTitle, title: d.title, from: d.from }))} layout={layout} onLayout={setLayout} onOpen={(id, slot) => void openDoc(id, slot)} onClose={(slot) => { const left = docs.filter((d, i) => d && i !== slot).length; setDocs((p) => { const n = [...p] as (DocView | null)[]; n[slot] = null; if (!n[0] && n[1]) { n[0] = n[1]; n[1] = null; } return n; }); if (!left && pane === "docs") backPane(thread || compose ? "thread" : "list"); }} canQuote={!locked} onQuote={addQuote} flagsEnabled={view.testerFlagsEnabled && !view.viewingAs} roleOf={role} nameOf={name} mobile={mobile} />
       </section>}
 
       {library && (
         <div role="dialog" aria-modal="true" aria-label="Document library" className="fixed inset-0 z-40 flex items-center justify-center" style={{ background: "rgba(38,32,42,0.28)" }} onClick={() => setLibrary(false)}>
-          <div className="card flex flex-col gap-3" style={{ width: 520, maxWidth: "calc(100vw - 32px)" }} onClick={(e) => e.stopPropagation()}>
+          <div className="card flex flex-col gap-3" style={{ width: 520, maxWidth: "calc(100vw - 24px)", maxHeight: "calc(100dvh - 24px)", ...(mobile ? { padding: 18 } : {}) }} onClick={(e) => e.stopPropagation()}>
             <h2 className="display m-0 text-[24px] font-normal">Document library</h2>
             <p className="m-0 text-ink-muted text-[14px]">Every attachment on the deal, in one place. Open one to read it next to your email; use Compare in the panel to add a second.</p>
             <div className="text-[12px] uppercase tracking-[0.08em] text-ink-muted">{view.documents.length} documents</div>
-            <div className="flex flex-col gap-3 overflow-auto" style={{ maxHeight: "60vh" }}>
+            <div className="flex flex-col gap-3 overflow-auto min-h-0" style={{ maxHeight: "60vh" }}>
               {libraryGroups(view.documents).map(([folder, list]) => (
                 <div key={folder ?? ""} className="flex flex-col gap-1">
                   {folder && <div className="px-2 text-[12px] font-semibold tracking-[0.06em] uppercase text-ink-muted">{folder}</div>}
                   <ul className="m-0 p-0 list-none flex flex-col gap-1">
-                    {list.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 p-2 rounded-[16px] hover:bg-oat-300"><div className="flex items-center gap-2 min-w-0"><span className="text-plum-600 flex"><Icon.file /></span><div><div className="text-[15px]">{d.title}</div><div className="text-[12.5px] text-ink-muted">From {name(d.from)} · {role(d.from)}</div></div></div><button type="button" className="btn btn-sm" onClick={() => openDoc(d.id, 0)}>Open</button></li>)}
+                    {list.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 p-2 rounded-[16px] hover:bg-oat-300"><div className="flex items-center gap-2 min-w-0"><span className="text-plum-600 flex"><Icon.file /></span><div className="min-w-0"><div className="text-[15px]">{d.title}</div><div className="text-[12.5px] text-ink-muted">From {name(d.from)} · {role(d.from)}</div></div></div><button type="button" className="btn btn-sm" onClick={() => openDoc(d.id, 0)}>Open</button></li>)}
                   </ul>
                 </div>
               ))}
@@ -329,6 +371,15 @@ export function InboxApp({ userName, matterId }: { userName: string; matterId: s
         </div>
       )}
     </main>
+  );
+}
+
+/** The bar across the top of a pane on a phone: back to the pane before it. */
+function MobileBar({ label, onBack }: { label: string; onBack: () => void }) {
+  return (
+    <div className="sticky top-0 z-10 flex items-center shrink-0 h-12 px-1.5 bg-oat-100/95 backdrop-blur border-b border-oat-400">
+      <button type="button" className="btn btn-ghost" style={{ padding: "0 12px 0 8px" }} onClick={onBack}><Icon.back />{label}</button>
+    </div>
   );
 }
 
