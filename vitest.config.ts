@@ -23,7 +23,11 @@ export default defineConfig({
           exclude: ["**/node_modules/**", "**/dist/**"],
           testTimeout: 60_000,
           hookTimeout: 60_000,
-          fileParallelism: false,
+          // One file at a time: the bot-driven tests drain every session's jobs, so a file running
+          // alongside them sees events it never appended. fileParallelism is a root-only option and
+          // was ignored here; a single fork is what makes this project serial.
+          pool: "forks",
+          poolOptions: { forks: { singleFork: true } },
         },
       },
     ],
